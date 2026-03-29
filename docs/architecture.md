@@ -150,7 +150,7 @@ Each tenant uses their **own** WhatsApp Business Account and access token. The p
 - No single point of failure — one tenant's WA issues don't affect others
 - Tenants can use their existing phone numbers
 
-## AI Booking Engine
+## Booking Engine
 
 ### State Machine Design
 
@@ -161,7 +161,7 @@ new/idle → greeting → awaiting_doctor → awaiting_service → awaiting_date
 ```
 
 The state machine handles:
-- **Intent Detection**: OpenAI GPT-4o-mini with keyword fallback
+- **Menu-Driven Flow**: Predefined buttons and interactive lists (no AI)
 - **Doctor Selection**: Skips if tenant has only 1 doctor
 - **Service Selection**: Shows per-doctor services
 - **Date Picker**: Respects doctor availability, breaks, booking window
@@ -169,13 +169,12 @@ The state machine handles:
 - **Confirmation**: Auto-confirm if tenant setting enabled
 - **Reminders**: Automatically creates 24h + 1h reminders on booking
 
-### AI Intent Classification
+### Intent Matching
 
 ```
-System Prompt: "You are an assistant for {business_name} ({business_type}).
-Classify the user's intent as one of: greeting, start_booking, check_status, cancel, reschedule, help"
-
-Fallback: Keyword matching (book/appointment → start_booking, cancel → cancel, etc.)
+Button IDs: book, status, help, cancel, reschedule
+Keyword fallback: "book" → start booking, "cancel" → show cancellable, etc.
+Any unrecognized message → shows main menu with 3 buttons
 ```
 
 ## Subscription & Billing

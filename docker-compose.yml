@@ -45,7 +45,6 @@ services:
       - DB_POSTGRESDB_USER=${DB_USER:-clinic_admin}
       - DB_POSTGRESDB_PASSWORD=${DB_PASSWORD:-ChangeMe!2026}
       - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:-your-encryption-key-change-this}
-      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GENERIC_TIMEZONE=${TIMEZONE:-Asia/Kolkata}
     ports:
       - "5678:5678"

@@ -59,9 +59,6 @@ REDIS_URL=redis://redis:6379
 # ─── Authentication ────────────────────────────────────
 JWT_SECRET=<GENERATE: openssl rand -hex 64>
 
-# ─── OpenAI (AI Chatbot) ──────────────────────────────
-OPENAI_API_KEY=sk-proj-...
-OPENAI_MODEL=gpt-4o-mini
 
 # ─── WhatsApp (Central Webhook) ───────────────────────
 # This is the verify token YOU set — same value goes in Meta webhook config
@@ -315,9 +312,8 @@ docker compose -f docker-compose.saas.yml exec postgres \
 |---|---|---|
 | VPS (2 vCPU, 4GB) | DigitalOcean / Hetzner | $12-24 |
 | Domain | Any registrar | ~$1 |
-| OpenAI API | OpenAI | ~$5-50 (usage-based) |
 | WhatsApp API | Meta | Free (each tenant pays own) |
-| **Total platform cost** | | **~$18-75/mo** |
+| **Total platform cost** | | **~$13-25/mo** |
 
 At ₹999/mo starter plan with just 20 paying customers = ₹19,980/mo revenue (~$240).
 

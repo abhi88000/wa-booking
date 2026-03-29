@@ -61,8 +61,6 @@ services:
       DB_POOL_MAX: 20
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-change-this-to-a-secure-random-string}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
       WA_VERIFY_TOKEN: ${WA_VERIFY_TOKEN:-bookingbot-verify-2024}
       APP_URL: ${APP_URL:-https://yourdomain.com}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001}
@@ -84,7 +82,6 @@ services:
       DB_NAME: wa_booking_saas
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
-      OPENAI_API_KEY: ${OPENAI_API_KEY}
 
   # ── n8n (Optional — for advanced workflow automation) ────
   n8n:

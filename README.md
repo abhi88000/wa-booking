@@ -51,7 +51,7 @@ FRONTENDS:
 ## Features
 
 ### For Your Customers (Tenant Businesses)
-- **AI WhatsApp Chatbot**: Patients book appointments in natural language
+- **WhatsApp Booking Bot**: Patients book appointments via interactive buttons and menus
 - **Smart Booking Flow**: Doctor → Service → Date → Time → Confirm (interactive WhatsApp buttons/lists)
 - **Automated Reminders**: 24h and 1h before appointment
 - **Rescheduling & Cancellation**: Patients manage bookings via WhatsApp chat
@@ -76,7 +76,6 @@ FRONTENDS:
 | Backend API | Node.js + Express |
 | Database | PostgreSQL 16 (multi-tenant) |
 | Cache / Queue | Redis 7 |
-| AI / NLP | OpenAI GPT-4o-mini |
 | WhatsApp API | Meta Cloud API (v21.0) |
 | Tenant Frontend | React + Vite + Tailwind CSS |
 | Super Admin Frontend | React + Vite + Tailwind + Recharts |
@@ -115,8 +114,7 @@ WA/
 │       │   └── webhook.js         # Central WhatsApp webhook (routes to tenant)
 │       └── services/
 │           ├── whatsapp.js        # WhatsApp Cloud API wrapper (per-tenant)
-│           ├── bookingEngine.js   # AI booking conversation state machine
-│           ├── ai.js              # OpenAI intent detection + keyword fallback
+│           ├── bookingEngine.js   # Menu-driven booking conversation state machine
 │           └── reminders.js       # Multi-tenant reminder processor
 │
 ├── tenant-dashboard/              # React Frontend — Each Business's Panel
@@ -166,7 +164,6 @@ WA/
 - [Docker](https://www.docker.com/get-started/) + Docker Compose
 - [ngrok](https://ngrok.com/) (for local development)
 - Meta Developer Account (for WhatsApp API)
-- OpenAI API key
 - Razorpay account (for billing)
 
 ### Step 1: Clone & Configure
@@ -291,9 +288,6 @@ DB_PASSWORD=your-secure-password
 
 # Auth
 JWT_SECRET=your-random-64-char-string
-
-# AI
-OPENAI_API_KEY=sk-...
 
 # WhatsApp (Central Webhook)
 WA_VERIFY_TOKEN=your-verify-token

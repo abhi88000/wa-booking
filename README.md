@@ -1,6 +1,6 @@
 # BookingBot — WhatsApp Appointment Booking SaaS
 
-A **multi-tenant SaaS platform** that lets any business (clinics, salons, consultancies, etc.) accept appointment bookings via **WhatsApp AI chatbot** — complete with admin dashboards, billing, reminders, and payments.
+A **multi-tenant SaaS platform** that lets any business (clinics, salons, consultancies, etc.) accept appointment bookings via **WhatsApp chatbot** — complete with admin dashboards, billing, reminders, and payments.
 
 > **Built to sell to 1000s of businesses.** Each customer signs up, connects their WhatsApp number, adds doctors/services, and their patients can book via WhatsApp instantly.
 
@@ -27,8 +27,8 @@ A **multi-tenant SaaS platform** that lets any business (clinics, salons, consul
 │       │                                                         │
 │       ▼                                                         │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌───────────┐       │
-│  │ Booking  │  │    AI    │  │ WhatsApp │  │ Reminders │       │
-│  │ Engine   │  │ Service  │  │ Service  │  │ (Cron)    │       │
+│  │ Booking  │  │ WhatsApp │  │ Reminder │  │ Tenant    │       │
+│  │ Engine   │  │ Service  │  │ (Cron)   │  │ Health    │       │
 │  └──────────┘  └──────────┘  └──────────┘  └───────────┘       │
 └───────────────────────┬─────────────────────────────────────────┘
                         │
@@ -218,14 +218,14 @@ See [WhatsApp Setup Guide](docs/whatsapp-setup.md).
 1. Open **Super Admin** → http://localhost:3001 → Login
 2. Open **Tenant Dashboard** → http://localhost:3000 → **Sign Up** as a new business
 3. Complete **Onboarding** → Connect WhatsApp → Add doctors & services
-4. Send "Hi" to the connected WhatsApp number → AI chatbot responds
+4. Send "Hi" to the connected WhatsApp number → chatbot responds with menu buttons
 5. Book an appointment through WhatsApp → See it appear in Tenant Dashboard
 
 ## Subscription Plans
 
 | Plan | Monthly | Doctors | Appointments/mo | Features |
 |---|---|---|---|---|
-| **Trial** | Free (14 days) | 2 | 50 | AI chatbot, reminders |
+| **Trial** | Free (14 days) | 2 | 50 | WhatsApp chatbot, reminders |
 | **Starter** | ₹999 | 3 | 200 | + Google Cal, payments |
 | **Professional** | ₹2,499 | 10 | 1,000 | + analytics, branding, priority support |
 | **Enterprise** | ₹7,999 | 50 | 10,000 | Everything unlimited |

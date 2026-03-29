@@ -1,0 +1,261 @@
+{
+  "name": "WhatsApp Webhook Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "whatsapp-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-verify",
+      "name": "Webhook Verify (GET)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [220, 160],
+      "webhookId": "whatsapp-verify"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.query['hub.challenge'] }}",
+        "options": {}
+      },
+      "id": "respond-verify",
+      "name": "Return Challenge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [440, 160]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-webhook",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "webhook-messages",
+      "name": "Webhook Messages (POST)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [220, 400],
+      "webhookId": "whatsapp-messages"
+    },
+    {
+      "parameters": {
+        "respondWith": "noData",
+        "responseCode": 200
+      },
+      "id": "respond-ack",
+      "name": "ACK 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [440, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-messages-exist",
+              "leftValue": "={{ $json.body.entry[0].changes[0].value.messages }}",
+              "rightValue": "",
+              "operator": {
+                "type": "exists",
+                "operation": "exists"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-message",
+      "name": "Has Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract WhatsApp message details\nconst entry = $input.first().json.body.entry[0];\nconst changes = entry.changes[0].value;\nconst message = changes.messages[0];\nconst contact = changes.contacts[0];\n\nconst result = {\n  // Sender info\n  phone: message.from,\n  name: contact.profile.name,\n  wa_id: contact.wa_id,\n  \n  // Message info\n  message_id: message.id,\n  timestamp: message.timestamp,\n  type: message.type,\n  \n  // Message content based on type\n  text: message.type === 'text' ? message.text.body : '',\n  \n  // Interactive response (button clicks, list selections)\n  interactive_type: message.type === 'interactive' ? message.interactive.type : '',\n  interactive_id: '',\n  interactive_title: '',\n  \n  // Location (if shared)\n  latitude: message.type === 'location' ? message.location.latitude : '',\n  longitude: message.type === 'location' ? message.location.longitude : '',\n};\n\n// Extract interactive response details\nif (message.type === 'interactive') {\n  if (message.interactive.type === 'button_reply') {\n    result.interactive_id = message.interactive.button_reply.id;\n    result.interactive_title = message.interactive.button_reply.title;\n  } else if (message.interactive.type === 'list_reply') {\n    result.interactive_id = message.interactive.list_reply.id;\n    result.interactive_title = message.interactive.list_reply.title;\n  }\n}\n\nreturn [result];"
+      },
+      "id": "parse-message",
+      "name": "Parse WhatsApp Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 340]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO chat_messages (phone, direction, message_type, content, wa_message_id, metadata)\nVALUES ('{{ $json.phone }}', 'inbound', '{{ $json.type }}', '{{ $json.text || $json.interactive_title }}', '{{ $json.message_id }}', '{{ JSON.stringify($json) }}')\nRETURNING id;",
+        "options": {}
+      },
+      "id": "log-message",
+      "name": "Log to DB",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1100, 340],
+      "credentials": {
+        "postgres": {
+          "id": "CONFIGURE_ME",
+          "name": "Clinic DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, name, phone, wa_conversation_state FROM patients WHERE phone = '{{ $('Parse WhatsApp Message').first().json.phone }}' LIMIT 1;",
+        "options": {}
+      },
+      "id": "get-patient",
+      "name": "Get Patient",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1320, 340],
+      "credentials": {
+        "postgres": {
+          "id": "CONFIGURE_ME",
+          "name": "Clinic DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-patient-exists",
+              "leftValue": "={{ $json.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "patient-exists",
+      "name": "Patient Exists?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1540, 340]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO patients (phone, name) VALUES ('{{ $('Parse WhatsApp Message').first().json.phone }}', '{{ $('Parse WhatsApp Message').first().json.name }}')\nRETURNING id, name, phone, wa_conversation_state;",
+        "options": {}
+      },
+      "id": "create-patient",
+      "name": "Create Patient",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1760, 480],
+      "credentials": {
+        "postgres": {
+          "id": "CONFIGURE_ME",
+          "name": "Clinic DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge patient data with message data for downstream processing\nconst message = $('Parse WhatsApp Message').first().json;\nconst patientData = $input.first().json;\n\nreturn [{\n  ...message,\n  patient_id: patientData.id,\n  patient_name: patientData.name,\n  conversation_state: patientData.wa_conversation_state || {}\n}];"
+      },
+      "id": "merge-data",
+      "name": "Merge Patient + Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1980, 340]
+    },
+    {
+      "parameters": {},
+      "id": "to-ai-router",
+      "name": "→ AI Booking Flow",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [2200, 340],
+      "notes": "This connects to the AI Booking Flow workflow via a sub-workflow call or webhook trigger"
+    }
+  ],
+  "connections": {
+    "Webhook Verify (GET)": {
+      "main": [
+        [{ "node": "Return Challenge", "type": "main", "index": 0 }]
+      ]
+    },
+    "Webhook Messages (POST)": {
+      "main": [
+        [
+          { "node": "ACK 200", "type": "main", "index": 0 },
+          { "node": "Has Message?", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Has Message?": {
+      "main": [
+        [{ "node": "Parse WhatsApp Message", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Parse WhatsApp Message": {
+      "main": [
+        [{ "node": "Log to DB", "type": "main", "index": 0 }]
+      ]
+    },
+    "Log to DB": {
+      "main": [
+        [{ "node": "Get Patient", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get Patient": {
+      "main": [
+        [{ "node": "Patient Exists?", "type": "main", "index": 0 }]
+      ]
+    },
+    "Patient Exists?": {
+      "main": [
+        [{ "node": "Merge Patient + Message", "type": "main", "index": 0 }],
+        [{ "node": "Create Patient", "type": "main", "index": 0 }]
+      ]
+    },
+    "Create Patient": {
+      "main": [
+        [{ "node": "Merge Patient + Message", "type": "main", "index": 0 }]
+      ]
+    },
+    "Merge Patient + Message": {
+      "main": [
+        [{ "node": "→ AI Booking Flow", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": null,
+  "tags": [
+    { "name": "whatsapp" },
+    { "name": "clinic-booking" }
+  ]
+}

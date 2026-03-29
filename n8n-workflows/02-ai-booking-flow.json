@@ -1,0 +1,496 @@
+{
+  "name": "AI Booking Flow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "booking-flow",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "trigger",
+      "name": "Booking Flow Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [220, 400],
+      "webhookId": "booking-flow"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Determine the conversation state and route accordingly\nconst data = $input.first().json;\nconst state = data.conversation_state || {};\nconst currentStep = state.step || 'greeting';\nconst messageText = (data.text || data.interactive_title || '').toLowerCase().trim();\nconst interactiveId = data.interactive_id || '';\n\n// Keywords that trigger specific flows\nconst bookingKeywords = ['book', 'appointment', 'schedule', 'doctor', 'consult', 'visit'];\nconst cancelKeywords = ['cancel', 'delete', 'remove'];\nconst rescheduleKeywords = ['reschedule', 'change', 'move', 'postpone'];\nconst statusKeywords = ['status', 'check', 'my appointment', 'upcoming'];\nconst helpKeywords = ['help', 'menu', 'hi', 'hello', 'hey', 'start'];\n\nlet route = currentStep;\n\n// If no active flow, detect intent from message\nif (currentStep === 'greeting' || currentStep === 'idle') {\n  if (bookingKeywords.some(k => messageText.includes(k)) || interactiveId === 'btn_book') {\n    route = 'start_booking';\n  } else if (cancelKeywords.some(k => messageText.includes(k)) || interactiveId === 'btn_cancel') {\n    route = 'cancel_appointment';\n  } else if (rescheduleKeywords.some(k => messageText.includes(k)) || interactiveId === 'btn_reschedule') {\n    route = 'reschedule_appointment';\n  } else if (statusKeywords.some(k => messageText.includes(k)) || interactiveId === 'btn_status') {\n    route = 'check_status';\n  } else if (helpKeywords.some(k => messageText.includes(k))) {\n    route = 'greeting';\n  } else {\n    route = 'ai_understand';  // Use AI to understand intent\n  }\n}\n\nreturn [{ ...data, route, currentStep }];"
+      },
+      "id": "router",
+      "name": "Intent Router",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 400]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            { "outputKey": "greeting", "value": "greeting" },
+            { "outputKey": "start_booking", "value": "start_booking" },
+            { "outputKey": "select_doctor", "value": "select_doctor" },
+            { "outputKey": "select_date", "value": "select_date" },
+            { "outputKey": "select_time", "value": "select_time" },
+            { "outputKey": "confirm_booking", "value": "confirm_booking" },
+            { "outputKey": "ai_understand", "value": "ai_understand" },
+            { "outputKey": "check_status", "value": "check_status" },
+            { "outputKey": "cancel_appointment", "value": "cancel_appointment" },
+            { "outputKey": "reschedule_appointment", "value": "reschedule_appointment" }
+          ]
+        },
+        "mode": "expression",
+        "output": "={{ $json.route }}"
+      },
+      "id": "switch",
+      "name": "Route by State",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [660, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $('Intent Router').first().json.phone }}\",\n  \"type\": \"interactive\",\n  \"interactive\": {\n    \"type\": \"button\",\n    \"header\": {\n      \"type\": \"text\",\n      \"text\": \"🏥 HealthCare Clinic\"\n    },\n    \"body\": {\n      \"text\": \"Hello {{ $('Intent Router').first().json.patient_name }}! 👋\\n\\nWelcome to HealthCare Clinic. How can I help you today?\"\n    },\n    \"footer\": {\n      \"text\": \"Reply with a button or type your request\"\n    },\n    \"action\": {\n      \"buttons\": [\n        {\n          \"type\": \"reply\",\n          \"reply\": {\n            \"id\": \"btn_book\",\n            \"title\": \"📅 Book Appointment\"\n          }\n        },\n        {\n          \"type\": \"reply\",\n          \"reply\": {\n            \"id\": \"btn_status\",\n            \"title\": \"📋 My Appointments\"\n          }\n        },\n        {\n          \"type\": \"reply\",\n          \"reply\": {\n            \"id\": \"btn_reschedule\",\n            \"title\": \"🔄 Reschedule\"\n          }\n        }\n      ]\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "send-greeting",
+      "name": "Send Welcome Menu",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 100],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_ME",
+          "name": "WhatsApp Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT d.id, d.name, d.specialization, d.consultation_fee, d.slot_duration\nFROM doctors d\nWHERE d.clinic_id = '11111111-1111-1111-1111-111111111111'\nAND d.is_active = true\nORDER BY d.name;",
+        "options": {}
+      },
+      "id": "get-doctors",
+      "name": "Get Available Doctors",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [960, 280],
+      "credentials": {
+        "postgres": {
+          "id": "CONFIGURE_ME",
+          "name": "Clinic DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build WhatsApp interactive list of doctors\nconst doctors = $input.all().map(item => item.json);\nconst phone = $('Intent Router').first().json.phone;\n\nconst rows = doctors.map((doc, i) => ({\n  id: `doc_${doc.id}`,\n  title: doc.name,\n  description: `${doc.specialization} | ₹${doc.consultation_fee}`\n}));\n\nconst payload = {\n  messaging_product: 'whatsapp',\n  to: phone,\n  type: 'interactive',\n  interactive: {\n    type: 'list',\n    header: { type: 'text', text: '👨‍⚕️ Select a Doctor' },\n    body: { text: 'Please choose a doctor for your appointment:' },\n    footer: { text: 'Tap to see the list' },\n    action: {\n      button: 'View Doctors',\n      sections: [{\n        title: 'Available Doctors',\n        rows: rows\n      }]\n    }\n  }\n};\n\nreturn [{ payload, phone }];"
+      },
+      "id": "build-doctor-list",
+      "name": "Build Doctor List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1180, 280]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {}
+      },
+      "id": "send-doctor-list",
+      "name": "Send Doctor List",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1400, 280],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_ME",
+          "name": "WhatsApp Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE patients SET wa_conversation_state = jsonb_set(\n  COALESCE(wa_conversation_state, '{}'),\n  '{step}',\n  '\"select_doctor\"'\n) WHERE phone = '{{ $('Intent Router').first().json.phone }}';",
+        "options": {}
+      },
+      "id": "update-state-doctor",
+      "name": "Set State: select_doctor",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1620, 280],
+      "credentials": {
+        "postgres": {
+          "id": "CONFIGURE_ME",
+          "name": "Clinic DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Doctor was selected — extract doctor ID and find available dates\nconst data = $input.first().json;\nconst interactiveId = data.interactive_id || '';\nconst doctorId = interactiveId.replace('doc_', '');\n\n// Store doctor selection\nreturn [{ ...data, selected_doctor_id: doctorId }];"
+      },
+      "id": "handle-doctor-selection",
+      "name": "Handle Doctor Selection",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 440]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Get available dates for the next 7 days for the selected doctor\nWITH doctor_schedule AS (\n  SELECT da.day, da.start_time, da.end_time\n  FROM doctor_availability da\n  WHERE da.doctor_id = '{{ $json.selected_doctor_id }}'\n  AND da.is_active = true\n),\nnext_7_days AS (\n  SELECT generate_series(\n    CURRENT_DATE,\n    CURRENT_DATE + INTERVAL '6 days',\n    INTERVAL '1 day'\n  )::date AS date\n),\navailable_dates AS (\n  SELECT n.date,\n         TO_CHAR(n.date, 'Dy, DD Mon') AS display_date,\n         LOWER(TO_CHAR(n.date, 'Day'))::text AS day_name,\n         ds.start_time,\n         ds.end_time\n  FROM next_7_days n\n  JOIN doctor_schedule ds ON TRIM(LOWER(TO_CHAR(n.date, 'Day')))::day_of_week = ds.day\n  WHERE n.date >= CURRENT_DATE\n  -- Exclude doctor holidays\n  AND NOT EXISTS (\n    SELECT 1 FROM doctor_breaks db\n    WHERE db.doctor_id = '{{ $json.selected_doctor_id }}'\n    AND db.break_date = n.date\n    AND db.is_full_day = true\n  )\n)\nSELECT * FROM available_dates ORDER BY date;",
+        "options": {}
+      },
+      "id": "get-available-dates",
+      "name": "Get Available Dates",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1180, 440],
+      "credentials": {
+        "postgres": {
+          "id": "CONFIGURE_ME",
+          "name": "Clinic DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build date selection list\nconst dates = $input.all().map(item => item.json);\nconst phone = $('Intent Router').first().json.phone;\nconst doctorId = $('Handle Doctor Selection').first().json.selected_doctor_id;\n\nconst rows = dates.map(d => ({\n  id: `date_${d.date}_${doctorId}`,\n  title: d.display_date,\n  description: `${d.start_time.slice(0,5)} - ${d.end_time.slice(0,5)}`\n}));\n\nconst payload = {\n  messaging_product: 'whatsapp',\n  to: phone,\n  type: 'interactive',\n  interactive: {\n    type: 'list',\n    header: { type: 'text', text: '📅 Select a Date' },\n    body: { text: 'Choose your preferred appointment date:' },\n    footer: { text: 'Showing next 7 available days' },\n    action: {\n      button: 'View Dates',\n      sections: [{\n        title: 'Available Dates',\n        rows: rows\n      }]\n    }\n  }\n};\n\nreturn [{ payload, phone }];"
+      },
+      "id": "build-date-list",
+      "name": "Build Date List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 440]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Date was selected — extract date and doctor, find available time slots\nconst data = $input.first().json;\nconst interactiveId = data.interactive_id || '';\n// Format: date_2026-03-05_doctorUUID\nconst parts = interactiveId.split('_');\nconst selectedDate = parts[1];\nconst doctorId = parts.slice(2).join('_');\n\nreturn [{ ...data, selected_date: selectedDate, selected_doctor_id: doctorId }];"
+      },
+      "id": "handle-date-selection",
+      "name": "Handle Date Selection",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 600]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Generate time slots and exclude already booked ones\nWITH doctor_info AS (\n  SELECT slot_duration FROM doctors WHERE id = '{{ $json.selected_doctor_id }}'\n),\nschedule AS (\n  SELECT da.start_time, da.end_time\n  FROM doctor_availability da\n  WHERE da.doctor_id = '{{ $json.selected_doctor_id }}'\n  AND da.day = TRIM(LOWER(TO_CHAR('{{ $json.selected_date }}'::date, 'Day')))::day_of_week\n),\nslots AS (\n  SELECT generate_series(\n    s.start_time,\n    s.end_time - (di.slot_duration || ' minutes')::interval,\n    (di.slot_duration || ' minutes')::interval\n  )::time AS slot_time\n  FROM schedule s, doctor_info di\n),\nbooked AS (\n  SELECT start_time FROM appointments\n  WHERE doctor_id = '{{ $json.selected_doctor_id }}'\n  AND appointment_date = '{{ $json.selected_date }}'\n  AND status IN ('pending', 'confirmed')\n)\nSELECT TO_CHAR(s.slot_time, 'HH24:MI') AS time_slot,\n       TO_CHAR(s.slot_time, 'HH:MI AM') AS display_time\nFROM slots s\nWHERE s.slot_time NOT IN (SELECT start_time FROM booked)\nORDER BY s.slot_time;",
+        "options": {}
+      },
+      "id": "get-time-slots",
+      "name": "Get Time Slots",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1180, 600],
+      "credentials": {
+        "postgres": {
+          "id": "CONFIGURE_ME",
+          "name": "Clinic DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build time slot selection\nconst slots = $input.all().map(item => item.json);\nconst phone = $('Intent Router').first().json.phone;\nconst doctorId = $('Handle Date Selection').first().json.selected_doctor_id;\nconst date = $('Handle Date Selection').first().json.selected_date;\n\nconst rows = slots.slice(0, 10).map(s => ({\n  id: `time_${s.time_slot}_${date}_${doctorId}`,\n  title: s.display_time\n}));\n\nconst payload = {\n  messaging_product: 'whatsapp',\n  to: phone,\n  type: 'interactive',\n  interactive: {\n    type: 'list',\n    header: { type: 'text', text: '🕐 Select a Time' },\n    body: { text: `Available slots for ${date}:` },\n    footer: { text: `${slots.length} slots available` },\n    action: {\n      button: 'View Times',\n      sections: [{\n        title: 'Available Times',\n        rows: rows\n      }]\n    }\n  }\n};\n\nreturn [{ payload, phone }];"
+      },
+      "id": "build-time-list",
+      "name": "Build Time List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1400, 600]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Time was selected — extract all booking details and show confirmation\nconst data = $input.first().json;\nconst interactiveId = data.interactive_id || '';\n// Format: time_10:00_2026-03-05_doctorUUID\nconst parts = interactiveId.split('_');\nconst selectedTime = parts[1];\nconst selectedDate = parts[2];\nconst doctorId = parts.slice(3).join('_');\n\nreturn [{ \n  ...data, \n  selected_time: selectedTime, \n  selected_date: selectedDate, \n  selected_doctor_id: doctorId \n}];"
+      },
+      "id": "handle-time-selection",
+      "name": "Handle Time Selection",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 760]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT d.name AS doctor_name, d.specialization, d.consultation_fee, d.slot_duration\nFROM doctors d\nWHERE d.id = '{{ $json.selected_doctor_id }}';",
+        "options": {}
+      },
+      "id": "get-doctor-details",
+      "name": "Get Doctor Details",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1180, 760],
+      "credentials": {
+        "postgres": {
+          "id": "CONFIGURE_ME",
+          "name": "Clinic DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $('Intent Router').first().json.phone }}\",\n  \"type\": \"interactive\",\n  \"interactive\": {\n    \"type\": \"button\",\n    \"header\": {\n      \"type\": \"text\",\n      \"text\": \"✅ Confirm Appointment\"\n    },\n    \"body\": {\n      \"text\": \"Please confirm your appointment:\\n\\n👨‍⚕️ Doctor: {{ $json.doctor_name }}\\n📋 {{ $json.specialization }}\\n📅 Date: {{ $('Handle Time Selection').first().json.selected_date }}\\n🕐 Time: {{ $('Handle Time Selection').first().json.selected_time }}\\n💰 Fee: ₹{{ $json.consultation_fee }}\\n\\nWould you like to confirm?\"\n    },\n    \"action\": {\n      \"buttons\": [\n        {\n          \"type\": \"reply\",\n          \"reply\": {\n            \"id\": \"confirm_yes_{{ $('Handle Time Selection').first().json.selected_time }}_{{ $('Handle Time Selection').first().json.selected_date }}_{{ $('Handle Time Selection').first().json.selected_doctor_id }}\",\n            \"title\": \"✅ Confirm\"\n          }\n        },\n        {\n          \"type\": \"reply\",\n          \"reply\": {\n            \"id\": \"confirm_no\",\n            \"title\": \"❌ Cancel\"\n          }\n        }\n      ]\n    }\n  }\n}",
+        "options": {}
+      },
+      "id": "send-confirmation",
+      "name": "Send Confirmation Prompt",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1400, 760],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_ME",
+          "name": "WhatsApp Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// User confirmed — create the appointment\nconst data = $input.first().json;\nconst interactiveId = data.interactive_id || '';\n\nif (interactiveId.startsWith('confirm_yes_')) {\n  const parts = interactiveId.replace('confirm_yes_', '').split('_');\n  const time = parts[0];\n  const date = parts[1];\n  const doctorId = parts.slice(2).join('_');\n  return [{ ...data, booking_time: time, booking_date: date, booking_doctor_id: doctorId, confirmed: true }];\n} else {\n  return [{ ...data, confirmed: false }];\n}"
+      },
+      "id": "handle-confirmation",
+      "name": "Handle Confirmation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 920]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Create the appointment\nINSERT INTO appointments (\n  patient_id, doctor_id, clinic_id,\n  appointment_date, start_time, end_time,\n  status\n) VALUES (\n  '{{ $json.patient_id }}',\n  '{{ $json.booking_doctor_id }}',\n  '11111111-1111-1111-1111-111111111111',\n  '{{ $json.booking_date }}',\n  '{{ $json.booking_time }}',\n  ('{{ $json.booking_time }}'::time + (SELECT slot_duration || ' minutes' FROM doctors WHERE id = '{{ $json.booking_doctor_id }}')::interval)::time,\n  'confirmed'\n)\nRETURNING id, appointment_date, start_time, end_time;",
+        "options": {}
+      },
+      "id": "create-appointment",
+      "name": "Create Appointment",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1180, 920],
+      "credentials": {
+        "postgres": {
+          "id": "CONFIGURE_ME",
+          "name": "Clinic DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Create reminder 24h before and 1h before\nINSERT INTO reminders (appointment_id, remind_at, type) VALUES\n  ('{{ $json.id }}', '{{ $json.appointment_date }}T{{ $json.start_time }}'::timestamptz - INTERVAL '24 hours', '24h'),\n  ('{{ $json.id }}', '{{ $json.appointment_date }}T{{ $json.start_time }}'::timestamptz - INTERVAL '1 hour', '1h');",
+        "options": {}
+      },
+      "id": "create-reminders",
+      "name": "Create Reminders",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1400, 920],
+      "credentials": {
+        "postgres": {
+          "id": "CONFIGURE_ME",
+          "name": "Clinic DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $('Intent Router').first().json.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"🎉 *Appointment Confirmed!*\\n\\n📋 Appointment ID: {{ $('Create Appointment').first().json.id.slice(0,8) }}\\n📅 Date: {{ $('Create Appointment').first().json.appointment_date }}\\n🕐 Time: {{ $('Create Appointment').first().json.start_time }}\\n\\n⏰ You'll receive a reminder 24 hours and 1 hour before your appointment.\\n\\n💰 Payment link will be sent shortly.\\n\\nType *help* anytime to see options.\"\n  }\n}",
+        "options": {}
+      },
+      "id": "send-success",
+      "name": "Send Booking Success",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1620, 920],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_ME",
+          "name": "WhatsApp Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "You are a helpful AI assistant for HealthCare Clinic's WhatsApp booking system. Your job is to understand patient messages and determine their intent.\n\nAvailable actions:\n- BOOK: Patient wants to book an appointment\n- CANCEL: Patient wants to cancel an appointment\n- RESCHEDULE: Patient wants to reschedule\n- STATUS: Patient wants to check appointment status\n- GREETING: Patient is greeting or needs the menu\n- FAQ: Patient has a general question\n\nRespond with a JSON object:\n{\n  \"intent\": \"BOOK|CANCEL|RESCHEDULE|STATUS|GREETING|FAQ\",\n  \"reply\": \"A short, friendly response to the patient in the context of their message\",\n  \"confidence\": 0.0-1.0\n}\n\nKeep replies short, warm, and professional. Use emojis sparingly."
+            },
+            {
+              "role": "user",
+              "content": "={{ $('Intent Router').first().json.text }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 200
+        }
+      },
+      "id": "ai-intent",
+      "name": "AI: Understand Intent",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1.4,
+      "position": [960, 1080],
+      "credentials": {
+        "openAiApi": {
+          "id": "CONFIGURE_ME",
+          "name": "OpenAI"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse AI response and route accordingly\nconst aiResponse = $input.first().json;\nlet parsed;\ntry {\n  const content = aiResponse.message?.content || aiResponse.choices?.[0]?.message?.content || '{}';\n  parsed = JSON.parse(content);\n} catch(e) {\n  parsed = { intent: 'GREETING', reply: 'I\\'m not sure I understood that. Let me show you the menu!', confidence: 0.5 };\n}\n\nconst intentMap = {\n  'BOOK': 'start_booking',\n  'CANCEL': 'cancel_appointment',\n  'RESCHEDULE': 'reschedule_appointment',\n  'STATUS': 'check_status',\n  'GREETING': 'greeting',\n  'FAQ': 'greeting'\n};\n\nconst phone = $('Intent Router').first().json.phone;\n\nreturn [{\n  route: intentMap[parsed.intent] || 'greeting',\n  ai_reply: parsed.reply,\n  confidence: parsed.confidence,\n  phone\n}];"
+      },
+      "id": "parse-ai",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1180, 1080]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE patients SET wa_conversation_state = '{\"step\": \"idle\"}' WHERE phone = '{{ $('Intent Router').first().json.phone }}';",
+        "options": {}
+      },
+      "id": "reset-state",
+      "name": "Reset State",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1840, 920],
+      "credentials": {
+        "postgres": {
+          "id": "CONFIGURE_ME",
+          "name": "Clinic DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WEBHOOK_URL }}webhook/gcal-sync",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"appointment_id\": \"{{ $('Create Appointment').first().json.id }}\",\n  \"action\": \"create\"\n}",
+        "options": {
+          "timeout": 10000,
+          "allowUnauthorizedCerts": true
+        }
+      },
+      "id": "sync-gcal",
+      "name": "Sync to Google Calendar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1620, 1020],
+      "notes": "Calls the 05-google-calendar-sync workflow to create a Google Calendar event"
+    }
+  ],
+  "connections": {
+    "Booking Flow Trigger": {
+      "main": [[{ "node": "Intent Router", "type": "main", "index": 0 }]]
+    },
+    "Intent Router": {
+      "main": [[{ "node": "Route by State", "type": "main", "index": 0 }]]
+    },
+    "Route by State": {
+      "main": [
+        [{ "node": "Send Welcome Menu", "type": "main", "index": 0 }],
+        [{ "node": "Get Available Doctors", "type": "main", "index": 0 }],
+        [{ "node": "Handle Doctor Selection", "type": "main", "index": 0 }],
+        [{ "node": "Handle Date Selection", "type": "main", "index": 0 }],
+        [{ "node": "Handle Time Selection", "type": "main", "index": 0 }],
+        [{ "node": "Handle Confirmation", "type": "main", "index": 0 }],
+        [{ "node": "AI: Understand Intent", "type": "main", "index": 0 }],
+        [],
+        [],
+        []
+      ]
+    },
+    "Get Available Doctors": {
+      "main": [[{ "node": "Build Doctor List", "type": "main", "index": 0 }]]
+    },
+    "Build Doctor List": {
+      "main": [[{ "node": "Send Doctor List", "type": "main", "index": 0 }]]
+    },
+    "Send Doctor List": {
+      "main": [[{ "node": "Set State: select_doctor", "type": "main", "index": 0 }]]
+    },
+    "Handle Doctor Selection": {
+      "main": [[{ "node": "Get Available Dates", "type": "main", "index": 0 }]]
+    },
+    "Get Available Dates": {
+      "main": [[{ "node": "Build Date List", "type": "main", "index": 0 }]]
+    },
+    "Handle Date Selection": {
+      "main": [[{ "node": "Get Time Slots", "type": "main", "index": 0 }]]
+    },
+    "Get Time Slots": {
+      "main": [[{ "node": "Build Time List", "type": "main", "index": 0 }]]
+    },
+    "Handle Time Selection": {
+      "main": [[{ "node": "Get Doctor Details", "type": "main", "index": 0 }]]
+    },
+    "Get Doctor Details": {
+      "main": [[{ "node": "Send Confirmation Prompt", "type": "main", "index": 0 }]]
+    },
+    "Handle Confirmation": {
+      "main": [[{ "node": "Create Appointment", "type": "main", "index": 0 }]]
+    },
+    "Create Appointment": {
+      "main": [[{ "node": "Create Reminders", "type": "main", "index": 0 }]]
+    },
+    "Create Reminders": {
+      "main": [[
+        { "node": "Send Booking Success", "type": "main", "index": 0 },
+        { "node": "Sync to Google Calendar", "type": "main", "index": 0 }
+      ]]
+    },
+    "Send Booking Success": {
+      "main": [[{ "node": "Reset State", "type": "main", "index": 0 }]]
+    },
+    "AI: Understand Intent": {
+      "main": [[{ "node": "Parse AI Response", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "tags": [
+    { "name": "booking" },
+    { "name": "clinic-booking" }
+  ]
+}

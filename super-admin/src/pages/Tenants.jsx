@@ -1,0 +1,149 @@
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import api from '../api';
+
+const STATUS_BADGE = {
+  active: 'bg-green-100 text-green-700',
+  trial: 'bg-yellow-100 text-yellow-700',
+  past_due: 'bg-red-100 text-red-700',
+  cancelled: 'bg-gray-100 text-gray-500',
+  expired: 'bg-red-100 text-red-600',
+};
+
+const WA_BADGE = {
+  connected: 'bg-green-100 text-green-700',
+  pending: 'bg-yellow-100 text-yellow-700',
+  disconnected: 'bg-gray-100 text-gray-500',
+};
+
+export default function Tenants() {
+  const [tenants, setTenants] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { load(); }, [page, statusFilter]);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const { data } = await api.getTenants({ page, search: search || undefined, status: statusFilter || undefined });
+      setTenants(data.tenants);
+      setTotal(data.total);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setPage(1);
+    load();
+  };
+
+  const handleToggle = async (id) => {
+    await api.toggleTenant(id);
+    load();
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Tenants ({total})</h1>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex gap-4 items-center border border-gray-100">
+        <form onSubmit={handleSearch} className="flex-1 flex gap-2">
+          <input type="text" placeholder="Search by name or email..." value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="flex-1 border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
+          <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
+            Search
+          </button>
+        </form>
+        <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
+          className="border rounded-lg px-3 py-2 text-sm">
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {loading ? (
+          <div className="p-8 text-center text-gray-500">Loading...</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-gray-600 text-left">
+              <tr>
+                <th className="px-4 py-3 font-medium">Business</th>
+                <th className="px-4 py-3 font-medium">Type</th>
+                <th className="px-4 py-3 font-medium">Plan</th>
+                <th className="px-4 py-3 font-medium">WhatsApp</th>
+                <th className="px-4 py-3 font-medium">Appointments</th>
+                <th className="px-4 py-3 font-medium">Patients</th>
+                <th className="px-4 py-3 font-medium">Joined</th>
+                <th className="px-4 py-3 font-medium">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {tenants.map(t => (
+                <tr key={t.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <Link to={`/tenants/${t.id}`} className="text-indigo-600 hover:underline font-medium">
+                      {t.business_name}
+                    </Link>
+                    <div className="text-xs text-gray-400">{t.email}</div>
+                  </td>
+                  <td className="px-4 py-3 capitalize">{t.business_type}</td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_BADGE[t.sub_status] || 'bg-gray-100'}`}>
+                      {t.plan || 'trial'} ({t.sub_status})
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${WA_BADGE[t.wa_status] || WA_BADGE.disconnected}`}>
+                      {t.wa_status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">{t.total_appointments}</td>
+                  <td className="px-4 py-3">{t.total_patients}</td>
+                  <td className="px-4 py-3 text-gray-500">
+                    {new Date(t.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-4 py-3">
+                    <button onClick={() => handleToggle(t.id)}
+                      className={`text-xs px-3 py-1 rounded ${t.is_active 
+                        ? 'bg-red-50 text-red-600 hover:bg-red-100' 
+                        : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                      {t.is_active ? 'Deactivate' : 'Activate'}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {/* Pagination */}
+        {total > 25 && (
+          <div className="flex justify-between items-center px-4 py-3 bg-gray-50 border-t">
+            <span className="text-sm text-gray-500">Page {page}</span>
+            <div className="flex gap-2">
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                className="px-3 py-1 rounded border text-sm disabled:opacity-50">Previous</button>
+              <button onClick={() => setPage(p => p + 1)} disabled={tenants.length < 25}
+                className="px-3 py-1 rounded border text-sm disabled:opacity-50">Next</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,312 @@
+{
+  "name": "Reschedule & Cancel Flow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reschedule-cancel",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "trigger",
+      "name": "Reschedule/Cancel Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [220, 300],
+      "webhookId": "reschedule-cancel"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT a.id, a.appointment_date, TO_CHAR(a.start_time, 'HH:MI AM') AS display_time,\n       a.start_time, a.status, d.name AS doctor_name, d.id AS doctor_id\nFROM appointments a\nJOIN doctors d ON a.doctor_id = d.id\nWHERE a.patient_id = '{{ $json.patient_id }}'\n  AND a.status IN ('pending', 'confirmed')\n  AND a.appointment_date >= CURRENT_DATE\nORDER BY a.appointment_date, a.start_time\nLIMIT 5;",
+        "options": {}
+      },
+      "id": "get-upcoming",
+      "name": "Get Upcoming Appointments",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [440, 300],
+      "credentials": {
+        "postgres": {
+          "id": "CONFIGURE_ME",
+          "name": "Clinic DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "id": "has-appointments",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": { "type": "number", "operation": "gt" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-appointments",
+      "name": "Has Appointments?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build list of upcoming appointments for selection\nconst appointments = $input.all().map(item => item.json);\nconst phone = $('Reschedule/Cancel Trigger').first().json.phone;\nconst action = $('Reschedule/Cancel Trigger').first().json.route; // 'cancel_appointment' or 'reschedule_appointment'\n\nconst actionLabel = action === 'cancel_appointment' ? 'Cancel' : 'Reschedule';\nconst actionPrefix = action === 'cancel_appointment' ? 'cancel' : 'resched';\n\nconst rows = appointments.map(apt => ({\n  id: `${actionPrefix}_${apt.id}`,\n  title: `${apt.display_time} - ${apt.doctor_name}`,\n  description: `${apt.appointment_date} | ${apt.status}`\n}));\n\nconst payload = {\n  messaging_product: 'whatsapp',\n  to: phone,\n  type: 'interactive',\n  interactive: {\n    type: 'list',\n    header: { type: 'text', text: `${actionLabel === 'Cancel' ? '❌' : '🔄'} ${actionLabel} Appointment` },\n    body: { text: `Select the appointment you'd like to ${actionLabel.toLowerCase()}:` },\n    action: {\n      button: 'View Appointments',\n      sections: [{ title: 'Your Appointments', rows }]\n    }\n  }\n};\n\nreturn [{ payload, phone, action }];"
+      },
+      "id": "build-appointment-list",
+      "name": "Build Appointment List",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {}
+      },
+      "id": "send-list",
+      "name": "Send Appointment List",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 240],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_ME",
+          "name": "WhatsApp Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $('Reschedule/Cancel Trigger').first().json.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"📋 You don't have any upcoming appointments.\\n\\nWould you like to book one? Reply *book* to get started!\"\n  }\n}",
+        "options": {}
+      },
+      "id": "no-appointments",
+      "name": "No Appointments Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_ME",
+          "name": "WhatsApp Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle cancel/reschedule selection\nconst data = $input.first().json;\nconst interactiveId = data.interactive_id || '';\n\nif (interactiveId.startsWith('cancel_')) {\n  const appointmentId = interactiveId.replace('cancel_', '');\n  return [{ ...data, appointment_id: appointmentId, action: 'cancel' }];\n} else if (interactiveId.startsWith('resched_')) {\n  const appointmentId = interactiveId.replace('resched_', '');\n  return [{ ...data, appointment_id: appointmentId, action: 'reschedule' }];\n}\n\nreturn [data];"
+      },
+      "id": "handle-selection",
+      "name": "Handle Selection",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 560]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {},
+          "conditions": [
+            {
+              "id": "is-cancel",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "cancel",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cancel-or-reschedule",
+      "name": "Cancel or Reschedule?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 560]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE appointments SET status = 'cancelled', updated_at = NOW()\nWHERE id = '{{ $json.appointment_id }}'\nRETURNING id, appointment_date, start_time;",
+        "options": {}
+      },
+      "id": "cancel-appointment",
+      "name": "Cancel Appointment",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [880, 500],
+      "credentials": {
+        "postgres": {
+          "id": "CONFIGURE_ME",
+          "name": "Clinic DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM reminders WHERE appointment_id = '{{ $json.id }}' AND sent = false;",
+        "options": {}
+      },
+      "id": "delete-reminders",
+      "name": "Remove Pending Reminders",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1100, 500],
+      "credentials": {
+        "postgres": {
+          "id": "CONFIGURE_ME",
+          "name": "Clinic DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $('Reschedule/Cancel Trigger').first().json.phone || $('Handle Selection').first().json.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"✅ Your appointment on {{ $('Cancel Appointment').first().json.appointment_date }} at {{ $('Cancel Appointment').first().json.start_time }} has been *cancelled*.\\n\\nIf you'd like to book a new appointment, just type *book*.\"\n  }\n}",
+        "options": {}
+      },
+      "id": "send-cancel-confirm",
+      "name": "Send Cancel Confirmation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 500],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_ME",
+          "name": "WhatsApp Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE appointments SET status = 'rescheduled', updated_at = NOW()\nWHERE id = '{{ $json.appointment_id }}'\nRETURNING id, doctor_id;",
+        "options": {}
+      },
+      "id": "mark-rescheduled",
+      "name": "Mark as Rescheduled",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [880, 680],
+      "credentials": {
+        "postgres": {
+          "id": "CONFIGURE_ME",
+          "name": "Clinic DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $('Reschedule/Cancel Trigger').first().json.phone || $('Handle Selection').first().json.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"🔄 Your previous appointment has been cancelled. Let's book a new one!\\n\\nPlease select a new date and time.\"\n  }\n}",
+        "options": {}
+      },
+      "id": "send-reschedule-msg",
+      "name": "Prompt New Booking",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 680],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_ME",
+          "name": "WhatsApp Token"
+        }
+      },
+      "notes": "After this, the patient is redirected back to the booking flow to pick a new date/time"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.WEBHOOK_URL }}webhook/gcal-sync",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"appointment_id\": \"{{ $('Cancel Appointment').first().json.id || $('Mark as Rescheduled').first().json.id }}\",\n  \"action\": \"cancel\"\n}",
+        "options": { "timeout": 10000 }
+      },
+      "id": "delete-gcal-event",
+      "name": "Delete Google Calendar Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 590]
+    }
+  ],
+  "connections": {
+    "Reschedule/Cancel Trigger": {
+      "main": [[{ "node": "Get Upcoming Appointments", "type": "main", "index": 0 }]]
+    },
+    "Get Upcoming Appointments": {
+      "main": [[{ "node": "Has Appointments?", "type": "main", "index": 0 }]]
+    },
+    "Has Appointments?": {
+      "main": [
+        [{ "node": "Build Appointment List", "type": "main", "index": 0 }],
+        [{ "node": "No Appointments Message", "type": "main", "index": 0 }]
+      ]
+    },
+    "Build Appointment List": {
+      "main": [[{ "node": "Send Appointment List", "type": "main", "index": 0 }]]
+    },
+    "Handle Selection": {
+      "main": [[{ "node": "Cancel or Reschedule?", "type": "main", "index": 0 }]]
+    },
+    "Cancel or Reschedule?": {
+      "main": [
+        [{ "node": "Cancel Appointment", "type": "main", "index": 0 }],
+        [{ "node": "Mark as Rescheduled", "type": "main", "index": 0 }]
+      ]
+    },
+    "Cancel Appointment": {
+      "main": [[{ "node": "Remove Pending Reminders", "type": "main", "index": 0 }]]
+    },
+    "Remove Pending Reminders": {
+      "main": [[
+        { "node": "Send Cancel Confirmation", "type": "main", "index": 0 },
+        { "node": "Delete Google Calendar Event", "type": "main", "index": 0 }
+      ]]
+    },
+    "Mark as Rescheduled": {
+      "main": [[
+        { "node": "Prompt New Booking", "type": "main", "index": 0 },
+        { "node": "Delete Google Calendar Event", "type": "main", "index": 0 }
+      ]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "tags": [
+    { "name": "reschedule" },
+    { "name": "clinic-booking" }
+  ]
+}

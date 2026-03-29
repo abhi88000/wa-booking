@@ -1,0 +1,148 @@
+{
+  "name": "Appointment Reminders (CRON)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [220, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT r.id AS reminder_id,\n       r.type AS reminder_type,\n       a.id AS appointment_id,\n       a.appointment_date,\n       TO_CHAR(a.start_time, 'HH:MI AM') AS display_time,\n       a.start_time,\n       d.name AS doctor_name,\n       d.specialization,\n       p.phone AS patient_phone,\n       p.name AS patient_name,\n       c.name AS clinic_name\nFROM reminders r\nJOIN appointments a ON r.appointment_id = a.id\nJOIN doctors d ON a.doctor_id = d.id\nJOIN patients p ON a.patient_id = p.id\nJOIN clinic c ON a.clinic_id = c.id\nWHERE r.sent = false\n  AND r.remind_at <= NOW()\n  AND a.status IN ('confirmed', 'pending')\nORDER BY r.remind_at\nLIMIT 50;",
+        "options": {}
+      },
+      "id": "get-pending-reminders",
+      "name": "Get Pending Reminders",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [440, 300],
+      "credentials": {
+        "postgres": {
+          "id": "CONFIGURE_ME",
+          "name": "Clinic DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-reminders",
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-reminders",
+      "name": "Any Reminders?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build WhatsApp reminder message for each patient\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const d = item.json;\n  \n  let messageText = '';\n  \n  if (d.reminder_type === '24h') {\n    messageText = `⏰ *Appointment Reminder*\\n\\nHi ${d.patient_name}! This is a reminder for your appointment tomorrow:\\n\\n👨‍⚕️ Doctor: ${d.doctor_name}\\n📋 ${d.specialization}\\n📅 Date: ${d.appointment_date}\\n🕐 Time: ${d.display_time}\\n🏥 ${d.clinic_name}\\n\\n📍 Please arrive 10 minutes early.\\n\\nReply *cancel* to cancel or *reschedule* to change your appointment.`;\n  } else if (d.reminder_type === '1h') {\n    messageText = `🔔 *Your appointment is in 1 hour!*\\n\\nHi ${d.patient_name}, just a quick reminder:\\n\\n👨‍⚕️ ${d.doctor_name} | 🕐 ${d.display_time}\\n\\nSee you soon! 😊`;\n  } else if (d.reminder_type === 'followup') {\n    messageText = `👋 *Follow-up Reminder*\\n\\nHi ${d.patient_name}! Hope you're feeling better after your visit with ${d.doctor_name}.\\n\\nWould you like to book a follow-up appointment?\\n\\nReply *book* to schedule.`;\n  }\n\n  results.push({\n    reminder_id: d.reminder_id,\n    patient_phone: d.patient_phone,\n    payload: {\n      messaging_product: 'whatsapp',\n      to: d.patient_phone,\n      type: 'text',\n      text: { body: messageText }\n    }\n  });\n}\n\nreturn results;"
+      },
+      "id": "build-messages",
+      "name": "Build Reminder Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 240]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v18.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {}
+      },
+      "id": "send-reminder",
+      "name": "Send WhatsApp Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 240],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "CONFIGURE_ME",
+          "name": "WhatsApp Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE reminders SET sent = true, sent_at = NOW() WHERE id = '{{ $json.reminder_id }}';",
+        "options": {}
+      },
+      "id": "mark-sent",
+      "name": "Mark Reminder Sent",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1320, 240],
+      "credentials": {
+        "postgres": {
+          "id": "CONFIGURE_ME",
+          "name": "Clinic DB"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [[{ "node": "Get Pending Reminders", "type": "main", "index": 0 }]]
+    },
+    "Get Pending Reminders": {
+      "main": [[{ "node": "Any Reminders?", "type": "main", "index": 0 }]]
+    },
+    "Any Reminders?": {
+      "main": [
+        [{ "node": "Build Reminder Messages", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Build Reminder Messages": {
+      "main": [[{ "node": "Send WhatsApp Reminder", "type": "main", "index": 0 }]]
+    },
+    "Send WhatsApp Reminder": {
+      "main": [[{ "node": "Mark Reminder Sent", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true
+  },
+  "tags": [
+    { "name": "reminders" },
+    { "name": "clinic-booking" }
+  ]
+}

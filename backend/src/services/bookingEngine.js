@@ -326,6 +326,14 @@ class BookingEngine {
     const dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const dayName = dayMap[date.getDay()];
 
+    // Get doctor's slot_duration (overrides service duration)
+    const { rows: docRows } = await pool.query(
+      `SELECT slot_duration FROM doctors WHERE id = $1`, [doctorId]
+    );
+    if (docRows.length > 0 && docRows[0].slot_duration) {
+      duration = docRows[0].slot_duration;
+    }
+
     // Get doctor's hours for this day
     const { rows: avail } = await pool.query(
       `SELECT start_time, end_time FROM doctor_availability 
@@ -343,6 +351,15 @@ class BookingEngine {
        WHERE doctor_id = $1 AND appointment_date = $2 
        AND status NOT IN ('cancelled', 'rescheduled')`,
       [doctorId, dateStr]
+    );
+
+    // Get breaks for this day (date-specific + recurring daily breaks with null break_date)
+    const { rows: breaks } = await pool.query(
+      `SELECT start_time, end_time FROM doctor_breaks
+       WHERE doctor_id = $1 AND tenant_id = $2
+       AND (break_date = $3 OR break_date IS NULL)
+       AND is_full_day = false`,
+      [doctorId, this.tenantId, dateStr]
     );
 
     // Generate slots
@@ -364,7 +381,14 @@ class BookingEngine {
         return current < bEnd && (current + duration) > bStart;
       });
 
-      if (!isBooked) {
+      // Check if slot overlaps with a break
+      const inBreak = breaks.some(b => {
+        const bStart = this.timeToMinutes(b.start_time);
+        const bEnd = this.timeToMinutes(b.end_time);
+        return current < bEnd && (current + duration) > bStart;
+      });
+
+      if (!isBooked && !inBreak) {
         slots.push({
           id: `time_${slotStart}`,
           title: this.formatTime(slotStart),

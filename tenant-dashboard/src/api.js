@@ -34,19 +34,30 @@ export default {
 
   // Appointments
   getAppointments: (params) => api.get('/tenant/appointments', { params }),
+  getAppointment: (id) => api.get(`/tenant/appointments/${id}`),
+  createAppointment: (data) => api.post('/tenant/appointments', data),
   updateAppointmentStatus: (id, status) => api.patch(`/tenant/appointments/${id}/status`, { status }),
+  rescheduleAppointment: (id, data) => api.patch(`/tenant/appointments/${id}/reschedule`, data),
 
   // Doctors
   getDoctors: () => api.get('/tenant/doctors'),
   addDoctor: (data) => api.post('/tenant/doctors', data),
   updateDoctor: (id, data) => api.put(`/tenant/doctors/${id}`, data),
+  deleteDoctor: (id) => api.delete(`/tenant/doctors/${id}`),
+  getDoctorAvailability: (id) => api.get(`/tenant/doctors/${id}/availability`),
+  updateDoctorAvailability: (id, data) => api.put(`/tenant/doctors/${id}/availability`, data),
 
   // Services
   getServices: () => api.get('/tenant/services'),
   addService: (data) => api.post('/tenant/services', data),
+  updateService: (id, data) => api.put(`/tenant/services/${id}`, data),
+  deleteService: (id) => api.delete(`/tenant/services/${id}`),
 
   // Patients
   getPatients: (params) => api.get('/tenant/patients', { params }),
+  getPatient: (id) => api.get(`/tenant/patients/${id}`),
+  addPatient: (data) => api.post('/tenant/patients', data),
+  updatePatient: (id, data) => api.put(`/tenant/patients/${id}`, data),
 
   // Payments
   getPayments: () => api.get('/tenant/payments'),
@@ -61,6 +72,8 @@ export default {
   // Team
   getTeam: () => api.get('/tenant/team'),
   addTeamMember: (data) => api.post('/tenant/team', data),
+  updateTeamMember: (id, data) => api.put(`/tenant/team/${id}`, data),
+  deleteTeamMember: (id) => api.delete(`/tenant/team/${id}`),
 
   // Billing
   getPlans: () => api.get('/billing/plans'),

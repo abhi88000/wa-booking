@@ -129,6 +129,140 @@ router.patch('/appointments/:id/status', async (req, res, next) => {
   }
 });
 
+// ── CREATE APPOINTMENT (MANUAL) ───────────────────────────
+
+router.post('/appointments', requireRole('owner', 'admin', 'staff'), async (req, res, next) => {
+  try {
+    const schema = Joi.object({
+      doctorId: Joi.number().required(),
+      serviceId: Joi.number().allow(null),
+      patientId: Joi.number().allow(null),
+      patientName: Joi.string().allow('', null),
+      patientPhone: Joi.string().allow('', null),
+      appointmentDate: Joi.string().required(),
+      startTime: Joi.string().required(),
+      endTime: Joi.string().required(),
+      notes: Joi.string().allow('', null),
+      status: Joi.string().valid('pending', 'confirmed').default('confirmed')
+    });
+
+    const { error, value } = schema.validate(req.body);
+    if (error) return res.status(400).json({ error: error.details[0].message });
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      let patientId = value.patientId;
+
+      // Create patient if phone provided but no patientId
+      if (!patientId && value.patientPhone) {
+        const { rows: existing } = await client.query(
+          `SELECT id FROM patients WHERE phone = $1 AND tenant_id = $2`,
+          [value.patientPhone, req.tenantId]
+        );
+        if (existing.length > 0) {
+          patientId = existing[0].id;
+        } else {
+          const { rows: newP } = await client.query(
+            `INSERT INTO patients (tenant_id, phone, name) VALUES ($1, $2, $3) RETURNING id`,
+            [req.tenantId, value.patientPhone, value.patientName || 'Walk-in']
+          );
+          patientId = newP[0].id;
+        }
+      }
+
+      // Check for double-booking
+      const { rows: conflict } = await client.query(
+        `SELECT id FROM appointments 
+         WHERE doctor_id = $1 AND tenant_id = $2 AND appointment_date = $3
+         AND status NOT IN ('cancelled', 'rescheduled')
+         AND start_time < $5 AND end_time > $4`,
+        [value.doctorId, req.tenantId, value.appointmentDate, value.startTime, value.endTime]
+      );
+      if (conflict.length > 0) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'Time slot already booked' });
+      }
+
+      const { rows } = await client.query(
+        `INSERT INTO appointments (tenant_id, doctor_id, service_id, patient_id, appointment_date, start_time, end_time, status, notes)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+        [req.tenantId, value.doctorId, value.serviceId, patientId, value.appointmentDate, value.startTime, value.endTime, value.status, value.notes]
+      );
+
+      await client.query('COMMIT');
+      res.status(201).json(rows[0]);
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── APPOINTMENT DETAIL ────────────────────────────────────
+
+router.get('/appointments/:id', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT a.*, d.name as doctor_name, p.name as patient_name, p.phone as patient_phone, p.email as patient_email,
+              s.name as service_name, s.duration as service_duration, s.price as service_price
+       FROM appointments a
+       LEFT JOIN doctors d ON d.id = a.doctor_id
+       LEFT JOIN patients p ON p.id = a.patient_id
+       LEFT JOIN services s ON s.id = a.service_id
+       WHERE a.id = $1 AND a.tenant_id = $2`,
+      [req.params.id, req.tenantId]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── RESCHEDULE APPOINTMENT ────────────────────────────────
+
+router.patch('/appointments/:id/reschedule', requireRole('owner', 'admin', 'staff'), async (req, res, next) => {
+  try {
+    const { appointmentDate, startTime, endTime } = req.body;
+    if (!appointmentDate || !startTime || !endTime) {
+      return res.status(400).json({ error: 'Date, startTime, endTime required' });
+    }
+
+    const { rows: appt } = await pool.query(
+      `SELECT * FROM appointments WHERE id = $1 AND tenant_id = $2`,
+      [req.params.id, req.tenantId]
+    );
+    if (appt.length === 0) return res.status(404).json({ error: 'Not found' });
+
+    // Check conflicts
+    const { rows: conflict } = await pool.query(
+      `SELECT id FROM appointments 
+       WHERE doctor_id = $1 AND tenant_id = $2 AND appointment_date = $3 AND id != $6
+       AND status NOT IN ('cancelled', 'rescheduled')
+       AND start_time < $5 AND end_time > $4`,
+      [appt[0].doctor_id, req.tenantId, appointmentDate, startTime, endTime, req.params.id]
+    );
+    if (conflict.length > 0) {
+      return res.status(409).json({ error: 'Time slot already booked' });
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE appointments SET appointment_date = $1, start_time = $2, end_time = $3, status = 'confirmed', updated_at = NOW()
+       WHERE id = $4 AND tenant_id = $5 RETURNING *`,
+      [appointmentDate, startTime, endTime, req.params.id, req.tenantId]
+    );
+    res.json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── DOCTORS ───────────────────────────────────────────────
 
 router.get('/doctors', async (req, res, next) => {
@@ -231,6 +365,125 @@ router.put('/doctors/:id', requireRole('owner', 'admin'), async (req, res, next)
   }
 });
 
+router.delete('/doctors/:id', requireRole('owner', 'admin'), async (req, res, next) => {
+  try {
+    // Soft delete — deactivate and remove future appointments
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `UPDATE doctors SET is_active = false WHERE id = $1 AND tenant_id = $2`,
+        [req.params.id, req.tenantId]
+      );
+      // Cancel future appointments
+      await client.query(
+        `UPDATE appointments SET status = 'cancelled', updated_at = NOW()
+         WHERE doctor_id = $1 AND tenant_id = $2 AND appointment_date >= CURRENT_DATE AND status IN ('pending', 'confirmed')`,
+        [req.params.id, req.tenantId]
+      );
+      await client.query('COMMIT');
+      res.json({ success: true });
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Doctor Availability ───────────────────────────────────
+
+router.get('/doctors/:id/availability', async (req, res, next) => {
+  try {
+    const { rows: avail } = await pool.query(
+      `SELECT id, day, start_time, end_time, is_active 
+       FROM doctor_availability WHERE doctor_id = $1 AND tenant_id = $2 ORDER BY 
+       CASE day WHEN 'monday' THEN 1 WHEN 'tuesday' THEN 2 WHEN 'wednesday' THEN 3 
+       WHEN 'thursday' THEN 4 WHEN 'friday' THEN 5 WHEN 'saturday' THEN 6 WHEN 'sunday' THEN 7 END`,
+      [req.params.id, req.tenantId]
+    );
+    const { rows: breaks } = await pool.query(
+      `SELECT id, break_date, start_time, end_time, reason, is_full_day 
+       FROM doctor_breaks WHERE doctor_id = $1 AND tenant_id = $2 
+       AND (break_date IS NULL OR break_date >= CURRENT_DATE) ORDER BY start_time`,
+      [req.params.id, req.tenantId]
+    );
+    const { rows: doctor } = await pool.query(
+      `SELECT slot_duration FROM doctors WHERE id = $1 AND tenant_id = $2`,
+      [req.params.id, req.tenantId]
+    );
+    res.json({ availability: avail, breaks, slotDuration: doctor[0]?.slot_duration || 30 });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/doctors/:id/availability', requireRole('owner', 'admin'), async (req, res, next) => {
+  try {
+    const { availability, breaks, slotDuration } = req.body;
+    const doctorId = req.params.id;
+    const tenantId = req.tenantId;
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Update slot duration
+      if (slotDuration) {
+        await client.query(
+          `UPDATE doctors SET slot_duration = $1 WHERE id = $2 AND tenant_id = $3`,
+          [slotDuration, doctorId, tenantId]
+        );
+      }
+
+      // Replace availability
+      if (availability) {
+        await client.query(
+          `DELETE FROM doctor_availability WHERE doctor_id = $1 AND tenant_id = $2`,
+          [doctorId, tenantId]
+        );
+        for (const a of availability) {
+          if (a.isActive !== false) {
+            await client.query(
+              `INSERT INTO doctor_availability (tenant_id, doctor_id, day, start_time, end_time, is_active)
+               VALUES ($1, $2, $3, $4, $5, true)`,
+              [tenantId, doctorId, a.day, a.startTime, a.endTime]
+            );
+          }
+        }
+      }
+
+      // Replace daily breaks (non-date specific)
+      if (breaks) {
+        await client.query(
+          `DELETE FROM doctor_breaks WHERE doctor_id = $1 AND tenant_id = $2 AND break_date IS NULL`,
+          [doctorId, tenantId]
+        );
+        for (const b of breaks) {
+          await client.query(
+            `INSERT INTO doctor_breaks (tenant_id, doctor_id, break_date, start_time, end_time, reason, is_full_day)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [tenantId, doctorId, b.breakDate || null, b.startTime, b.endTime, b.reason || 'Break', false]
+          );
+        }
+      }
+
+      await client.query('COMMIT');
+      res.json({ success: true });
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── SERVICES ──────────────────────────────────────────────
 
 router.get('/services', async (req, res, next) => {
@@ -256,6 +509,37 @@ router.post('/services', requireRole('owner', 'admin'), async (req, res, next) =
       [req.tenantId, name, description, duration || 30, price || 0]
     );
     res.status(201).json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/services/:id', requireRole('owner', 'admin'), async (req, res, next) => {
+  try {
+    const { name, description, duration, price, isActive } = req.body;
+    const { rows } = await pool.query(
+      `UPDATE services SET 
+        name = COALESCE($1, name), description = COALESCE($2, description),
+        duration = COALESCE($3, duration), price = COALESCE($4, price),
+        is_active = COALESCE($5, is_active), updated_at = NOW()
+       WHERE id = $6 AND tenant_id = $7 RETURNING *`,
+      [name, description, duration, price, isActive, req.params.id, req.tenantId]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Service not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/services/:id', requireRole('owner', 'admin'), async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `UPDATE services SET is_active = false, updated_at = NOW() WHERE id = $1 AND tenant_id = $2 RETURNING id`,
+      [req.params.id, req.tenantId]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Service not found' });
+    res.json({ success: true });
   } catch (err) {
     next(err);
   }
@@ -288,6 +572,71 @@ router.get('/patients', async (req, res, next) => {
     );
 
     res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/patients', requireRole('owner', 'admin', 'staff'), async (req, res, next) => {
+  try {
+    const { name, phone, email } = req.body;
+    if (!phone) return res.status(400).json({ error: 'Phone number required' });
+
+    // Check for duplicate phone
+    const { rows: existing } = await pool.query(
+      `SELECT id FROM patients WHERE phone = $1 AND tenant_id = $2`,
+      [phone, req.tenantId]
+    );
+    if (existing.length > 0) return res.status(409).json({ error: 'Patient with this phone already exists' });
+
+    const { rows } = await pool.query(
+      `INSERT INTO patients (tenant_id, name, phone, email) VALUES ($1, $2, $3, $4) RETURNING *`,
+      [req.tenantId, name || 'Patient', phone, email]
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.put('/patients/:id', requireRole('owner', 'admin', 'staff'), async (req, res, next) => {
+  try {
+    const { name, email, phone } = req.body;
+    const { rows } = await pool.query(
+      `UPDATE patients SET name = COALESCE($1, name), email = COALESCE($2, email), phone = COALESCE($3, phone), updated_at = NOW()
+       WHERE id = $4 AND tenant_id = $5 RETURNING *`,
+      [name, email, phone, req.params.id, req.tenantId]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Patient not found' });
+    res.json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/patients/:id', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT p.*,
+        (SELECT COUNT(*) FROM appointments WHERE patient_id = p.id AND tenant_id = $2) as total_appointments,
+        (SELECT MAX(appointment_date) FROM appointments WHERE patient_id = p.id AND tenant_id = $2) as last_visit
+       FROM patients p WHERE p.id = $1 AND p.tenant_id = $2`,
+      [req.params.id, req.tenantId]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Not found' });
+
+    // Get appointment history
+    const { rows: appts } = await pool.query(
+      `SELECT a.id, a.appointment_date, a.start_time, a.end_time, a.status, d.name as doctor_name, s.name as service_name
+       FROM appointments a
+       LEFT JOIN doctors d ON d.id = a.doctor_id
+       LEFT JOIN services s ON s.id = a.service_id
+       WHERE a.patient_id = $1 AND a.tenant_id = $2
+       ORDER BY a.appointment_date DESC LIMIT 20`,
+      [req.params.id, req.tenantId]
+    );
+
+    res.json({ ...rows[0], appointments: appts });
   } catch (err) {
     next(err);
   }
@@ -418,6 +767,38 @@ router.post('/team', requireRole('owner'), async (req, res, next) => {
     if (err.constraint) {
       return res.status(409).json({ error: 'User with this email already exists' });
     }
+    next(err);
+  }
+});
+
+router.put('/team/:id', requireRole('owner'), async (req, res, next) => {
+  try {
+    const { name, role, isActive } = req.body;
+    const validRoles = ['admin', 'staff', 'doctor'];
+    if (role && !validRoles.includes(role)) {
+      return res.status(400).json({ error: `Invalid role. Use: ${validRoles.join(', ')}` });
+    }
+    const { rows } = await pool.query(
+      `UPDATE tenant_users SET name = COALESCE($1, name), role = COALESCE($2, role), is_active = COALESCE($3, is_active)
+       WHERE id = $4 AND tenant_id = $5 AND role != 'owner' RETURNING id, email, name, role, is_active`,
+      [name, role, isActive, req.params.id, req.tenantId]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Team member not found or cannot modify owner' });
+    res.json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/team/:id', requireRole('owner'), async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `DELETE FROM tenant_users WHERE id = $1 AND tenant_id = $2 AND role != 'owner' RETURNING id`,
+      [req.params.id, req.tenantId]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Team member not found or cannot delete owner' });
+    res.json({ success: true });
+  } catch (err) {
     next(err);
   }
 });

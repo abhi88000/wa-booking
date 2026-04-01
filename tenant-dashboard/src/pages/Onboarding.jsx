@@ -47,9 +47,9 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Setup Your Booking System</h1>
-      <p className="text-gray-500 mb-8">Complete these steps to go live</p>
+    <div className="max-w-2xl mx-auto px-2">
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Setup Your Booking System</h1>
+      <p className="text-gray-500 mb-6 text-sm">Complete these steps to go live</p>
 
       {/* Progress */}
       <div className="flex items-center mb-8">
@@ -69,7 +69,7 @@ export default function Onboarding() {
       {/* Step 1: WhatsApp */}
       {step === 1 && (
         <div className="bg-white rounded-xl shadow-sm p-6 border">
-          <h2 className="text-lg font-semibold mb-4">📱 Connect WhatsApp</h2>
+          <h2 className="text-lg font-semibold mb-4">Connect WhatsApp</h2>
           <p className="text-sm text-gray-500 mb-6">
             Enter your WhatsApp Cloud API credentials from the <a href="https://developers.facebook.com" target="_blank" className="text-indigo-600 underline">Meta Developer Portal</a>
           </p>
@@ -111,13 +111,13 @@ export default function Onboarding() {
       {/* Step 2: Business Setup */}
       {step === 2 && (
         <div className="bg-white rounded-xl shadow-sm p-6 border">
-          <h2 className="text-lg font-semibold mb-4">🏥 Setup Your Business</h2>
+          <h2 className="text-lg font-semibold mb-4">Setup Your Business</h2>
           
           {/* Doctors */}
           <h3 className="font-medium text-gray-700 mb-2">Doctors / Practitioners</h3>
           {doctors.map((doc, i) => (
             <div key={i} className="border rounded-lg p-4 mb-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input placeholder="Doctor name" value={doc.name}
                   onChange={e => { const d = [...doctors]; d[i].name = e.target.value; setDoctors(d); }}
                   className="border rounded px-3 py-2 text-sm outline-none" />
@@ -133,7 +133,7 @@ export default function Onboarding() {
           {/* Services */}
           <h3 className="font-medium text-gray-700 mb-2 mt-4">Services</h3>
           {services.map((svc, i) => (
-            <div key={i} className="grid grid-cols-3 gap-3 mb-3">
+            <div key={i} className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
               <input placeholder="Service name" value={svc.name}
                 onChange={e => { const s = [...services]; s[i].name = e.target.value; setServices(s); }}
                 className="border rounded px-3 py-2 text-sm outline-none" />
@@ -158,8 +158,7 @@ export default function Onboarding() {
       {/* Step 3: Done */}
       {step === 3 && (
         <div className="bg-white rounded-xl shadow-sm p-8 border text-center">
-          <div className="text-5xl mb-4">🎉</div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">You're All Set!</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">You're All Set</h2>
           <p className="text-gray-500 mb-6">
             Your WhatsApp booking system is ready. Patients can now message your WhatsApp number to book appointments.
           </p>

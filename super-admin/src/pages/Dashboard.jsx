@@ -16,30 +16,25 @@ export default function Dashboard() {
   if (!stats) return <div className="text-red-500 text-center py-20">Failed to load dashboard</div>;
 
   const cards = [
-    { label: 'Total Tenants', value: stats.total_tenants, color: 'bg-indigo-500', icon: '🏢' },
-    { label: 'Active Tenants', value: stats.active_tenants, color: 'bg-green-500', icon: '✅' },
-    { label: 'Live (Active WA)', value: stats.live_tenants, color: 'bg-emerald-500', icon: '📱' },
-    { label: 'New (30 days)', value: stats.new_tenants_30d, color: 'bg-blue-500', icon: '🆕' },
-    { label: 'Paid Subscriptions', value: stats.paid_subs, color: 'bg-purple-500', icon: '💳' },
-    { label: 'Trial Users', value: stats.trial_subs, color: 'bg-yellow-500', icon: '⏳' },
-    { label: 'MRR (₹)', value: `₹${Number(stats.mrr || 0).toLocaleString()}`, color: 'bg-pink-500', icon: '💰' },
-    { label: 'Appointments (24h)', value: stats.appointments_24h, color: 'bg-teal-500', icon: '📅' },
+    { label: 'Total Tenants', value: stats.total_tenants, color: 'bg-indigo-500' },
+    { label: 'Active Tenants', value: stats.active_tenants, color: 'bg-green-500' },
+    { label: 'Live (Active WA)', value: stats.live_tenants, color: 'bg-emerald-500' },
+    { label: 'New (30 days)', value: stats.new_tenants_30d, color: 'bg-blue-500' },
+    { label: 'Paid Subscriptions', value: stats.paid_subs, color: 'bg-purple-500' },
+    { label: 'Trial Users', value: stats.trial_subs, color: 'bg-yellow-500' },
+    { label: 'MRR', value: `₹${Number(stats.mrr || 0).toLocaleString()}`, color: 'bg-pink-500' },
+    { label: 'Appointments (24h)', value: stats.appointments_24h, color: 'bg-teal-500' },
   ];
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Platform Dashboard</h1>
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">Platform Dashboard</h1>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {cards.map(card => (
-          <div key={card.label} className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm text-gray-500">{card.label}</p>
-                <p className="text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
-              </div>
-              <span className="text-2xl">{card.icon}</span>
-            </div>
+          <div key={card.label} className="bg-white rounded-xl shadow-sm p-5 border border-gray-100">
+            <p className="text-sm text-gray-500">{card.label}</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{card.value}</p>
           </div>
         ))}
       </div>

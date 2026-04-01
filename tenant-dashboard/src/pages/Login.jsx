@@ -21,11 +21,11 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-white">
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="bg-white rounded-xl shadow-md p-6 sm:p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
-          <p className="text-gray-500 mt-2">Sign in to manage your appointments</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Welcome Back</h1>
+          <p className="text-gray-500 mt-2 text-sm">Sign in to manage your appointments</p>
         </div>
 
         {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">{error}</div>}

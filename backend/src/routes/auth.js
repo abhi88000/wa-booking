@@ -13,7 +13,7 @@ const logger = require('../utils/logger');
 
 // ── Valid invite codes (manage via super admin or env) ─────
 const VALID_INVITE_CODES = new Set(
-  (process.env.INVITE_CODES || 'FZMINDS2026').split(',').map(c => c.trim().toUpperCase())
+  (process.env.INVITE_CODES || 'FZM-8K2X-NP4R-2026').split(',').map(c => c.trim().toUpperCase())
 );
 
 // ── Tenant Signup (Business Registration) ─────────────────

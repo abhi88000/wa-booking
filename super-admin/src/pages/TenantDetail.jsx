@@ -7,6 +7,8 @@ export default function TenantDetail() {
   const [tenant, setTenant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedPlan, setSelectedPlan] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [resetMsg, setResetMsg] = useState('');
 
   useEffect(() => {
     api.getTenant(id)
@@ -26,6 +28,20 @@ export default function TenantDetail() {
     await api.toggleTenant(id);
     const { data } = await api.getTenant(id);
     setTenant(data);
+  };
+
+  const handleResetPassword = async () => {
+    if (!newPassword || newPassword.length < 8) {
+      setResetMsg('Password must be at least 8 characters');
+      return;
+    }
+    try {
+      const { data } = await api.resetPassword(id, newPassword);
+      setResetMsg(`Password reset for ${data.email}`);
+      setNewPassword('');
+    } catch (err) {
+      setResetMsg(err.response?.data?.error || 'Reset failed');
+    }
   };
 
   if (loading) return <div className="text-gray-500 text-center py-20">Loading...</div>;
@@ -131,6 +147,21 @@ export default function TenantDetail() {
       </div>
 
       {/* Features */}
+      <div className="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <h2 className="font-semibold text-gray-900 mb-4">Reset User Password</h2>
+        {resetMsg && <p className="text-sm mb-3 text-indigo-600">{resetMsg}</p>}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
+            placeholder="Enter new password (min 8 chars)"
+            className="border rounded-lg px-4 py-2 text-sm w-full sm:w-72 outline-none focus:ring-2 focus:ring-indigo-500" />
+          <button onClick={handleResetPassword}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
+            Reset Password
+          </button>
+        </div>
+      </div>
+
+      {/* Feature Flags */}
       <div className="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <h2 className="font-semibold text-gray-900 mb-4">Features</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

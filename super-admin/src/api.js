@@ -32,6 +32,7 @@ export default {
   getTenant: (id) => api.get(`/platform/tenants/${id}`),
   toggleTenant: (id) => api.patch(`/platform/tenants/${id}/toggle`),
   updatePlan: (id, data) => api.patch(`/platform/tenants/${id}/plan`, data),
+  resetPassword: (id, newPassword) => api.post(`/platform/tenants/${id}/reset-password`, { newPassword }),
   
   // Analytics
   getAnalytics: () => api.get('/platform/analytics'),

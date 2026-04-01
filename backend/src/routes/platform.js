@@ -282,4 +282,36 @@ router.post('/fix/:tenantId/reset-conversations', async (req, res, next) => {
   }
 });
 
+// ── Reset Tenant User Password ────────────────────────────
+const bcrypt = require('bcrypt');
+
+router.post('/tenants/:id/reset-password', async (req, res, next) => {
+  try {
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    const { rows: users } = await pool.query(
+      `SELECT id, email FROM tenant_users WHERE tenant_id = $1 AND role = 'owner' LIMIT 1`,
+      [req.params.id]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ error: 'No owner user found for this tenant' });
+    }
+
+    const hash = await bcrypt.hash(newPassword, 10);
+    await pool.query(
+      `UPDATE tenant_users SET password_hash = $1, updated_at = NOW() WHERE id = $2`,
+      [hash, users[0].id]
+    );
+
+    logger.info(`Password reset for tenant ${req.params.id} user ${users[0].email} by platform admin`);
+    res.json({ success: true, email: users[0].email });
+  } catch (err) {
+    next(err);
+  }
+});
+
 module.exports = router;

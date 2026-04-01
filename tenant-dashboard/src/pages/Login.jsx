@@ -51,6 +51,10 @@ export default function Login({ onLogin }) {
           Don't have an account?{' '}
           <Link to="/signup" className="text-indigo-600 hover:underline font-medium">Sign up free</Link>
         </p>
+        <p className="text-center mt-3 text-xs text-gray-400">
+          Forgot your password?{' '}
+          <a href="mailto:support@futurezminds.in" className="text-indigo-500 hover:underline">Contact support</a>
+        </p>
       </div>
     </div>
   );

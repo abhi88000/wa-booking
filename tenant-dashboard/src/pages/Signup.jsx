@@ -111,6 +111,3 @@ export default function Signup({ onLogin }) {
     </div>
   );
 }
-    </div>
-  );
-}

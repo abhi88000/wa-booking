@@ -5,7 +5,7 @@ import api from '../api';
 export default function Signup({ onLogin }) {
   const [form, setForm] = useState({
     businessName: '', businessType: 'clinic', ownerName: '',
-    email: '', phone: '', password: '', city: ''
+    email: '', phone: '', password: '', city: '', inviteCode: ''
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -88,6 +88,13 @@ export default function Signup({ onLogin }) {
               <input name="city" value={form.city} onChange={handleChange}
                 className="w-full border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500" />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Invite Code</label>
+            <input name="inviteCode" value={form.inviteCode} onChange={handleChange}
+              placeholder="Enter your invite code"
+              className="w-full border rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500" required />
           </div>
 
           <button type="submit" disabled={loading}

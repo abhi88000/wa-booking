@@ -11,6 +11,11 @@ const pool = require('../db/pool');
 const { signPlatformToken, signTenantToken } = require('../middleware/auth');
 const logger = require('../utils/logger');
 
+// ── Valid invite codes (manage via super admin or env) ─────
+const VALID_INVITE_CODES = new Set(
+  (process.env.INVITE_CODES || 'FZMINDS2026').split(',').map(c => c.trim().toUpperCase())
+);
+
 // ── Tenant Signup (Business Registration) ─────────────────
 router.post('/signup', async (req, res, next) => {
   try {
@@ -21,6 +26,7 @@ router.post('/signup', async (req, res, next) => {
       phone: Joi.string().min(10).max(20),
       ownerName: Joi.string().min(2).max(150).required(),
       password: Joi.string().min(8).max(100).required(),
+      inviteCode: Joi.string().required(),
       city: Joi.string().max(100),
       country: Joi.string().max(50).default('IN'),
       timezone: Joi.string().default('Asia/Kolkata')
@@ -28,6 +34,11 @@ router.post('/signup', async (req, res, next) => {
 
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
+
+    // Validate invite code
+    if (!VALID_INVITE_CODES.has(value.inviteCode.trim().toUpperCase())) {
+      return res.status(403).json({ error: 'Invalid invite code. Contact us to get access.' });
+    }
 
     // Check duplicate email
     const { rows: existingTenants } = await pool.query(

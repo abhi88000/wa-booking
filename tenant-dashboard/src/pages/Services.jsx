@@ -56,7 +56,7 @@ export default function Services() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Services</h1>
         <button onClick={openAdd}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
+          className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900">
           + Add Service
         </button>
       </div>
@@ -71,31 +71,31 @@ export default function Services() {
                 <label className="text-xs text-gray-500 block mb-1">Service Name</label>
                 <input placeholder="e.g. General Consultation" value={form.name}
                   onChange={e => setForm({...form, name: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" required />
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" required />
               </div>
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Description</label>
                 <textarea placeholder="Brief description..." value={form.description} rows={2}
                   onChange={e => setForm({...form, description: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Duration (minutes)</label>
                   <input type="number" min="5" max="240" value={form.duration}
                     onChange={e => setForm({...form, duration: parseInt(e.target.value) || 30})}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500 block mb-1">Price</label>
                   <input type="number" min="0" value={form.price}
                     onChange={e => setForm({...form, price: parseInt(e.target.value) || 0})}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
                 </div>
               </div>
               <div className="flex gap-3 justify-end mt-4">
                 <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-gray-500">Cancel</button>
-                <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
+                <button type="submit" className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900">
                   {editing ? 'Save Changes' : 'Add Service'}
                 </button>
               </div>
@@ -134,7 +134,7 @@ export default function Services() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        <button onClick={() => openEdit(s)} className="text-indigo-600 hover:underline text-xs">Edit</button>
+                        <button onClick={() => openEdit(s)} className="text-slate-700 hover:underline text-xs">Edit</button>
                         {s.is_active !== false && (
                           <button onClick={() => handleDelete(s)} className="text-red-500 hover:underline text-xs">Delete</button>
                         )}
@@ -166,7 +166,7 @@ export default function Services() {
                     <span>{Number(s.price) > 0 ? `₹${s.price}` : 'Free'}</span>
                   </div>
                   <div className="flex gap-3 mt-3">
-                    <button onClick={() => openEdit(s)} className="text-indigo-600 text-xs hover:underline">Edit</button>
+                    <button onClick={() => openEdit(s)} className="text-slate-700 text-xs hover:underline">Edit</button>
                     {s.is_active !== false && (
                       <button onClick={() => handleDelete(s)} className="text-red-500 text-xs hover:underline">Delete</button>
                     )}

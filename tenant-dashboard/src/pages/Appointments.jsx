@@ -62,7 +62,7 @@ export default function Appointments() {
             <option value="no_show">No Show</option>
           </select>
           <button onClick={() => setShowCreate(true)}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 whitespace-nowrap">
+            className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900 whitespace-nowrap">
             + Book Appointment
           </button>
         </div>
@@ -271,7 +271,7 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
             <label className="text-xs text-gray-500 block mb-1">Patient</label>
             <input placeholder="Search by name or phone..." value={patientSearch}
               onChange={e => searchPatients(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
             {patients.length > 0 && (
               <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-40 overflow-y-auto">
                 {patients.map(p => (
@@ -288,20 +288,20 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
               <label className="text-xs text-gray-500 block mb-1">Or enter name</label>
               <input placeholder="Patient name" value={form.patientName}
                 onChange={e => setForm({...form, patientName: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Phone</label>
               <input placeholder="+91..." value={form.patientPhone}
                 onChange={e => setForm({...form, patientPhone: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-500 block mb-1">Doctor *</label>
               <select value={form.doctorId} onChange={e => setForm({...form, doctorId: e.target.value})} required
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400">
                 <option value="">Select Doctor</option>
                 {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
@@ -309,7 +309,7 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
             <div>
               <label className="text-xs text-gray-500 block mb-1">Service</label>
               <select value={form.serviceId} onChange={e => setForm({...form, serviceId: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400">
                 <option value="">None</option>
                 {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
@@ -319,32 +319,32 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
             <label className="text-xs text-gray-500 block mb-1">Date *</label>
             <input type="date" value={form.appointmentDate} required
               onChange={e => setForm({...form, appointmentDate: e.target.value})}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-500 block mb-1">Start Time *</label>
               <input type="time" value={form.startTime} required
                 onChange={e => handleDurationCalc(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">End Time</label>
               <input type="time" value={form.endTime}
                 onChange={e => setForm({...form, endTime: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
             </div>
           </div>
           <div>
             <label className="text-xs text-gray-500 block mb-1">Notes</label>
             <textarea rows={2} placeholder="Optional notes..." value={form.notes}
               onChange={e => setForm({...form, notes: e.target.value})}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
           </div>
           <div className="flex gap-3 justify-end mt-4">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-500">Cancel</button>
             <button type="submit" disabled={saving}
-              className="bg-indigo-600 text-white px-6 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50">
+              className="bg-slate-800 text-white px-6 py-2 rounded-lg text-sm hover:bg-slate-900 disabled:opacity-50">
               {saving ? 'Booking...' : 'Book Appointment'}
             </button>
           </div>

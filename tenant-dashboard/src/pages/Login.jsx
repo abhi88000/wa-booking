@@ -34,26 +34,26 @@ export default function Login({ onLogin }) {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-              className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none" required />
+              className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-slate-400 outline-none" required />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none" required />
+              className="w-full border rounded-lg px-4 py-3 focus:ring-2 focus:ring-slate-400 outline-none" required />
           </div>
           <button type="submit" disabled={loading}
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 transition">
+            className="w-full bg-slate-800 text-white py-3 rounded-lg font-medium hover:bg-slate-900 disabled:opacity-50 transition">
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 
         <p className="text-center mt-6 text-sm text-gray-500">
           Don't have an account?{' '}
-          <Link to="/signup" className="text-indigo-600 hover:underline font-medium">Sign up free</Link>
+          <Link to="/signup" className="text-slate-700 hover:underline font-medium">Sign up</Link>
         </p>
         <p className="text-center mt-3 text-xs text-gray-400">
           Forgot your password?{' '}
-          <a href="mailto:support@futurezminds.in" className="text-indigo-500 hover:underline">Contact support</a>
+          <a href="mailto:support@futurezminds.in" className="text-slate-600 hover:underline">Contact support</a>
         </p>
       </div>
     </div>

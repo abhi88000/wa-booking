@@ -46,7 +46,7 @@ export default function Settings() {
           <div>
             <label className="block text-sm font-medium mb-1">Business Name</label>
             <input value={settings.business_name} onChange={e => setSettings({...settings, business_name: e.target.value})}
-              className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+              className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -95,7 +95,7 @@ export default function Settings() {
           <div className="flex items-center gap-3">
             <input type="checkbox" id="autoConfirm" checked={s.auto_confirm !== false}
               onChange={e => setSettings({...settings, settings: {...s, auto_confirm: e.target.checked}})}
-              className="w-4 h-4 text-indigo-600" />
+              className="w-4 h-4 text-slate-700" />
             <label htmlFor="autoConfirm" className="text-sm">Auto-confirm appointments</label>
           </div>
         </div>
@@ -128,7 +128,7 @@ export default function Settings() {
       </div>
 
       <button onClick={handleSave} disabled={saving}
-        className="bg-indigo-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50">
+        className="bg-slate-800 text-white px-6 py-3 rounded-lg font-medium hover:bg-slate-900 disabled:opacity-50">
         {saving ? 'Saving...' : 'Save Settings'}
       </button>
     </div>

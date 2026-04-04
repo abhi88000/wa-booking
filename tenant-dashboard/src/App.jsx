@@ -100,7 +100,7 @@ function Sidebar({ onLogout }) {
             <Link key={link.to} to={link.to} onClick={() => setOpen(false)}
               className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition text-sm
                 ${location.pathname === link.to 
-                  ? 'bg-indigo-50 text-indigo-700 font-medium' 
+                  ? 'bg-slate-100 text-slate-800 font-medium' 
                   : 'text-gray-600 hover:bg-gray-50'}`}>
               <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d={link.icon} />

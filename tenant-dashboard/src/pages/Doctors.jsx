@@ -32,6 +32,7 @@ export default function Doctors() {
   const [showAdd, setShowAdd] = useState(false);
   const [editingDoc, setEditingDoc] = useState(null);
   const [editingAvail, setEditingAvail] = useState(null);
+  const [filter, setFilter] = useState('active');
   const [form, setForm] = useState({ name: '', specialization: '', phone: '', email: '', consultationFee: 0, slotDuration: 20 });
 
   useEffect(() => { load(); }, []);
@@ -95,10 +96,18 @@ export default function Doctors() {
     <div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Doctors</h1>
-        <button onClick={openAdd}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
-          + Add Doctor
-        </button>
+        <div className="flex gap-2">
+          <select value={filter} onChange={e => setFilter(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="all">All</option>
+          </select>
+          <button onClick={openAdd}
+            className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900">
+            + Add Doctor
+          </button>
+        </div>
       </div>
 
       {/* Add/Edit Modal */}
@@ -108,30 +117,30 @@ export default function Doctors() {
             <h2 className="text-lg font-semibold mb-4">{editingDoc ? 'Edit Doctor' : 'Add Doctor'}</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
               <input placeholder="Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" required />
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" required />
               <input placeholder="Specialization" value={form.specialization} onChange={e => setForm({...form, specialization: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
               <div className="grid grid-cols-2 gap-3">
                 <input placeholder="Phone" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
-                  className="border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                  className="border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
                 <input placeholder="Email" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})}
-                  className="border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                  className="border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-500">Fee</label>
                   <input type="number" value={form.consultationFee} onChange={e => setForm({...form, consultationFee: parseInt(e.target.value)})}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Slot Duration (min)</label>
                   <input type="number" value={form.slotDuration} onChange={e => setForm({...form, slotDuration: parseInt(e.target.value)})}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
                 </div>
               </div>
               <div className="flex gap-3 justify-end mt-4">
                 <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 text-sm text-gray-500">Cancel</button>
-                <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm">
+                <button type="submit" className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm">
                   {editingDoc ? 'Save Changes' : 'Add Doctor'}
                 </button>
               </div>
@@ -149,7 +158,10 @@ export default function Doctors() {
       {/* Doctor Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? <div className="text-gray-500 col-span-3 text-center py-10">Loading...</div> :
-          doctors.map(doc => (
+          doctors.filter(doc => filter === 'all' ? true : filter === 'active' ? doc.is_active : !doc.is_active).length === 0 ? (
+            <div className="text-gray-400 col-span-3 text-center py-10 text-sm">No {filter} doctors found</div>
+          ) :
+          doctors.filter(doc => filter === 'all' ? true : filter === 'active' ? doc.is_active : !doc.is_active).map(doc => (
             <div key={doc.id} className={`bg-white rounded-xl shadow-sm p-5 border ${!doc.is_active ? 'opacity-50' : ''}`}>
               <div className="flex justify-between items-start">
                 <div>
@@ -171,7 +183,7 @@ export default function Doctors() {
                   <p className="text-xs text-gray-400 mb-1">Schedule:</p>
                   <div className="flex flex-wrap gap-1">
                     {doc.availability.filter(Boolean).map((a, i) => (
-                      <span key={i} className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded capitalize">
+                      <span key={i} className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded capitalize">
                         {a.day?.substring(0, 3)} {a.start_time?.substring(0,5)}-{a.end_time?.substring(0,5)}
                       </span>
                     ))}
@@ -179,7 +191,7 @@ export default function Doctors() {
                 </div>
               )}
               <button onClick={() => setEditingAvail(doc)}
-                className="mt-4 w-full text-center text-sm text-indigo-600 border border-indigo-200 rounded-lg py-2 hover:bg-indigo-50">
+                className="mt-4 w-full text-center text-sm text-slate-700 border border-slate-300 rounded-lg py-2 hover:bg-slate-100">
                 Manage Schedule
               </button>
               <div className="flex gap-2 mt-2">
@@ -309,14 +321,14 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Timezone</label>
               <select value={timezone} onChange={e => setTimezone(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400">
                 {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz.replace('_', ' ')}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Slot Duration</label>
               <select value={slotDuration} onChange={e => setSlotDuration(parseInt(e.target.value))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400">
                 {[10, 15, 20, 30, 45, 60].map(v => <option key={v} value={v}>{v} min</option>)}
               </select>
             </div>
@@ -334,7 +346,7 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
               })));
               setBlockedDates([]);
             }}
-              className="flex-1 text-xs border border-indigo-200 text-indigo-600 rounded-lg py-2 hover:bg-indigo-50">
+              className="flex-1 text-xs border border-slate-300 text-slate-700 rounded-lg py-2 hover:bg-slate-100">
               Clone Last Schedule
             </button>
             <button type="button" onClick={() => {
@@ -353,7 +365,7 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
               {schedule.map((s, i) => (
                 <div key={s.day} className="flex items-center gap-2">
                   <button type="button" onClick={() => toggleDay(i)}
-                    className={`w-12 text-xs py-1.5 rounded font-medium flex-shrink-0 ${s.enabled ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                    className={`w-12 text-xs py-1.5 rounded font-medium flex-shrink-0 ${s.enabled ? 'bg-slate-800 text-white' : 'bg-gray-100 text-gray-400'}`}>
                     {DAY_LABELS[s.day]}
                   </button>
                   {s.enabled ? (
@@ -376,7 +388,7 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
           <div>
             <div className="flex justify-between items-center mb-2">
               <label className="block text-sm font-medium text-gray-700">Daily Breaks</label>
-              <button onClick={addBreak} className="text-indigo-600 text-xs hover:underline">+ Add</button>
+              <button onClick={addBreak} className="text-slate-700 text-xs hover:underline">+ Add</button>
             </div>
             <div className="space-y-2">
               {breaks.map((b, i) => (
@@ -461,7 +473,7 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
         <div className="flex gap-3 justify-end p-5 border-t">
           <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500">Cancel</button>
           <button onClick={save} disabled={saving}
-            className="bg-indigo-600 text-white px-6 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50">
+            className="bg-slate-800 text-white px-6 py-2 rounded-lg text-sm hover:bg-slate-900 disabled:opacity-50">
             {saving ? 'Saving...' : 'Save Schedule'}
           </button>
         </div>

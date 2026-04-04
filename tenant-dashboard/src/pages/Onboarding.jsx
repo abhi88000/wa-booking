@@ -56,14 +56,14 @@ export default function Onboarding() {
         {[1, 2, 3].map(s => (
           <div key={s} className="flex items-center">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
-              ${step >= s ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-500'}`}>
+              ${step >= s ? 'bg-slate-800 text-white' : 'bg-gray-200 text-gray-500'}`}>
               {step > s ? (
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               ) : s}
             </div>
-            {s < 3 && <div className={`w-20 h-1 ${step > s ? 'bg-indigo-600' : 'bg-gray-200'}`} />}
+            {s < 3 && <div className={`w-20 h-1 ${step > s ? 'bg-slate-800' : 'bg-gray-200'}`} />}
           </div>
         ))}
       </div>
@@ -75,30 +75,30 @@ export default function Onboarding() {
         <div className="bg-white rounded-xl shadow-sm p-6 border">
           <h2 className="text-lg font-semibold mb-4">Connect WhatsApp</h2>
           <p className="text-sm text-gray-500 mb-6">
-            Enter your WhatsApp Cloud API credentials from the <a href="https://developers.facebook.com" target="_blank" className="text-indigo-600 underline">Meta Developer Portal</a>
+            Enter your WhatsApp Cloud API credentials from the <a href="https://developers.facebook.com" target="_blank" className="text-slate-700 underline">Meta Developer Portal</a>
           </p>
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">Phone Number ID</label>
               <input value={waForm.phoneNumberId} onChange={e => setWaForm({...waForm, phoneNumberId: e.target.value})}
-                className="w-full border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-slate-400"
                 placeholder="e.g. 123456789012345" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Business Account ID</label>
               <input value={waForm.businessAccountId} onChange={e => setWaForm({...waForm, businessAccountId: e.target.value})}
-                className="w-full border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-slate-400"
                 placeholder="e.g. 123456789012345" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Permanent Access Token</label>
               <input type="password" value={waForm.accessToken} onChange={e => setWaForm({...waForm, accessToken: e.target.value})}
-                className="w-full border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500" />
+                className="w-full border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-slate-400" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">WhatsApp Phone Number</label>
               <input value={waForm.displayPhone} onChange={e => setWaForm({...waForm, displayPhone: e.target.value})}
-                className="w-full border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-slate-400"
                 placeholder="e.g. +919876543210" />
             </div>
             <button onClick={connectWA} disabled={loading}
@@ -132,7 +132,7 @@ export default function Onboarding() {
             </div>
           ))}
           <button onClick={() => setDoctors([...doctors, { name: '', specialization: '', consultationFee: 0, slotDuration: 30 }])}
-            className="text-indigo-600 text-sm mb-6 hover:underline">+ Add Doctor</button>
+            className="text-slate-700 text-sm mb-6 hover:underline">+ Add Doctor</button>
 
           {/* Services */}
           <h3 className="font-medium text-gray-700 mb-2 mt-4">Services</h3>
@@ -150,10 +150,10 @@ export default function Onboarding() {
             </div>
           ))}
           <button onClick={() => setServices([...services, { name: '', duration: 30, price: 0 }])}
-            className="text-indigo-600 text-sm mb-6 hover:underline">+ Add Service</button>
+            className="text-slate-700 text-sm mb-6 hover:underline">+ Add Service</button>
 
           <button onClick={setupBusiness} disabled={loading}
-            className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 mt-4">
+            className="w-full bg-slate-800 text-white py-3 rounded-lg font-medium hover:bg-slate-900 disabled:opacity-50 mt-4">
             {loading ? 'Setting up...' : 'Save & Continue'}
           </button>
         </div>
@@ -167,7 +167,7 @@ export default function Onboarding() {
             Your WhatsApp booking system is ready. Patients can now message your WhatsApp number to book appointments.
           </p>
           <button onClick={completeSetup}
-            className="bg-indigo-600 text-white px-8 py-3 rounded-lg font-medium hover:bg-indigo-700">
+            className="bg-slate-800 text-white px-8 py-3 rounded-lg font-medium hover:bg-slate-900">
             Go to Dashboard →
           </button>
         </div>

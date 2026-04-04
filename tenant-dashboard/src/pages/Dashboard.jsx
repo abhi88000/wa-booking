@@ -17,7 +17,7 @@ export default function Dashboard() {
   if (!data) return <div className="text-red-500 text-center py-20">Failed to load dashboard</div>;
 
   const cards = [
-    { label: "Today's Appointments", value: data.stats.today, color: 'text-indigo-600' },
+    { label: "Today's Appointments", value: data.stats.today, color: 'text-slate-700' },
     { label: 'Upcoming', value: data.stats.upcoming, color: 'text-blue-600' },
     { label: 'Total Patients', value: data.stats.total_patients, color: 'text-green-600' },
     { label: 'Active Doctors', value: data.stats.active_doctors || 0, color: 'text-purple-600' },
@@ -44,7 +44,7 @@ export default function Dashboard() {
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 mb-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Today's Schedule</h2>
-          <Link to="/appointments" className="text-indigo-600 text-sm hover:underline">View all →</Link>
+          <Link to="/appointments" className="text-slate-700 text-sm hover:underline">View all →</Link>
         </div>
         {data.today && data.today.length > 0 ? (
           <div className="divide-y">

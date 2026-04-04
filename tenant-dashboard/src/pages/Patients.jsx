@@ -73,15 +73,15 @@ export default function Patients() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Patients</h1>
         <button onClick={openAdd}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
+          className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900">
           + Add Patient
         </button>
       </div>
 
       <form onSubmit={handleSearch} className="mb-4 flex gap-2">
         <input placeholder="Search by name or phone..." value={search} onChange={e => setSearch(e.target.value)}
-          className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
-        <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">Search</button>
+          className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+        <button type="submit" className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900">Search</button>
       </form>
 
       {/* Add/Edit Modal */}
@@ -94,23 +94,23 @@ export default function Patients() {
                 <label className="text-xs text-gray-500 block mb-1">Name</label>
                 <input placeholder="Patient name" value={form.name}
                   onChange={e => setForm({...form, name: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" required />
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" required />
               </div>
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Phone</label>
                 <input placeholder="+91..." value={form.phone}
                   onChange={e => setForm({...form, phone: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" required />
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" required />
               </div>
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Email</label>
                 <input type="email" placeholder="Optional" value={form.email}
                   onChange={e => setForm({...form, email: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
               </div>
               <div className="flex gap-3 justify-end mt-4">
                 <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 text-sm text-gray-500">Cancel</button>
-                <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
+                <button type="submit" className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900">
                   {editing ? 'Save' : 'Add Patient'}
                 </button>
               </div>
@@ -154,7 +154,7 @@ export default function Patients() {
 
               <div className="flex gap-2 mb-6">
                 <button onClick={() => { setDetail(null); openEdit(detail); }}
-                  className="w-full text-center text-sm text-indigo-600 border border-indigo-200 rounded-lg py-2 hover:bg-indigo-50">
+                  className="w-full text-center text-sm text-slate-700 border border-slate-300 rounded-lg py-2 hover:bg-slate-100">
                   Edit
                 </button>
               </div>
@@ -208,7 +208,7 @@ export default function Patients() {
                 {patients.map(p => (
                   <tr key={p.id} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
-                      <button onClick={() => viewDetail(p)} className="font-medium text-indigo-600 hover:underline">{p.name || '—'}</button>
+                      <button onClick={() => viewDetail(p)} className="font-medium text-slate-700 hover:underline">{p.name || '—'}</button>
                     </td>
                     <td className="px-4 py-3">{p.phone}</td>
                     <td className="px-4 py-3 text-gray-500">{p.email || '—'}</td>
@@ -216,7 +216,7 @@ export default function Patients() {
                     <td className="px-4 py-3 text-gray-500">{p.last_visit || '—'}</td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
-                        <button onClick={() => openEdit(p)} className="text-xs text-indigo-600 hover:underline">Edit</button>
+                        <button onClick={() => openEdit(p)} className="text-xs text-slate-700 hover:underline">Edit</button>
                         <button onClick={() => viewDetail(p)} className="text-xs text-gray-500 hover:underline">Details</button>
                       </div>
                     </td>
@@ -238,7 +238,7 @@ export default function Patients() {
                       <p className="text-xs text-gray-400">{p.phone} {p.email ? `- ${p.email}` : ''}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-indigo-600">{p.total_appointments} appts</p>
+                      <p className="text-sm font-medium text-slate-700">{p.total_appointments} appts</p>
                       <p className="text-xs text-gray-400">{p.last_visit || 'No visits'}</p>
                     </div>
                   </div>

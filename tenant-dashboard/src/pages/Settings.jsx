@@ -5,6 +5,11 @@ export default function Settings() {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showWaForm, setShowWaForm] = useState(false);
+  const [savingWa, setSavingWa] = useState(false);
+  const [waForm, setWaForm] = useState({
+    phoneNumberId: '', businessAccountId: '', accessToken: '', displayPhone: ''
+  });
 
   useEffect(() => {
     api.getSettings()
@@ -28,6 +33,19 @@ export default function Settings() {
     } catch (err) {
       alert(err.response?.data?.error || 'Save failed');
     } finally { setSaving(false); }
+  };
+
+  const handleWaConnect = async () => {
+    setSavingWa(true);
+    try {
+      await api.updateWhatsApp(waForm);
+      setSettings({ ...settings, wa_status: 'connected', wa_phone_number: waForm.displayPhone });
+      setShowWaForm(false);
+      setWaForm({ phoneNumberId: '', businessAccountId: '', accessToken: '', displayPhone: '' });
+      alert('WhatsApp connected successfully!');
+    } catch (err) {
+      alert(err.response?.data?.error || err.response?.data?.details || 'Connection failed');
+    } finally { setSavingWa(false); }
   };
 
   if (loading) return <div className="text-gray-500 text-center py-20">Loading...</div>;
@@ -101,18 +119,61 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* WhatsApp Status */}
+      {/* WhatsApp Connection */}
       <div className="bg-white rounded-xl shadow-sm p-6 border mb-6">
-        <h2 className="font-semibold text-gray-900 mb-4">WhatsApp Connection</h2>
-        <div className="flex items-center gap-3">
-          <span className={`px-3 py-1 rounded-full text-sm font-medium
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-gray-900">WhatsApp Connection</h2>
+          <span className={`px-3 py-1 rounded-full text-xs font-medium
             ${settings.wa_status === 'connected' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
             {settings.wa_status === 'connected' ? 'Connected' : 'Not Connected'}
           </span>
-          {settings.wa_phone_number && (
-            <span className="text-sm text-gray-500">{settings.wa_phone_number}</span>
-          )}
         </div>
+        {settings.wa_status === 'connected' && settings.wa_phone_number && (
+          <p className="text-sm text-gray-500 mb-4">Current number: {settings.wa_phone_number}</p>
+        )}
+        {!showWaForm ? (
+          <button onClick={() => setShowWaForm(true)}
+            className="text-sm text-slate-700 hover:underline">
+            {settings.wa_status === 'connected' ? 'Update credentials' : 'Connect WhatsApp'}
+          </button>
+        ) : (
+          <div className="space-y-3 mt-2">
+            <p className="text-xs text-gray-500">
+              Enter your WhatsApp Cloud API credentials from the <a href="https://developers.facebook.com" target="_blank" className="text-slate-700 underline">Meta Developer Portal</a>
+            </p>
+            <div>
+              <label className="block text-sm font-medium mb-1">Phone Number ID</label>
+              <input value={waForm.phoneNumberId} onChange={e => setWaForm({...waForm, phoneNumberId: e.target.value})}
+                className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400"
+                placeholder="e.g. 123456789012345" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Business Account ID</label>
+              <input value={waForm.businessAccountId} onChange={e => setWaForm({...waForm, businessAccountId: e.target.value})}
+                className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400"
+                placeholder="e.g. 123456789012345" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Access Token</label>
+              <input type="password" value={waForm.accessToken} onChange={e => setWaForm({...waForm, accessToken: e.target.value})}
+                className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">WhatsApp Phone Number</label>
+              <input value={waForm.displayPhone} onChange={e => setWaForm({...waForm, displayPhone: e.target.value})}
+                className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400"
+                placeholder="e.g. +919876543210" />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={handleWaConnect} disabled={savingWa}
+                className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50">
+                {savingWa ? 'Verifying...' : 'Save & Verify'}
+              </button>
+              <button onClick={() => setShowWaForm(false)}
+                className="text-gray-500 text-sm hover:text-gray-700">Cancel</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Features */}

@@ -69,6 +69,9 @@ export default {
   getSettings: () => api.get('/tenant/settings'),
   updateSettings: (data) => api.patch('/tenant/settings', data),
 
+  // WhatsApp
+  updateWhatsApp: (data) => api.patch('/tenant/whatsapp', data),
+
   // Team
   getTeam: () => api.get('/tenant/team'),
   addTeamMember: (data) => api.post('/tenant/team', data),

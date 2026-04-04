@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../api';
 
@@ -46,7 +46,7 @@ export default function Analytics() {
                   <span className="font-medium text-sm">{t.business_name}</span>
                   {t.city && <span className="text-xs text-gray-400 ml-2">{t.city}</span>}
                 </div>
-                <span className="text-sm font-semibold text-indigo-600">{t.appointments} appts</span>
+                <span className="text-sm font-semibold text-slate-700">{t.appointments} appts</span>
               </div>
             )) : (
               <p className="text-gray-400 text-sm">No appointment data yet</p>

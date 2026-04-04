@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
@@ -149,7 +149,7 @@ function TenantHealthCard({ tenant, onValidateWA, onResetConversations, validati
     <div className="bg-white border rounded-lg p-4 mb-3 shadow-sm">
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="font-bold text-lg cursor-pointer hover:text-indigo-600" onClick={onNavigate}>
+          <h3 className="font-bold text-lg cursor-pointer hover:text-slate-700" onClick={onNavigate}>
             {t.name}
           </h3>
           <p className="text-gray-500 text-sm">{t.email} · {t.plan} · WA: {t.waStatus}</p>

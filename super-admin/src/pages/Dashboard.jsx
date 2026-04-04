@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import api from '../api';
 
 export default function Dashboard() {
@@ -39,7 +39,7 @@ export default function Dashboard() {
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
         <div className="flex gap-3">
-          <a href="/tenants" className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg hover:bg-indigo-100 transition">
+          <a href="/tenants" className="bg-slate-100 text-slate-800 px-4 py-2 rounded-lg hover:bg-indigo-100 transition">
             View All Tenants →
           </a>
           <a href="/analytics" className="bg-purple-50 text-purple-700 px-4 py-2 rounded-lg hover:bg-purple-100 transition">

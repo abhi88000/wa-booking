@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api';
 
@@ -127,13 +127,13 @@ export default function TenantDetail() {
       {/* Features */}
       <div className="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <h2 className="font-semibold text-gray-900 mb-4">Reset User Password</h2>
-        {resetMsg && <p className="text-sm mb-3 text-indigo-600">{resetMsg}</p>}
+        {resetMsg && <p className="text-sm mb-3 text-slate-700">{resetMsg}</p>}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
             placeholder="Enter new password (min 8 chars)"
-            className="border rounded-lg px-4 py-2 text-sm w-full sm:w-72 outline-none focus:ring-2 focus:ring-indigo-500" />
+            className="border rounded-lg px-4 py-2 text-sm w-full sm:w-72 outline-none focus:ring-2 focus:ring-slate-400" />
           <button onClick={handleResetPassword}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
+            className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900">
             Reset Password
           </button>
         </div>

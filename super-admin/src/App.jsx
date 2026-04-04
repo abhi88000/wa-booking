@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -79,7 +79,7 @@ function Sidebar({ onLogout }) {
             <Link key={link.to} to={link.to} onClick={() => setOpen(false)}
               className={`flex items-center px-4 py-3 rounded-lg transition
                 ${location.pathname === link.to 
-                  ? 'bg-indigo-600 text-white' 
+                  ? 'bg-gray-700 text-white font-medium' 
                   : 'text-gray-300 hover:bg-gray-800'}`}>
               {link.label}
             </Link>

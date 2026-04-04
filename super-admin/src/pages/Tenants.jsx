@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
 
@@ -53,8 +53,8 @@ export default function Tenants() {
         <form onSubmit={handleSearch} className="flex-1 flex gap-2">
           <input type="text" placeholder="Search by name or email..." value={search}
             onChange={e => setSearch(e.target.value)}
-            className="flex-1 border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
-          <button type="submit" className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
+            className="flex-1 border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-slate-400 outline-none" />
+          <button type="submit" className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900">
             Search
           </button>
         </form>
@@ -86,7 +86,7 @@ export default function Tenants() {
               {tenants.map(t => (
                 <tr key={t.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
-                    <Link to={`/tenants/${t.id}`} className="text-indigo-600 hover:underline font-medium">
+                    <Link to={`/tenants/${t.id}`} className="text-slate-700 hover:underline font-medium">
                       {t.business_name}
                     </Link>
                     <div className="text-xs text-gray-400">{t.email}</div>
@@ -137,7 +137,7 @@ export default function Tenants() {
           <div key={t.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
             <div className="flex justify-between items-start">
               <div>
-                <Link to={`/tenants/${t.id}`} className="text-indigo-600 font-medium hover:underline">
+                <Link to={`/tenants/${t.id}`} className="text-slate-700 font-medium hover:underline">
                   {t.business_name}
                 </Link>
                 <p className="text-xs text-gray-400">{t.email}</p>

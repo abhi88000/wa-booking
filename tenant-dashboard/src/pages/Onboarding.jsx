@@ -15,7 +15,7 @@ export default function Onboarding() {
 
   // Business setup form
   const [doctors, setDoctors] = useState([{ name: '', specialization: '', consultationFee: 0, slotDuration: 30, availability: [] }]);
-  const [services, setServices] = useState([{ name: '', duration: 30, price: 0 }]);
+  const [services, setServices] = useState([{ name: '', price: 0 }]);
 
   // Step 1: Connect WhatsApp
   const connectWA = async () => {
@@ -137,19 +137,16 @@ export default function Onboarding() {
           {/* Services */}
           <h3 className="font-medium text-gray-700 mb-2 mt-4">Services</h3>
           {services.map((svc, i) => (
-            <div key={i} className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+            <div key={i} className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <input placeholder="Service name" value={svc.name}
                 onChange={e => { const s = [...services]; s[i].name = e.target.value; setServices(s); }}
-                className="border rounded px-3 py-2 text-sm outline-none" />
-              <input type="number" placeholder="Duration (min)" value={svc.duration}
-                onChange={e => { const s = [...services]; s[i].duration = parseInt(e.target.value); setServices(s); }}
                 className="border rounded px-3 py-2 text-sm outline-none" />
               <input type="number" placeholder="Price (₹)" value={svc.price}
                 onChange={e => { const s = [...services]; s[i].price = parseInt(e.target.value); setServices(s); }}
                 className="border rounded px-3 py-2 text-sm outline-none" />
             </div>
           ))}
-          <button onClick={() => setServices([...services, { name: '', duration: 30, price: 0 }])}
+          <button onClick={() => setServices([...services, { name: '', price: 0 }])}
             className="text-slate-700 text-sm mb-6 hover:underline">+ Add Service</button>
 
           <button onClick={setupBusiness} disabled={loading}

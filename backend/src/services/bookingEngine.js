@@ -83,7 +83,7 @@ class BookingEngine {
     if (msg === 'status' || msg === 'my appointments' || msg.includes('status')) {
       return await this.showUpcomingAppointments();
     }
-    if (msg === 'cancel' || msg.includes('cancel')) {
+    if (msg === 'cancel' || msg === 'cancel / reschedule' || msg.includes('cancel')) {
       return await this.showCancellableAppointments();
     }
     if (msg === 'reschedule' || msg.includes('reschedule') || msg.includes('change')) {
@@ -91,6 +91,10 @@ class BookingEngine {
     }
     if (msg === 'help' || msg.includes('help') || msg === 'menu') {
       return await this.sendHelp();
+    }
+    if (msg === 'go_back' || msg === 'cancel_booking') {
+      await this.setState({ state: 'idle' });
+      return await this.wa.sendText(this.phone, 'Booking cancelled. Send "hi" to start over.');
     }
 
     // Any other message → show main menu with buttons
@@ -103,7 +107,7 @@ class BookingEngine {
       buttons: [
         { id: 'book', title: 'Book Appointment' },
         { id: 'status', title: 'My Appointments' },
-        { id: 'help', title: 'Help' }
+        { id: 'cancel', title: 'Cancel / Reschedule' }
       ]
     });
     await this.setState({ state: 'idle' });
@@ -136,12 +140,15 @@ class BookingEngine {
 
     const sections = [{
       title: 'Available Doctors',
-      rows: doctors.map(d => ({
-        id: `doc_${d.id}`,
-        title: d.name.substring(0, 24),
-        description: [d.specialization, d.consultation_fee ? `₹${d.consultation_fee}` : '']
-          .filter(Boolean).join(' • ')
-      }))
+      rows: [
+        ...doctors.map(d => ({
+          id: `doc_${d.id}`,
+          title: d.name.substring(0, 24),
+          description: [d.specialization, d.consultation_fee ? `₹${d.consultation_fee}` : '']
+            .filter(Boolean).join(' • ')
+        })),
+        { id: 'cancel_booking', title: '✕ Cancel', description: 'Go back to main menu' }
+      ]
     }];
 
     await this.wa.sendList(this.phone, {
@@ -156,6 +163,10 @@ class BookingEngine {
 
   // ── Handle Doctor Selection ─────────────────────────────
   async handleDoctorSelection(content, interactiveData, state) {
+    if (content === 'cancel_booking') {
+      await this.setState({ state: 'idle' });
+      return await this.wa.sendText(this.phone, 'Booking cancelled. Send "hi" to start over.');
+    }
     const doctorId = content.replace('doc_', '');
     
     const { rows } = await pool.query(
@@ -180,7 +191,7 @@ class BookingEngine {
   // ── Show Services ───────────────────────────────────────
   async showServices(doctorId) {
     const { rows: services } = await pool.query(
-      `SELECT s.id, s.name, s.duration, s.price 
+      `SELECT s.id, s.name, s.price 
        FROM services s
        LEFT JOIN doctor_services ds ON ds.service_id = s.id AND ds.doctor_id = $1
        WHERE s.tenant_id = $2 AND s.is_active = true
@@ -201,19 +212,21 @@ class BookingEngine {
         ...state,
         state: 'awaiting_date',
         serviceId: services[0].id,
-        serviceName: services[0].name,
-        duration: services[0].duration
+        serviceName: services[0].name
       });
       return await this.showDateOptions();
     }
 
     const sections = [{
       title: 'Services',
-      rows: services.map(s => ({
-        id: `svc_${s.id}`,
-        title: s.name.substring(0, 24),
-        description: `${s.duration} min${s.price > 0 ? ` • ₹${s.price}` : ''}`
-      }))
+      rows: [
+        ...services.map(s => ({
+          id: `svc_${s.id}`,
+          title: s.name.substring(0, 24),
+          description: `${s.price > 0 ? `₹${s.price}` : 'Free'}`
+        })),
+        { id: 'cancel_booking', title: '✕ Cancel', description: 'Go back to main menu' }
+      ]
     }];
 
     await this.wa.sendList(this.phone, {
@@ -225,10 +238,14 @@ class BookingEngine {
 
   // ── Handle Service Selection ────────────────────────────
   async handleServiceSelection(content, interactiveData, state) {
+    if (content === 'cancel_booking') {
+      await this.setState({ state: 'idle' });
+      return await this.wa.sendText(this.phone, 'Booking cancelled. Send "hi" to start over.');
+    }
     const serviceId = content.replace('svc_', '');
     
     const { rows } = await pool.query(
-      'SELECT id, name, duration FROM services WHERE id = $1 AND tenant_id = $2',
+      'SELECT id, name FROM services WHERE id = $1 AND tenant_id = $2',
       [serviceId, this.tenantId]
     );
 
@@ -240,8 +257,7 @@ class BookingEngine {
       ...state,
       state: 'awaiting_date',
       serviceId: rows[0].id,
-      serviceName: rows[0].name,
-      duration: rows[0].duration
+      serviceName: rows[0].name
     });
 
     return await this.showDateOptions();
@@ -256,13 +272,20 @@ class BookingEngine {
 
     // Get doctor's available days
     const { rows: availability } = await pool.query(
-      `SELECT day FROM doctor_availability 
+      `SELECT day, start_time, end_time FROM doctor_availability 
        WHERE doctor_id = $1 AND tenant_id = $2 AND is_active = true`,
       [state.doctorId, this.tenantId]
     );
 
-    const availableDays = new Set(availability.map(a => a.day));
+    const availByDay = {};
+    availability.forEach(a => { availByDay[a.day] = a; });
     const dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+
+    // Get doctor's slot_duration
+    const { rows: docRows } = await pool.query(
+      'SELECT slot_duration FROM doctors WHERE id = $1', [state.doctorId]
+    );
+    const slotDuration = (docRows.length > 0 && docRows[0].slot_duration) ? docRows[0].slot_duration : 30;
     
     // Generate next available dates using tenant's timezone
     const dates = [];
@@ -272,25 +295,32 @@ class BookingEngine {
       date.setDate(now.getDate() + i);
       const dayName = dayMap[date.getDay()];
       
-      if (availableDays.size === 0 || availableDays.has(dayName)) {
-        // Check doctor breaks
-        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-        const { rows: breaks } = await pool.query(
-          `SELECT 1 FROM doctor_breaks 
-           WHERE doctor_id = $1 AND break_date = $2 AND is_full_day = true`,
-          [state.doctorId, dateStr]
-        );
-        
-        if (breaks.length === 0) {
-          dates.push({
-            id: `date_${dateStr}`,
-            title: date.toLocaleDateString('en-US', { 
-              weekday: 'short', month: 'short', day: 'numeric' 
-            }),
-            description: dateStr
-          });
-        }
-      }
+      // Skip if doctor doesn't work this day
+      if (!availByDay[dayName]) continue;
+
+      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+      // Skip full-day breaks
+      const { rows: fullDayBreaks } = await pool.query(
+        `SELECT 1 FROM doctor_breaks 
+         WHERE doctor_id = $1 AND break_date = $2 AND is_full_day = true`,
+        [state.doctorId, dateStr]
+      );
+      if (fullDayBreaks.length > 0) continue;
+
+      // Check if there are actual open slots on this date
+      const hasSlots = await this._hasAvailableSlots(
+        state.doctorId, dateStr, dayName, availByDay[dayName], slotDuration
+      );
+      if (!hasSlots) continue;
+
+      dates.push({
+        id: `date_${dateStr}`,
+        title: date.toLocaleDateString('en-US', { 
+          weekday: 'short', month: 'short', day: 'numeric' 
+        }),
+        description: dateStr
+      });
     }
 
     if (dates.length === 0) {
@@ -298,6 +328,9 @@ class BookingEngine {
         'Sorry, no available dates in the next few weeks. Please try again later.'
       );
     }
+
+    // Add cancel option at the end
+    dates.push({ id: 'cancel_booking', title: '✕ Cancel', description: 'Go back to main menu' });
 
     await this.wa.sendList(this.phone, {
       bodyText: `Select a date for your appointment with ${state.doctorName}:`,
@@ -308,8 +341,52 @@ class BookingEngine {
     await this.setState({ ...state, state: 'awaiting_date' });
   }
 
+  // ── Check if a date has at least one open slot ──────────
+  async _hasAvailableSlots(doctorId, dateStr, dayName, dayAvail, duration) {
+    const startMin = this.timeToMinutes(dayAvail.start_time);
+    const endMin = this.timeToMinutes(dayAvail.end_time);
+
+    // Get booked appointments
+    const { rows: booked } = await pool.query(
+      `SELECT start_time, end_time FROM appointments 
+       WHERE doctor_id = $1 AND appointment_date = $2 
+       AND status NOT IN ('cancelled', 'rescheduled')`,
+      [doctorId, dateStr]
+    );
+
+    // Get breaks
+    const { rows: breaks } = await pool.query(
+      `SELECT start_time, end_time FROM doctor_breaks
+       WHERE doctor_id = $1 AND tenant_id = $2
+       AND (break_date = $3 OR break_date IS NULL)
+       AND is_full_day = false`,
+      [doctorId, this.tenantId, dateStr]
+    );
+
+    let current = startMin;
+    while (current + duration <= endMin) {
+      const isBooked = booked.some(b => {
+        const bS = this.timeToMinutes(b.start_time);
+        const bE = this.timeToMinutes(b.end_time);
+        return current < bE && (current + duration) > bS;
+      });
+      const inBreak = breaks.some(b => {
+        const bS = this.timeToMinutes(b.start_time);
+        const bE = this.timeToMinutes(b.end_time);
+        return current < bE && (current + duration) > bS;
+      });
+      if (!isBooked && !inBreak) return true;
+      current += duration;
+    }
+    return false;
+  }
+
   // ── Handle Date Selection ───────────────────────────────
   async handleDateSelection(content, interactiveData, state) {
+    if (content === 'cancel_booking') {
+      await this.setState({ state: 'idle' });
+      return await this.wa.sendText(this.phone, 'Booking cancelled. Send "hi" to start over.');
+    }
     const dateStr = content.replace('date_', '');
     
     await this.setState({
@@ -318,22 +395,20 @@ class BookingEngine {
       appointmentDate: dateStr
     });
 
-    return await this.showTimeSlots(state.doctorId, dateStr, state.duration || 30);
+    return await this.showTimeSlots(state.doctorId, dateStr);
   }
 
   // ── Show Available Time Slots ───────────────────────────
-  async showTimeSlots(doctorId, dateStr, duration) {
+  async showTimeSlots(doctorId, dateStr) {
     const date = new Date(dateStr);
     const dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const dayName = dayMap[date.getDay()];
 
-    // Get doctor's slot_duration (overrides service duration)
+    // Use doctor's slot_duration (default 30 min)
     const { rows: docRows } = await pool.query(
       `SELECT slot_duration FROM doctors WHERE id = $1`, [doctorId]
     );
-    if (docRows.length > 0 && docRows[0].slot_duration) {
-      duration = docRows[0].slot_duration;
-    }
+    const duration = (docRows.length > 0 && docRows[0].slot_duration) ? docRows[0].slot_duration : 30;
 
     // Get doctor's hours for this day
     const { rows: avail } = await pool.query(
@@ -409,14 +484,20 @@ class BookingEngine {
     await this.wa.sendList(this.phone, {
       bodyText: `Available slots for ${dateStr}:`,
       buttonText: 'View Slots',
-      sections: [{ title: 'Time Slots', rows: slots }]
+      sections: [{ title: 'Time Slots', rows: [...slots, { id: 'cancel_booking', title: '✕ Cancel', description: 'Go back to main menu' }] }]
     });
   }
 
   // ── Handle Time Selection ───────────────────────────────
   async handleTimeSelection(content, interactiveData, state) {
+    if (content === 'cancel_booking') {
+      await this.setState({ state: 'idle' });
+      return await this.wa.sendText(this.phone, 'Booking cancelled. Send "hi" to start over.');
+    }
     const time = content.replace('time_', '');
-    const duration = state.duration || 30;
+    // Get doctor's slot_duration for end time calculation
+    const { rows: docSlot } = await pool.query('SELECT slot_duration FROM doctors WHERE id = $1', [state.doctorId]);
+    const duration = (docSlot.length > 0 && docSlot[0].slot_duration) ? docSlot[0].slot_duration : 30;
     const endTime = this.minutesToTime(this.timeToMinutes(time) + duration);
 
     const updatedState = {
@@ -531,8 +612,14 @@ class BookingEngine {
       msg += `   Status: ${a.status}\n\n`;
     });
 
-    msg += 'Type "cancel" or "reschedule" to manage.';
-    await this.wa.sendText(this.phone, msg);
+    msg += 'Need to make changes?';
+    await this.wa.sendButtons(this.phone, {
+      bodyText: msg,
+      buttons: [
+        { id: 'cancel', title: 'Cancel Appointment' },
+        { id: 'reschedule', title: 'Reschedule' }
+      ]
+    });
   }
 
   // ── Show Cancellable Appointments ───────────────────────
@@ -653,7 +740,7 @@ class BookingEngine {
     const appointmentId = content.replace('resched_', '');
 
     const { rows } = await pool.query(
-      `SELECT a.id, a.doctor_id, a.service_id, d.name as doctor_name, s.name as service_name, s.duration
+      `SELECT a.id, a.doctor_id, a.service_id, d.name as doctor_name, s.name as service_name
        FROM appointments a
        LEFT JOIN doctors d ON d.id = a.doctor_id
        LEFT JOIN services s ON s.id = a.service_id
@@ -674,8 +761,7 @@ class BookingEngine {
       doctorId: appt.doctor_id,
       doctorName: appt.doctor_name,
       serviceId: appt.service_id,
-      serviceName: appt.service_name,
-      duration: appt.duration || 30
+      serviceName: appt.service_name
     });
 
     return await this.showDateOptions();
@@ -691,13 +777,15 @@ class BookingEngine {
       appointmentDate: dateStr
     });
 
-    return await this.showTimeSlots(state.doctorId, dateStr, state.duration || 30);
+    return await this.showTimeSlots(state.doctorId, dateStr);
   }
 
   // ── Handle Reschedule Time Selection ────────────────────
   async handleRescheduleTimeSelection(content, interactiveData, state) {
     const time = content.replace('time_', '');
-    const duration = state.duration || 30;
+    // Get doctor's slot_duration for end time calculation
+    const { rows: docSlot } = await pool.query('SELECT slot_duration FROM doctors WHERE id = $1', [state.doctorId]);
+    const duration = (docSlot.length > 0 && docSlot[0].slot_duration) ? docSlot[0].slot_duration : 30;
     const endTime = this.minutesToTime(this.timeToMinutes(time) + duration);
 
     // Cancel old appointment

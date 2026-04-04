@@ -6,7 +6,7 @@ export default function Services() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: '', description: '', duration: 30, price: 0 });
+  const [form, setForm] = useState({ name: '', description: '', price: 0 });
 
   useEffect(() => { load(); }, []);
 
@@ -20,13 +20,13 @@ export default function Services() {
 
   const openAdd = () => {
     setEditing(null);
-    setForm({ name: '', description: '', duration: 30, price: 0 });
+    setForm({ name: '', description: '', price: 0 });
     setShowForm(true);
   };
 
   const openEdit = (s) => {
     setEditing(s);
-    setForm({ name: s.name, description: s.description || '', duration: s.duration, price: Number(s.price) });
+    setForm({ name: s.name, description: s.description || '', price: Number(s.price) });
     setShowForm(true);
   };
 
@@ -79,19 +79,11 @@ export default function Services() {
                   onChange={e => setForm({...form, description: e.target.value})}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Duration (minutes)</label>
-                  <input type="number" min="5" max="240" value={form.duration}
-                    onChange={e => setForm({...form, duration: parseInt(e.target.value) || 30})}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-500 block mb-1">Price</label>
-                  <input type="number" min="0" value={form.price}
-                    onChange={e => setForm({...form, price: parseInt(e.target.value) || 0})}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
-                </div>
+              <div>
+                <label className="text-xs text-gray-500 block mb-1">Price</label>
+                <input type="number" min="0" value={form.price}
+                  onChange={e => setForm({...form, price: parseInt(e.target.value) || 0})}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
               </div>
               <div className="flex gap-3 justify-end mt-4">
                 <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-gray-500">Cancel</button>
@@ -114,7 +106,6 @@ export default function Services() {
                 <tr>
                   <th className="px-4 py-3 font-medium">Name</th>
                   <th className="px-4 py-3 font-medium">Description</th>
-                  <th className="px-4 py-3 font-medium">Duration</th>
                   <th className="px-4 py-3 font-medium">Price</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium">Actions</th>
@@ -125,7 +116,6 @@ export default function Services() {
                   <tr key={s.id} className={`hover:bg-gray-50 ${s.is_active === false ? 'opacity-50' : ''}`}>
                     <td className="px-4 py-3 font-medium">{s.name}</td>
                     <td className="px-4 py-3 text-gray-500 max-w-xs truncate">{s.description || '—'}</td>
-                    <td className="px-4 py-3">{s.duration} min</td>
                     <td className="px-4 py-3">{Number(s.price) > 0 ? `₹${s.price}` : 'Free'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${s.is_active !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -143,7 +133,7 @@ export default function Services() {
                   </tr>
                 ))}
                 {services.length === 0 && (
-                  <tr><td colSpan="6" className="px-4 py-8 text-center text-gray-400">No services yet. Add your first service.</td></tr>
+                  <tr><td colSpan="5" className="px-4 py-8 text-center text-gray-400">No services yet. Add your first service.</td></tr>
                 )}
               </tbody>
             </table>
@@ -162,7 +152,6 @@ export default function Services() {
                     </span>
                   </div>
                   <div className="flex gap-4 mt-2 text-sm text-gray-500">
-                    <span>{s.duration} min</span>
                     <span>{Number(s.price) > 0 ? `₹${s.price}` : 'Free'}</span>
                   </div>
                   <div className="flex gap-3 mt-3">

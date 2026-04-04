@@ -520,13 +520,13 @@ router.get('/services', async (req, res, next) => {
 
 router.post('/services', requireRole('owner', 'admin'), async (req, res, next) => {
   try {
-    const { name, description, duration, price } = req.body;
+    const { name, description, price } = req.body;
     if (!name) return res.status(400).json({ error: 'Service name required' });
 
     const { rows } = await pool.query(
-      `INSERT INTO services (tenant_id, name, description, duration, price)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [req.tenantId, name, description, duration || 30, price || 0]
+      `INSERT INTO services (tenant_id, name, description, price)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [req.tenantId, name, description, price || 0]
     );
     res.status(201).json(rows[0]);
   } catch (err) {
@@ -536,14 +536,14 @@ router.post('/services', requireRole('owner', 'admin'), async (req, res, next) =
 
 router.put('/services/:id', requireRole('owner', 'admin'), async (req, res, next) => {
   try {
-    const { name, description, duration, price, isActive } = req.body;
+    const { name, description, price, isActive } = req.body;
     const { rows } = await pool.query(
       `UPDATE services SET 
         name = COALESCE($1, name), description = COALESCE($2, description),
-        duration = COALESCE($3, duration), price = COALESCE($4, price),
-        is_active = COALESCE($5, is_active), updated_at = NOW()
-       WHERE id = $6 AND tenant_id = $7 RETURNING *`,
-      [name, description, duration, price, isActive, req.params.id, req.tenantId]
+        price = COALESCE($3, price),
+        is_active = COALESCE($4, is_active), updated_at = NOW()
+       WHERE id = $5 AND tenant_id = $6 RETURNING *`,
+      [name, description, price, isActive, req.params.id, req.tenantId]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Service not found' });
     res.json(rows[0]);

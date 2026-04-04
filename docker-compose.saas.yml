@@ -84,7 +84,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-change-this-to-a-secure-random-string}
-      APP_URL: ${APP_URL:-https://yourdomain.com}
+      APP_URL: ${APP_URL:-https://api.futurezminds.in}
 
   # ── Admin Frontend (Tenant Dashboard) ───────────────────
   tenant-dashboard:

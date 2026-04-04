@@ -25,7 +25,7 @@ export default function Login({ onLogin }) {
     <div className="min-h-screen flex items-center justify-center bg-gray-900">
       <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">BookingBot</h1>
+          <h1 className="text-2xl font-bold text-gray-900">FutureZMinds</h1>
           <p className="text-gray-500 mt-1">Platform Administration</p>
         </div>
 
@@ -38,7 +38,7 @@ export default function Login({ onLogin }) {
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)}
               className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"
-              placeholder="superadmin@bookingbot.com" required />
+              placeholder="admin@futurezminds.in" required />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>

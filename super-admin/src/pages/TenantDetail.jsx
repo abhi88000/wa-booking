@@ -6,23 +6,15 @@ export default function TenantDetail() {
   const { id } = useParams();
   const [tenant, setTenant] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedPlan, setSelectedPlan] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [resetMsg, setResetMsg] = useState('');
 
   useEffect(() => {
     api.getTenant(id)
-      .then(({ data }) => { setTenant(data); setSelectedPlan(data.plan || 'trial'); })
+      .then(({ data }) => setTenant(data))
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [id]);
-
-  const handlePlanUpdate = async () => {
-    await api.updatePlan(id, { plan: selectedPlan });
-    const { data } = await api.getTenant(id);
-    setTenant(data);
-    alert('Plan updated!');
-  };
 
   const handleToggle = async () => {
     await api.toggleTenant(id);
@@ -119,24 +111,10 @@ export default function TenantDetail() {
         </div>
       </div>
 
-      {/* Plan Management */}
+      {/* Actions */}
       <div className="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <h2 className="font-semibold text-gray-900 mb-4">Subscription Management</h2>
-        <div className="flex items-center gap-4">
-          <div>
-            <label className="text-sm text-gray-500">Current Plan</label>
-            <select value={selectedPlan} onChange={e => setSelectedPlan(e.target.value)}
-              className="ml-3 border rounded-lg px-3 py-2 text-sm">
-              <option value="trial">Trial</option>
-              <option value="starter">Starter (₹999/mo)</option>
-              <option value="professional">Professional (₹2,499/mo)</option>
-              <option value="enterprise">Enterprise (₹7,999/mo)</option>
-            </select>
-          </div>
-          <button onClick={handlePlanUpdate}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700">
-            Update Plan
-          </button>
+        <h2 className="font-semibold text-gray-900 mb-4">Actions</h2>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <button onClick={handleToggle}
             className={`px-4 py-2 rounded-lg text-sm ${tenant.is_active 
               ? 'bg-red-100 text-red-700 hover:bg-red-200' 
@@ -167,7 +145,7 @@ export default function TenantDetail() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {Object.entries(tenant.features || {}).map(([key, enabled]) => (
             <div key={key} className={`px-4 py-3 rounded-lg text-sm ${enabled ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-400'}`}>
-              {enabled ? '✅' : '❌'} {key.replace(/_/g, ' ')}
+              {key.replace(/_/g, ' ')}
             </div>
           ))}
         </div>

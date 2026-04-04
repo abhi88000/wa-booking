@@ -2,14 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
 
-const STATUS_BADGE = {
-  active: 'bg-green-100 text-green-700',
-  trial: 'bg-yellow-100 text-yellow-700',
-  past_due: 'bg-red-100 text-red-700',
-  cancelled: 'bg-gray-100 text-gray-500',
-  expired: 'bg-red-100 text-red-600',
-};
-
 const WA_BADGE = {
   connected: 'bg-green-100 text-green-700',
   pending: 'bg-yellow-100 text-yellow-700',
@@ -57,7 +49,7 @@ export default function Tenants() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex gap-4 items-center border border-gray-100">
+      <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center border border-gray-100">
         <form onSubmit={handleSearch} className="flex-1 flex gap-2">
           <input type="text" placeholder="Search by name or email..." value={search}
             onChange={e => setSearch(e.target.value)}
@@ -74,8 +66,8 @@ export default function Tenants() {
         </select>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* Desktop Table */}
+      <div className="hidden sm:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-gray-500">Loading...</div>
         ) : (
@@ -83,8 +75,6 @@ export default function Tenants() {
             <thead className="bg-gray-50 text-gray-600 text-left">
               <tr>
                 <th className="px-4 py-3 font-medium">Business</th>
-                <th className="px-4 py-3 font-medium">Type</th>
-                <th className="px-4 py-3 font-medium">Plan</th>
                 <th className="px-4 py-3 font-medium">WhatsApp</th>
                 <th className="px-4 py-3 font-medium">Appointments</th>
                 <th className="px-4 py-3 font-medium">Patients</th>
@@ -100,12 +90,6 @@ export default function Tenants() {
                       {t.business_name}
                     </Link>
                     <div className="text-xs text-gray-400">{t.email}</div>
-                  </td>
-                  <td className="px-4 py-3 capitalize">{t.business_type}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_BADGE[t.sub_status] || 'bg-gray-100'}`}>
-                      {t.plan || 'trial'} ({t.sub_status})
-                    </span>
                   </td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${WA_BADGE[t.wa_status] || WA_BADGE.disconnected}`}>
@@ -143,6 +127,37 @@ export default function Tenants() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Mobile Cards */}
+      <div className="sm:hidden space-y-3">
+        {loading ? (
+          <div className="p-8 text-center text-gray-500">Loading...</div>
+        ) : tenants.map(t => (
+          <div key={t.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div className="flex justify-between items-start">
+              <div>
+                <Link to={`/tenants/${t.id}`} className="text-indigo-600 font-medium hover:underline">
+                  {t.business_name}
+                </Link>
+                <p className="text-xs text-gray-400">{t.email}</p>
+              </div>
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${WA_BADGE[t.wa_status] || WA_BADGE.disconnected}`}>
+                {t.wa_status}
+              </span>
+            </div>
+            <div className="flex gap-4 mt-3 text-xs text-gray-500">
+              <span>{t.total_appointments} appts</span>
+              <span>{t.total_patients} patients</span>
+              <span>Joined {new Date(t.created_at).toLocaleDateString()}</span>
+            </div>
+            <button onClick={() => handleToggle(t.id)}
+              className={`mt-3 text-xs px-3 py-1.5 rounded ${t.is_active 
+                ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+              {t.is_active ? 'Deactivate' : 'Activate'}
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -55,7 +55,7 @@ function Sidebar({ onLogout }) {
     <>
       {/* Mobile header */}
       <div className="fixed top-0 left-0 right-0 h-14 bg-gray-900 flex items-center justify-between px-4 sm:hidden z-30">
-        <span className="font-semibold text-white text-sm">BookingBot Admin</span>
+        <span className="font-semibold text-white text-sm">FutureZMinds</span>
         <button onClick={() => setOpen(!open)} className="text-gray-300 p-1">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {open ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -71,7 +71,7 @@ function Sidebar({ onLogout }) {
       <aside className={`fixed top-0 left-0 h-full w-64 bg-gray-900 text-white flex flex-col z-40 transition-transform
         ${open ? 'translate-x-0' : '-translate-x-full'} sm:translate-x-0`}>
         <div className="p-6 border-b border-gray-700">
-          <h1 className="text-xl font-bold">BookingBot</h1>
+          <h1 className="text-xl font-bold">FutureZMinds</h1>
           <p className="text-gray-400 text-sm mt-1">Platform Admin</p>
         </div>
         <nav className="flex-1 p-4 space-y-1">

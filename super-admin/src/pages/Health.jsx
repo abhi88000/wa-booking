@@ -26,8 +26,8 @@ export default function Health() {
     try {
       const res = await api.validateWA(tenantId);
       alert(res.data.valid 
-        ? `✅ WA token is valid!\n${JSON.stringify(res.data.details?.verified_name || '')}` 
-        : `❌ WA token invalid: ${res.data.error}`);
+        ? `WA token is valid! ${JSON.stringify(res.data.details?.verified_name || '')}` 
+        : `WA token invalid: ${res.data.error}`);
       load(); // refresh
     } catch (err) {
       alert('Error validating: ' + (err.response?.data?.error || err.message));
@@ -58,13 +58,13 @@ export default function Health() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">System Health</h1>
-        <button onClick={load} className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300">
-          🔄 Refresh
+        <button onClick={load} className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 text-sm">
+          Refresh
         </button>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         <SummaryCard label="Total Tenants" value={summary.total} color="gray" />
         <SummaryCard label="Healthy" value={summary.healthy} color="green" />
         <SummaryCard label="Warnings" value={summary.warning} color="yellow" />
@@ -73,7 +73,7 @@ export default function Health() {
 
       {/* Critical Issues (show first) */}
       {critical.length > 0 && (
-        <Section title="🔴 Critical" subtitle="These tenants need immediate attention" color="red">
+        <Section title="Critical" subtitle="These tenants need immediate attention" color="red">
           {critical.map(t => (
             <TenantHealthCard key={t.tenantId} tenant={t} 
               onValidateWA={handleValidateWA} 
@@ -86,7 +86,7 @@ export default function Health() {
 
       {/* Warnings */}
       {warnings.length > 0 && (
-        <Section title="🟡 Warnings" subtitle="May need attention soon" color="yellow">
+        <Section title="Warnings" subtitle="May need attention soon" color="yellow">
           {warnings.map(t => (
             <TenantHealthCard key={t.tenantId} tenant={t}
               onValidateWA={handleValidateWA}
@@ -98,8 +98,8 @@ export default function Health() {
       )}
 
       {/* Healthy */}
-      <Section title="🟢 Healthy" subtitle={`${healthy.length} tenants running fine`} color="green">
-        <div className="grid grid-cols-2 gap-2">
+      <Section title="Healthy" subtitle={`${healthy.length} tenants running fine`} color="green">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {healthy.map(t => (
             <div key={t.tenantId} 
               className="flex items-center justify-between bg-white border rounded-lg px-4 py-2 cursor-pointer hover:bg-gray-50"
@@ -108,7 +108,7 @@ export default function Health() {
                 <span className="font-medium">{t.name}</span>
                 <span className="text-gray-400 text-sm ml-2">{t.plan}</span>
               </div>
-              <span className="text-green-500 text-sm">● All good</span>
+              <span className="text-green-500 text-sm">All good</span>
             </div>
           ))}
         </div>
@@ -158,11 +158,11 @@ function TenantHealthCard({ tenant, onValidateWA, onResetConversations, validati
           <button onClick={() => onValidateWA(t.tenantId)}
             disabled={validating === t.tenantId}
             className="px-3 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50">
-            {validating === t.tenantId ? 'Checking...' : '🔍 Test WA'}
+            {validating === t.tenantId ? 'Checking...' : 'Test WA'}
           </button>
           <button onClick={() => onResetConversations(t.tenantId)}
             className="px-3 py-1 text-xs bg-orange-100 text-orange-700 rounded hover:bg-orange-200">
-            🔄 Reset Chats
+            Reset Chats
           </button>
         </div>
       </div>
@@ -173,7 +173,7 @@ function TenantHealthCard({ tenant, onValidateWA, onResetConversations, validati
           <div key={i} className={`text-sm flex items-center gap-2 ${
             issue.level === 'critical' ? 'text-red-600' : 'text-yellow-600'
           }`}>
-            <span>{issue.level === 'critical' ? '🔴' : '🟡'}</span>
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${issue.level === 'critical' ? 'bg-red-500' : 'bg-yellow-500'}`}></span>
             <span>{issue.msg}</span>
           </div>
         ))}

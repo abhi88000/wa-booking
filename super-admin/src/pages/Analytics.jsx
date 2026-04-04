@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../api';
-
-const COLORS = ['#6366f1', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function Analytics() {
   const [data, setData] = useState(null);
@@ -20,7 +18,7 @@ export default function Analytics() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Platform Analytics</h1>
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">Platform Analytics</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Signups */}
@@ -33,36 +31,6 @@ export default function Analytics() {
               <YAxis allowDecimals={false} />
               <Tooltip />
               <Bar dataKey="signups" fill="#6366f1" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Plan Distribution */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="font-semibold text-gray-900 mb-4">Plan Distribution</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <PieChart>
-              <Pie data={data.planDistribution} dataKey="count" nameKey="plan" cx="50%" cy="50%" outerRadius={80} label>
-                {data.planDistribution.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Revenue */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-          <h2 className="font-semibold text-gray-900 mb-4">Monthly Revenue</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={data.revenue}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="month" tickFormatter={m => new Date(m).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' })} fontSize={12} />
-              <YAxis tickFormatter={v => `₹${v}`} />
-              <Tooltip formatter={v => `₹${Number(v).toLocaleString()}`} />
-              <Bar dataKey="revenue" fill="#22c55e" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

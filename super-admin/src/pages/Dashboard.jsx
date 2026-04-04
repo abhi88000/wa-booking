@@ -16,14 +16,11 @@ export default function Dashboard() {
   if (!stats) return <div className="text-red-500 text-center py-20">Failed to load dashboard</div>;
 
   const cards = [
-    { label: 'Total Tenants', value: stats.total_tenants, color: 'bg-indigo-500' },
-    { label: 'Active Tenants', value: stats.active_tenants, color: 'bg-green-500' },
-    { label: 'Live (Active WA)', value: stats.live_tenants, color: 'bg-emerald-500' },
-    { label: 'New (30 days)', value: stats.new_tenants_30d, color: 'bg-blue-500' },
-    { label: 'Paid Subscriptions', value: stats.paid_subs, color: 'bg-purple-500' },
-    { label: 'Trial Users', value: stats.trial_subs, color: 'bg-yellow-500' },
-    { label: 'MRR', value: `₹${Number(stats.mrr || 0).toLocaleString()}`, color: 'bg-pink-500' },
-    { label: 'Appointments (24h)', value: stats.appointments_24h, color: 'bg-teal-500' },
+    { label: 'Total Tenants', value: stats.total_tenants },
+    { label: 'Active Tenants', value: stats.active_tenants },
+    { label: 'Live (Active WA)', value: stats.live_tenants },
+    { label: 'New (30 days)', value: stats.new_tenants_30d },
+    { label: 'Appointments (24h)', value: stats.appointments_24h },
   ];
 
   return (

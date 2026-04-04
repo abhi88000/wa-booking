@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
 export default function Patients() {
@@ -11,7 +10,7 @@ export default function Patients() {
   const [detail, setDetail] = useState(null);
   const [detailData, setDetailData] = useState(null);
   const [form, setForm] = useState({ name: '', phone: '', email: '' });
-  const navigate = useNavigate();
+
 
   useEffect(() => { load(); }, []);
 
@@ -155,12 +154,8 @@ export default function Patients() {
 
               <div className="flex gap-2 mb-6">
                 <button onClick={() => { setDetail(null); openEdit(detail); }}
-                  className="flex-1 text-center text-sm text-indigo-600 border border-indigo-200 rounded-lg py-2 hover:bg-indigo-50">
+                  className="w-full text-center text-sm text-indigo-600 border border-indigo-200 rounded-lg py-2 hover:bg-indigo-50">
                   Edit
-                </button>
-                <button onClick={() => { setDetail(null); navigate('/chats'); }}
-                  className="flex-1 text-center text-sm text-green-600 border border-green-200 rounded-lg py-2 hover:bg-green-50">
-                  View Chat
                 </button>
               </div>
 

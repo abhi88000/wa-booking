@@ -415,7 +415,14 @@ router.get('/doctors/:id/availability', async (req, res, next) => {
       `SELECT slot_duration FROM doctors WHERE id = $1 AND tenant_id = $2`,
       [req.params.id, req.tenantId]
     );
-    res.json({ availability: avail, breaks, slotDuration: doctor[0]?.slot_duration || 30 });
+    const { rows: tenant } = await pool.query(
+      `SELECT timezone FROM tenants WHERE id = $1`, [req.tenantId]
+    );
+    res.json({
+      availability: avail, breaks,
+      slotDuration: doctor[0]?.slot_duration || 30,
+      timezone: tenant[0]?.timezone || 'Asia/Kolkata'
+    });
   } catch (err) {
     next(err);
   }
@@ -423,7 +430,7 @@ router.get('/doctors/:id/availability', async (req, res, next) => {
 
 router.put('/doctors/:id/availability', requireRole('owner', 'admin'), async (req, res, next) => {
   try {
-    const { availability, breaks, slotDuration } = req.body;
+    const { availability, breaks, slotDuration, timezone } = req.body;
     const doctorId = req.params.id;
     const tenantId = req.tenantId;
 
@@ -436,6 +443,14 @@ router.put('/doctors/:id/availability', requireRole('owner', 'admin'), async (re
         await client.query(
           `UPDATE doctors SET slot_duration = $1 WHERE id = $2 AND tenant_id = $3`,
           [slotDuration, doctorId, tenantId]
+        );
+      }
+
+      // Update tenant timezone
+      if (timezone) {
+        await client.query(
+          `UPDATE tenants SET timezone = $1 WHERE id = $2`,
+          [timezone, tenantId]
         );
       }
 
@@ -456,17 +471,21 @@ router.put('/doctors/:id/availability', requireRole('owner', 'admin'), async (re
         }
       }
 
-      // Replace daily breaks (non-date specific)
+      // Replace breaks (daily + date-specific blocks)
       if (breaks) {
         await client.query(
-          `DELETE FROM doctor_breaks WHERE doctor_id = $1 AND tenant_id = $2 AND break_date IS NULL`,
+          `DELETE FROM doctor_breaks WHERE doctor_id = $1 AND tenant_id = $2`,
           [doctorId, tenantId]
         );
         for (const b of breaks) {
+          const isFullDay = b.isFullDay || false;
           await client.query(
             `INSERT INTO doctor_breaks (tenant_id, doctor_id, break_date, start_time, end_time, reason, is_full_day)
              VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-            [tenantId, doctorId, b.breakDate || null, b.startTime, b.endTime, b.reason || 'Break', false]
+            [tenantId, doctorId, b.breakDate || null, 
+             isFullDay ? '00:00' : b.startTime, 
+             isFullDay ? '23:59' : b.endTime, 
+             b.reason || 'Break', isFullDay]
           );
         }
       }

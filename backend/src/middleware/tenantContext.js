@@ -14,11 +14,7 @@ const logger = require('../utils/logger');
 async function loadTenantContext(req, res, next) {
   try {
     const { rows } = await pool.query(
-      `SELECT t.*, s.plan, s.status as sub_status, s.trial_ends_at
-       FROM tenants t
-       LEFT JOIN subscriptions s ON s.tenant_id = t.id
-       WHERE t.id = $1 AND t.is_active = true
-       ORDER BY s.created_at DESC LIMIT 1`,
+      `SELECT * FROM tenants WHERE id = $1 AND is_active = true`,
       [req.tenantId]
     );
 
@@ -26,24 +22,7 @@ async function loadTenantContext(req, res, next) {
       return res.status(404).json({ error: 'Tenant not found or inactive' });
     }
 
-    const tenant = rows[0];
-
-    // Check subscription validity
-    if (tenant.sub_status === 'trial' && new Date(tenant.trial_ends_at) < new Date()) {
-      return res.status(402).json({ 
-        error: 'Trial expired', 
-        message: 'Please upgrade to continue using the service' 
-      });
-    }
-
-    if (tenant.sub_status === 'expired' || tenant.sub_status === 'cancelled') {
-      return res.status(402).json({ 
-        error: 'Subscription inactive',
-        message: 'Please renew your subscription' 
-      });
-    }
-
-    req.tenant = tenant;
+    req.tenant = rows[0];
     next();
   } catch (err) {
     logger.error('loadTenantContext error:', err);

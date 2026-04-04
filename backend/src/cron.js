@@ -7,9 +7,8 @@
 // JOBS:
 // 1. Reminders          — Every 60s   — Send appointment reminders
 // 2. Stuck conversations — Every 15min — Auto-reset abandoned booking flows
-// 3. Trial expirations   — Every 6h    — Expire overdue trials + log warnings
-// 4. WA token validation — Every 1h    — Check if any tenant's WA token died
-// 5. Cleanup old data    — Every 24h   — Clean up old audit logs, mark stale data
+// 3. WA token validation — Every 1h    — Check if any tenant's WA token died
+// 4. Cleanup old data    — Every 24h   — Clean up old audit logs, mark stale data
 
 require('dotenv').config();
 const logger = require('./utils/logger');
@@ -68,46 +67,7 @@ function startStuckConversationJob() {
 }
 
 // ════════════════════════════════════════════════════════════
-// JOB 3: Trial Expirations (every 6h)
-// ════════════════════════════════════════════════════════════
-function startTrialExpirationJob() {
-  setInterval(() => runJob('trial-expiration', async () => {
-    // Warn about trials expiring in 2 days
-    const { rows: expiring } = await pool.query(`
-      SELECT t.id, t.email, t.business_name, s.trial_ends_at
-      FROM tenants t
-      JOIN subscriptions s ON s.tenant_id = t.id
-      WHERE s.status = 'trial' 
-        AND s.trial_ends_at BETWEEN NOW() AND NOW() + INTERVAL '2 days'
-    `);
-    for (const tenant of expiring) {
-      const daysLeft = Math.ceil((new Date(tenant.trial_ends_at) - new Date()) / 86400000);
-      logger.warn(`Trial expiring: ${tenant.business_name} (${tenant.email}) — ${daysLeft} days left`, {
-        tenantId: tenant.id
-      });
-      // Log to audit
-      await pool.query(
-        `INSERT INTO audit_log (tenant_id, user_type, action, details)
-         VALUES ($1, 'system', 'trial_expiring_soon', $2)
-         ON CONFLICT DO NOTHING`,
-        [tenant.id, JSON.stringify({ daysLeft, email: tenant.email })]
-      ).catch(() => {});
-    }
-
-    // Expire overdue trials
-    const { rowCount } = await pool.query(`
-      UPDATE subscriptions SET status = 'expired', updated_at = NOW()
-      WHERE status = 'trial' AND trial_ends_at < NOW()
-    `);
-
-    return (expiring.length + rowCount) > 0 
-      ? `${expiring.length} warnings, ${rowCount} expired` 
-      : undefined;
-  }), 6 * 60 * 60 * 1000);
-}
-
-// ════════════════════════════════════════════════════════════
-// JOB 4: WA Token Validation (every 1h)
+// JOB 3: WA Token Validation (every 1h)
 // ════════════════════════════════════════════════════════════
 function startWATokenCheckJob() {
   setInterval(() => runJob('wa-token-check', async () => {
@@ -136,7 +96,7 @@ function startWATokenCheckJob() {
 }
 
 // ════════════════════════════════════════════════════════════
-// JOB 5: Cleanup (every 24h)
+// JOB 4: Cleanup (every 24h)
 // ════════════════════════════════════════════════════════════
 function startCleanupJob() {
   setInterval(() => runJob('cleanup', async () => {
@@ -180,14 +140,12 @@ async function startCron() {
   // Start all recurring jobs
   startReminderJob();
   startStuckConversationJob();
-  startTrialExpirationJob();
   startWATokenCheckJob();
   startCleanupJob();
 
   logger.info('All cron jobs scheduled:');
   logger.info('  • Reminders:          every 60s');
   logger.info('  • Stuck conversations: every 15min');
-  logger.info('  • Trial expirations:   every 6h');
   logger.info('  • WA token validation: every 1h');
   logger.info('  • Data cleanup:        every 24h');
 }

@@ -1,6 +1,6 @@
 # API Reference
 
-Base URL: `http://localhost:4000` (development) or `https://api.yourdomain.com` (production)
+Base URL: `https://api.yourdomain.com` (or `http://localhost:4000` for local dev)
 
 ---
 
@@ -8,125 +8,65 @@ Base URL: `http://localhost:4000` (development) or `https://api.yourdomain.com` 
 
 ### `GET /health`
 
-No authentication required.
+No auth required.
 
-**Response:**
 ```json
-{
-  "status": "ok",
-  "timestamp": "2025-03-10T12:00:00.000Z"
-}
+{ "status": "ok", "timestamp": "2025-03-10T12:00:00.000Z" }
 ```
 
 ---
 
-## Authentication
+## Auth
 
-### `POST /api/auth/signup` — Register New Business
+### `POST /api/auth/signup`
 
-Creates a new tenant + owner user + 14-day trial subscription.
+Register a new business. Requires a valid invite code.
 
-**Body:**
 ```json
 {
   "businessName": "Dr. Sharma Dental Clinic",
-  "businessType": "clinic",           // clinic|salon|spa|consulting|dental|veterinary|physiotherapy|other
+  "businessType": "clinic",
   "email": "dr.sharma@example.com",
   "phone": "+919876543210",
   "ownerName": "Dr. Ravi Sharma",
   "password": "securepass123",
-  "city": "Mumbai",
-  "country": "IN",                     // optional, default: "IN"
-  "timezone": "Asia/Kolkata"           // optional, default: "Asia/Kolkata"
+  "inviteCode": "FZM-8K2X-NP4R-2026",
+  "timezone": "Asia/Kolkata"
 }
 ```
 
-**Response (201):**
+Returns `201` with JWT token, tenant info, and user info.
+
+### `POST /api/auth/login`
+
 ```json
-{
-  "message": "Account created successfully! Your 14-day free trial has started.",
-  "token": "eyJ...",
-  "tenant": {
-    "id": "uuid",
-    "businessName": "Dr. Sharma Dental Clinic",
-    "slug": "dr-sharma-dental-clinic",
-    "onboardingStatus": "registered"
-  },
-  "user": { "id": "uuid", "email": "dr.sharma@example.com", "name": "Dr. Ravi Sharma", "role": "owner" }
-}
+{ "email": "dr.sharma@example.com", "password": "securepass123" }
 ```
 
----
+Returns JWT token + tenant and user objects.
 
-### `POST /api/auth/login` — Tenant User Login
+### `POST /api/auth/platform/login`
 
-**Body:**
+Super admin login.
+
 ```json
-{
-  "email": "dr.sharma@example.com",
-  "password": "securepass123"
-}
-```
-
-**Response (200):**
-```json
-{
-  "token": "eyJ...",
-  "tenant": { "id": "uuid", "businessName": "Dr. Sharma Dental Clinic" },
-  "user": { "id": "uuid", "email": "...", "name": "...", "role": "owner" }
-}
-```
-
----
-
-### `POST /api/auth/platform/login` — Super Admin Login
-
-**Body:**
-```json
-{
-  "email": "superadmin@bookingbot.com",
-  "password": "your-password"
-}
-```
-
-**Response (200):**
-```json
-{
-  "token": "eyJ...",
-  "admin": { "id": "uuid", "email": "...", "name": "Super Admin", "role": "super_admin" }
-}
+{ "email": "admin@futurezminds.in", "password": "yourpassword" }
 ```
 
 ---
 
 ## Onboarding
 
-All onboarding routes require tenant authentication.
-
-**Header:** `Authorization: Bearer <tenant_token>`
+All routes require tenant auth: `Authorization: Bearer <token>`
 
 ### `GET /api/onboarding/status`
 
-Returns current onboarding progress.
-
-**Response:**
-```json
-{
-  "onboardingStatus": "whatsapp_pending",
-  "businessName": "Dr. Sharma Dental Clinic",
-  "waStatus": "disconnected",
-  "doctorCount": 0,
-  "serviceCount": 0
-}
-```
-
----
+Returns current onboarding progress (WhatsApp connected, doctors added, etc).
 
 ### `POST /api/onboarding/connect-whatsapp`
 
 Validates WhatsApp credentials against Meta API and registers the number.
 
-**Body:**
 ```json
 {
   "phoneNumberId": "123456789012345",
@@ -136,324 +76,122 @@ Validates WhatsApp credentials against Meta API and registers the number.
 }
 ```
 
-**Response (200):**
-```json
-{
-  "message": "WhatsApp connected successfully!",
-  "waStatus": "connected"
-}
-```
-
-**Errors:**
-- `400` — Invalid credentials (Meta API verification failed)
-- `409` — Phone number already registered to another tenant
-
----
-
 ### `POST /api/onboarding/setup-business`
 
-Bulk-inserts doctors, availability, and services.
-
-**Body:**
-```json
-{
-  "doctors": [
-    {
-      "name": "Dr. Priya Sharma",
-      "specialization": "Dentist",
-      "consultationFee": 500,
-      "slotDuration": 30,
-      "availability": [
-        { "day": "monday", "startTime": "09:00", "endTime": "17:00" },
-        { "day": "wednesday", "startTime": "09:00", "endTime": "13:00" }
-      ]
-    }
-  ],
-  "services": [
-    { "name": "Dental Checkup", "duration": 30, "price": 500 },
-    { "name": "Root Canal", "duration": 60, "price": 3000 }
-  ]
-}
-```
-
----
+Bulk-creates doctors with availability and services in one call.
 
 ### `POST /api/onboarding/complete`
 
-Marks onboarding as finished. Changes `onboarding_status` to `active`.
+Marks onboarding as done, sets tenant status to `active`.
 
 ---
 
-## Tenant Admin API
+## Tenant API
 
-All routes prefixed with `/api/tenant`. Requires tenant auth + active subscription.
-
-**Header:** `Authorization: Bearer <tenant_token>`
+All routes require tenant auth. Prefix: `/api/tenant`
 
 ### Dashboard
 
-#### `GET /api/tenant/dashboard`
-
-**Response:**
-```json
-{
-  "stats": {
-    "upcoming": 12,
-    "today": 5,
-    "total_patients": 150,
-    "month_appointments": 45,
-    "month_revenue": 22500
-  },
-  "upcoming": [...],       // Next 10 upcoming appointments
-  "today": [...],          // Today's schedule
-  "plan": "starter",
-  "limits": {
-    "maxDoctors": 3,
-    "maxAppointmentsMonth": 200,
-    "usedAppointmentsMonth": 45
-  }
-}
-```
-
----
+**`GET /api/tenant/dashboard`** — Stats (today's appointments, upcoming, total patients, active doctors) plus upcoming appointment list.
 
 ### Appointments
 
-#### `GET /api/tenant/appointments`
+**`GET /api/tenant/appointments`** — List with filters: `status`, `date`, `doctor_id`, `page`, `limit`
 
-**Query params:** `status`, `date`, `doctor_id`, `page` (default 1), `limit` (default 20)
-
-**Response:**
-```json
-{
-  "appointments": [
-    {
-      "id": "uuid",
-      "appointment_date": "2025-03-10",
-      "start_time": "10:00:00",
-      "end_time": "10:30:00",
-      "status": "confirmed",
-      "doctor_name": "Dr. Priya Sharma",
-      "patient_name": "Rahul Kumar",
-      "patient_phone": "+919876543210",
-      "service_name": "Dental Checkup"
-    }
-  ],
-  "total": 45,
-  "page": 1,
-  "totalPages": 3
-}
-```
-
-#### `PATCH /api/tenant/appointments/:id/status`
-
-**Body:** `{ "status": "confirmed" }` — valid: `confirmed`, `completed`, `cancelled`, `no_show`
-
----
+**`PATCH /api/tenant/appointments/:id/status`** — Update status: `confirmed`, `completed`, `cancelled`, `no_show`
 
 ### Doctors
 
-#### `GET /api/tenant/doctors`
+**`GET /api/tenant/doctors`** — All doctors with availability schedules.
 
-Returns all doctors with their availability schedules.
+**`POST /api/tenant/doctors`** — Add a doctor with availability slots.
 
-#### `POST /api/tenant/doctors` (owner/admin only)
+**`PUT /api/tenant/doctors/:id`** — Update doctor info.
 
-**Body:**
-```json
-{
-  "name": "Dr. Amit Verma",
-  "specialization": "Orthodontist",
-  "phone": "+919876543210",
-  "email": "amit@clinic.com",
-  "consultationFee": 800,
-  "slotDuration": 30,
-  "availability": [
-    { "day": "monday", "startTime": "09:00", "endTime": "17:00" },
-    { "day": "tuesday", "startTime": "09:00", "endTime": "17:00" }
-  ]
-}
-```
+### Availability
 
-**Error (429):** `{ "error": "Doctor limit reached (3). Upgrade your plan.", "upgrade": true }`
+**`GET /api/tenant/availability`** — Returns doctor availability + tenant timezone.
 
-#### `PUT /api/tenant/doctors/:id` (owner/admin only)
-
-Partial update — any field from POST body.
-
----
+**`PUT /api/tenant/availability`** — Save availability for the next 10 days, blocked dates, and timezone.
 
 ### Services
 
-#### `GET /api/tenant/services`
-#### `POST /api/tenant/services` (owner/admin only)
+**`GET /api/tenant/services`** — List all services.
 
-**Body:** `{ "name": "Root Canal", "description": "...", "duration": 60, "price": 3000 }`
-
----
+**`POST /api/tenant/services`** — Add a service: `{ "name": "Checkup", "duration": 30, "price": 500 }`
 
 ### Patients
 
-#### `GET /api/tenant/patients`
+**`GET /api/tenant/patients`** — Search by name or phone. Paginated.
 
-**Query params:** `search` (name/phone), `page`, `limit`
-
----
-
-### Payments
-
-#### `GET /api/tenant/payments`
-
-**Query params:** `status`, `page`, `limit`
-
----
-
-### Chat Messages
-
-#### `GET /api/tenant/chats/:patientId`
-
-Returns WhatsApp conversation history for a patient, ordered chronologically.
-
----
+**`GET /api/tenant/patients/:id`** — Patient detail with appointment history.
 
 ### Settings
 
-#### `GET /api/tenant/settings`
+**`GET /api/tenant/settings`** — Tenant profile, features, WA status.
 
-Returns tenant profile, features, settings, WA status.
-
-#### `PATCH /api/tenant/settings`
-
-**Body (partial update):**
-```json
-{
-  "businessName": "New Name",
-  "phone": "+91...",
-  "address": "...",
-  "settings": {
-    "booking_window_days": 14,
-    "max_bookings_per_day": 50,
-    "auto_confirm": true,
-    "welcome_message": "Welcome! How can I help?"
-  }
-}
-```
+**`PATCH /api/tenant/settings`** — Update business info and booking settings (booking window, max bookings, auto-confirm, welcome message).
 
 ---
 
-### Team Management
+## Platform Admin API
 
-#### `GET /api/tenant/team` (owner/admin only)
-
-Lists all staff members for this tenant.
-
-#### `POST /api/tenant/team` (owner/admin only)
-
-**Body:** `{ "name": "Staff Name", "email": "staff@clinic.com", "password": "temppass", "role": "staff" }`
-
----
-
-## Platform Admin API (Super Admin)
-
-All routes prefixed with `/api/platform`. Requires platform admin auth.
-
-**Header:** `Authorization: Bearer <platform_token>`
+All routes require platform admin auth. Prefix: `/api/platform`
 
 ### `GET /api/platform/dashboard`
 
-**Response:**
-```json
-{
-  "stats": {
-    "totalTenants": 150,
-    "activeTenants": 120,
-    "liveTenants": 85,
-    "newTenantsThisWeek": 12,
-    "paidSubscriptions": 60,
-    "trialSubscriptions": 90,
-    "mrr": 142500,
-    "todayAppointments": 320
-  }
-}
-```
+Returns: total tenants, active tenants, live (onboarded) tenants, new signups (30d), appointments (24h).
 
 ### `GET /api/platform/tenants`
 
-**Query params:** `search`, `status` (active/inactive), `plan`, `page`, `limit`
+List tenants with filters: `status`, `search`, `page`, `limit`
 
 ### `GET /api/platform/tenants/:id`
 
-Full tenant detail with subscription, usage stats.
+Full tenant detail with usage stats.
 
 ### `PATCH /api/platform/tenants/:id/toggle`
 
-Activate/deactivate a tenant.
+Activate or deactivate a tenant.
 
-### `PATCH /api/platform/tenants/:id/plan`
+### `POST /api/platform/tenants/:id/reset-password`
 
-**Body:** `{ "plan": "professional", "maxDoctors": 10, "maxAppointmentsMonth": 1000, "features": {...} }`
+Reset tenant owner's password. Body: `{ "newPassword": "..." }`
 
 ### `GET /api/platform/analytics`
 
-Returns signups per day, revenue per month, plan distribution, top tenants.
+Signups per day (30d) and top tenants by appointment count.
 
----
+### `GET /api/platform/health`
 
-## Billing API
-
-### `GET /api/billing/plans` (public)
-
-Returns all available plans with pricing and features.
-
-### `GET /api/billing/subscription` (tenant auth)
-
-Returns current subscription details.
-
-### `POST /api/billing/subscribe/razorpay` (tenant auth)
-
-**Body:** `{ "planName": "professional", "billingCycle": "monthly" }`
-
-Creates a Razorpay subscription and returns payment link.
-
-### `POST /api/billing/webhook/razorpay` (no auth — webhook)
-
-Handles Razorpay subscription events (activated, charged, cancelled, failed).
-
-### `GET /api/billing/invoices` (tenant auth)
-
-Returns invoice history.
+Health status for all active tenants.
 
 ---
 
 ## WhatsApp Webhook
 
-### `GET /webhook/whatsapp`
+### `GET /api/webhook`
 
-Meta verification endpoint. Validates `hub.verify_token` and returns `hub.challenge`.
+Meta verification endpoint. Validates `hub.verify_token`, returns `hub.challenge`.
 
-### `POST /webhook/whatsapp`
+### `POST /api/webhook`
 
-Receives all incoming WhatsApp messages for ALL tenants. Always returns `200` immediately. Routes to correct tenant via `phone_number_id` lookup in `wa_number_registry`.
+Receives incoming WhatsApp messages for all tenants. Always responds `200` immediately. Routes to the correct tenant via `phone_number_id` lookup.
 
 ---
 
-## Error Responses
-
-All errors follow this format:
+## Error Format
 
 ```json
-{
-  "error": "Human-readable error message"
-}
+{ "error": "Human-readable message" }
 ```
 
 | Status | Meaning |
 |---|---|
-| `400` | Validation error (check request body) |
-| `401` | Missing or invalid auth token |
-| `402` | Subscription expired — upgrade required |
-| `403` | Account deactivated or insufficient permissions |
-| `404` | Resource not found |
-| `409` | Conflict (duplicate email, phone number, etc.) |
-| `429` | Rate limit or plan limit exceeded |
-| `500` | Internal server error |
+| `400` | Validation error |
+| `401` | Missing or invalid token |
+| `403` | Insufficient permissions or account deactivated |
+| `404` | Not found |
+| `409` | Conflict (duplicate email, phone already registered, etc.) |
+| `429` | Rate limit exceeded |
+| `500` | Server error |

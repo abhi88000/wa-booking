@@ -21,9 +21,6 @@ router.get('/dashboard', async (req, res, next) => {
         (SELECT COUNT(*) FROM tenants WHERE is_active = true) as active_tenants,
         (SELECT COUNT(*) FROM tenants WHERE onboarding_status = 'active') as live_tenants,
         (SELECT COUNT(*) FROM tenants WHERE created_at >= NOW() - INTERVAL '30 days') as new_tenants_30d,
-        (SELECT COUNT(*) FROM subscriptions WHERE status = 'active') as paid_subs,
-        (SELECT COUNT(*) FROM subscriptions WHERE status = 'trial') as trial_subs,
-        (SELECT COALESCE(SUM(amount), 0) FROM invoices WHERE status = 'paid' AND EXTRACT(MONTH FROM paid_at) = EXTRACT(MONTH FROM NOW())) as mrr,
         (SELECT COUNT(*) FROM appointments WHERE created_at >= NOW() - INTERVAL '24 hours') as appointments_24h,
         (SELECT COUNT(DISTINCT tenant_id) FROM appointments WHERE created_at >= NOW() - INTERVAL '24 hours') as active_tenants_24h
     `);
@@ -37,7 +34,7 @@ router.get('/dashboard', async (req, res, next) => {
 // ── List All Tenants ──────────────────────────────────────
 router.get('/tenants', async (req, res, next) => {
   try {
-    const { status, search, plan, page = 1, limit = 25 } = req.query;
+    const { status, search, page = 1, limit = 25 } = req.query;
     const offset = (page - 1) * limit;
     let where = 'WHERE 1=1';
     const params = [];
@@ -49,18 +46,15 @@ router.get('/tenants', async (req, res, next) => {
       where += ` AND (t.business_name ILIKE $${idx} OR t.email ILIKE $${idx})`; 
       params.push(`%${search}%`); idx++; 
     }
-    if (plan) { where += ` AND s.plan = $${idx++}`; params.push(plan); }
 
     const { rows } = await pool.query(
       `SELECT t.id, t.business_name, t.slug, t.email, t.phone, t.city, 
               t.business_type, t.wa_status, t.onboarding_status, t.is_active,
               t.created_at,
-              s.plan, s.status as sub_status, s.trial_ends_at,
               (SELECT COUNT(*) FROM appointments WHERE tenant_id = t.id) as total_appointments,
               (SELECT COUNT(*) FROM patients WHERE tenant_id = t.id) as total_patients,
               (SELECT COUNT(*) FROM doctors WHERE tenant_id = t.id) as total_doctors
        FROM tenants t
-       LEFT JOIN subscriptions s ON s.tenant_id = t.id
        ${where}
        ORDER BY t.created_at DESC
        LIMIT $${idx++} OFFSET $${idx++}`,
@@ -68,7 +62,7 @@ router.get('/tenants', async (req, res, next) => {
     );
 
     const countResult = await pool.query(
-      `SELECT COUNT(*) FROM tenants t LEFT JOIN subscriptions s ON s.tenant_id = t.id ${where}`,
+      `SELECT COUNT(*) FROM tenants t ${where}`,
       params
     );
 
@@ -88,12 +82,10 @@ router.get('/tenants/:id', async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT t.*, 
-        s.plan, s.status as sub_status, s.trial_ends_at, s.amount as sub_amount,
         (SELECT COUNT(*) FROM appointments WHERE tenant_id = t.id) as total_appointments,
         (SELECT COUNT(*) FROM patients WHERE tenant_id = t.id) as total_patients,
         (SELECT COUNT(*) FROM doctors WHERE tenant_id = t.id AND is_active = true) as active_doctors
        FROM tenants t
-       LEFT JOIN subscriptions s ON s.tenant_id = t.id
        WHERE t.id = $1`,
       [req.params.id]
     );
@@ -126,39 +118,6 @@ router.patch('/tenants/:id/toggle', async (req, res, next) => {
   }
 });
 
-// ── Update Tenant Plan/Limits ─────────────────────────────
-router.patch('/tenants/:id/plan', async (req, res, next) => {
-  try {
-    const { plan, maxDoctors, maxAppointmentsMonth } = req.body;
-    
-    if (plan) {
-      await pool.query(
-        `UPDATE subscriptions SET plan = $1, status = 'active', updated_at = NOW()
-         WHERE tenant_id = $2`,
-        [plan, req.params.id]
-      );
-    }
-
-    if (maxDoctors || maxAppointmentsMonth) {
-      const updates = [];
-      const values = [];
-      let idx = 1;
-      if (maxDoctors) { updates.push(`max_doctors = $${idx++}`); values.push(maxDoctors); }
-      if (maxAppointmentsMonth) { updates.push(`max_appointments_month = $${idx++}`); values.push(maxAppointmentsMonth); }
-      values.push(req.params.id);
-      
-      await pool.query(
-        `UPDATE tenants SET ${updates.join(', ')}, updated_at = NOW() WHERE id = $${idx}`,
-        values
-      );
-    }
-
-    res.json({ success: true });
-  } catch (err) {
-    next(err);
-  }
-});
-
 // ── Platform Analytics ────────────────────────────────────
 router.get('/analytics', async (req, res, next) => {
   try {
@@ -167,21 +126,6 @@ router.get('/analytics', async (req, res, next) => {
       SELECT DATE(created_at) as date, COUNT(*) as signups
       FROM tenants WHERE created_at >= NOW() - INTERVAL '30 days'
       GROUP BY DATE(created_at) ORDER BY date
-    `);
-
-    // Revenue per month
-    const revenue = await pool.query(`
-      SELECT DATE_TRUNC('month', paid_at) as month, SUM(amount) as revenue
-      FROM invoices WHERE status = 'paid' AND paid_at >= NOW() - INTERVAL '12 months'
-      GROUP BY DATE_TRUNC('month', paid_at) ORDER BY month
-    `);
-
-    // Plan distribution
-    const plans = await pool.query(`
-      SELECT s.plan, COUNT(*) as count
-      FROM subscriptions s
-      JOIN tenants t ON t.id = s.tenant_id AND t.is_active = true
-      GROUP BY s.plan
     `);
 
     // Top tenants by appointments
@@ -196,8 +140,6 @@ router.get('/analytics', async (req, res, next) => {
 
     res.json({
       signups: signups.rows,
-      revenue: revenue.rows,
-      planDistribution: plans.rows,
       topTenants: topTenants.rows
     });
   } catch (err) {

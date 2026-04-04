@@ -9,7 +9,7 @@ const bcrypt = require('bcrypt');
 const Joi = require('joi');
 const pool = require('../db/pool');
 const { authTenant, requireRole } = require('../middleware/auth');
-const { loadTenantContext, requireFeature, checkAppointmentLimit } = require('../middleware/tenantContext');
+const { loadTenantContext } = require('../middleware/tenantContext');
 const logger = require('../utils/logger');
 
 // All tenant routes require auth + tenant context
@@ -656,27 +656,6 @@ router.get('/patients/:id', async (req, res, next) => {
     );
 
     res.json({ ...rows[0], appointments: appts });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// ── PAYMENTS ──────────────────────────────────────────────
-
-router.get('/payments', async (req, res, next) => {
-  try {
-    const { rows } = await pool.query(
-      `SELECT pay.*, p.name as patient_name, p.phone as patient_phone,
-              a.appointment_date, d.name as doctor_name
-       FROM payments pay
-       LEFT JOIN patients p ON p.id = pay.patient_id
-       LEFT JOIN appointments a ON a.id = pay.appointment_id
-       LEFT JOIN doctors d ON d.id = a.doctor_id
-       WHERE pay.tenant_id = $1
-       ORDER BY pay.created_at DESC LIMIT 50`,
-      [req.tenantId]
-    );
-    res.json(rows);
   } catch (err) {
     next(err);
   }

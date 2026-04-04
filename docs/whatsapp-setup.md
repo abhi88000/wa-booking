@@ -1,120 +1,101 @@
-# WhatsApp Business API Setup Guide
+# WhatsApp Business API Setup
+
+How to connect a WhatsApp Business number so patients can book appointments via chat.
 
 ## Prerequisites
 
-1. **Meta Business Account** — [business.facebook.com](https://business.facebook.com)
-2. **Meta Developer Account** — [developers.facebook.com](https://developers.facebook.com)
-3. A verified phone number (not already registered on WhatsApp)
+- A Meta Business Account ([business.facebook.com](https://business.facebook.com))
+- A Meta Developer Account ([developers.facebook.com](https://developers.facebook.com))
+- A phone number not already registered on WhatsApp
 
----
+## 1. Create a Meta App
 
-## Step 1: Create a Meta App
+1. Go to [developers.facebook.com/apps](https://developers.facebook.com/apps/)
+2. Create App > select Business > Next
+3. Name it something like "Clinic WhatsApp Booking"
+4. Select your Business Account > Create App
 
-1. Go to [Meta for Developers](https://developers.facebook.com/apps/)
-2. Click **Create App** → Select **Business** → **Next**
-3. Fill in App name: `Clinic WhatsApp Booking`
-4. Select your Business Account
-5. Click **Create App**
+## 2. Add WhatsApp
 
-## Step 2: Add WhatsApp Product
+1. On the app dashboard, find WhatsApp and click Set Up
+2. Select or create a WhatsApp Business Account
+3. You'll get a temporary test phone number — fine for development
 
-1. On your app dashboard, find **WhatsApp** and click **Set Up**
-2. Select or create a **WhatsApp Business Account**
-3. You'll get a **temporary test phone number** — this is fine for development
+## 3. Get Your Credentials
 
-## Step 3: Get Your Credentials
+From the WhatsApp > API Setup page, grab these:
 
-From the WhatsApp > **API Setup** page, note down:
+| What | Where |
+|---|---|
+| Phone Number ID | API Setup page |
+| WhatsApp Business Account ID | API Setup page |
+| Access Token | API Setup page (temporary, 24h) |
 
-| Credential | Where to Find | .env Variable |
-|---|---|---|
-| Phone Number ID | API Setup page | `WHATSAPP_PHONE_NUMBER_ID` |
-| WhatsApp Business Account ID | API Setup page | `WHATSAPP_BUSINESS_ACCOUNT_ID` |
-| Temporary Access Token | API Setup page | `WHATSAPP_ACCESS_TOKEN` |
+For production, generate a permanent token:
 
-### Generate Permanent Token
+1. Go to Business Settings > System Users
+2. Create a System User with Admin role
+3. Generate Token > select your WhatsApp app
+4. Permissions: `whatsapp_business_management`, `whatsapp_business_messaging`
+5. Copy and save this token
 
-The temporary token expires in 24 hours. For production:
+These credentials get entered during tenant onboarding in the dashboard.
 
-1. Go to **Business Settings** → **System Users**
-2. Create a System User with **Admin** role
-3. Click **Generate Token** → Select your WhatsApp app
-4. Choose permissions: `whatsapp_business_management`, `whatsapp_business_messaging`
-5. Copy and save the token → use as `WHATSAPP_ACCESS_TOKEN`
+## 4. Configure the Webhook
 
-## Step 4: Configure Webhook
+This tells Meta where to send incoming messages.
 
-1. In your app dashboard, go to **WhatsApp** → **Configuration**
-2. Click **Edit** next to Webhook
-3. Set:
-   - **Callback URL**: `https://your-domain.com/webhook/whatsapp-webhook`
-     - For local dev: Use [ngrok](https://ngrok.com) → `ngrok http 5678` → use the HTTPS URL
-   - **Verify Token**: Set any string (e.g., `my_secret_verify_token`) → same as `WHATSAPP_VERIFY_TOKEN` in .env
-4. Click **Verify and Save**
-5. Under **Webhook fields**, subscribe to: `messages`
+1. In your app dashboard: WhatsApp > Configuration
+2. Click Edit next to Webhook
+3. Callback URL: `https://api.yourdomain.com/api/webhook`
+4. Verify Token: the same value as `WA_VERIFY_TOKEN` in your `.env`
+5. Click Verify and Save
+6. Under Webhook fields, subscribe to: `messages`
 
-## Step 5: Register Phone Number (Production)
+For local development, use [ngrok](https://ngrok.com) to tunnel to your local machine.
 
-For production with your own number:
+## 5. Register Your Phone Number (Production)
 
-1. Go to **WhatsApp** → **Phone Numbers**
-2. Click **Add Phone Number**
-3. Follow the verification process (SMS or voice call)
-4. Complete the **Business Verification** process
+To use your own number instead of the test number:
 
-## Step 6: Create Message Templates
+1. WhatsApp > Phone Numbers > Add Phone Number
+2. Verify via SMS or voice call
+3. Complete Meta's Business Verification process
 
-For sending outbound messages (reminders), you need approved templates:
+## 6. Message Templates (Optional)
 
-1. Go to **WhatsApp** → **Message Templates**
-2. Create templates for:
+If you want to send outbound reminders, you need approved templates.
 
-### Appointment Reminder (24h)
+1. WhatsApp > Message Templates > Create
+2. Example reminder template:
+
 ```
-Name: appointment_reminder_24h
+Name: appointment_reminder
 Category: UTILITY
 Language: English
 
-Header: Appointment Reminder ⏰
-Body: Hi {{1}}! This is a reminder for your appointment tomorrow.
+Body:
+Hi {{1}}, this is a reminder for your appointment tomorrow.
 
-👨‍⚕️ Doctor: {{2}}
-📅 Date: {{3}}
-🕐 Time: {{4}}
+Doctor: {{2}}
+Date: {{3}}
+Time: {{4}}
 
 Please arrive 10 minutes early.
-
-Footer: Reply CANCEL to cancel
-Buttons: [Confirm] [Reschedule]
 ```
 
-### Appointment Confirmation
-```
-Name: appointment_confirmed
-Category: UTILITY
-Language: English
-
-Body: ✅ Your appointment is confirmed!
-
-📋 ID: {{1}}
-👨‍⚕️ Doctor: {{2}}
-📅 Date: {{3}}
-🕐 Time: {{4}}
-
-See you there! 😊
-```
-
-3. Wait for template approval (usually 1-24 hours)
+3. Submit for review (usually approved within a few hours)
 
 ## Testing
 
-1. Add your test phone number to recipients in **API Setup**
-2. Send a test message from the API Setup page
-3. Reply from your WhatsApp to trigger the webhook
+1. Add your test phone number in API Setup
+2. Send a test message from the Meta console
+3. Reply from WhatsApp to trigger the webhook and start the booking flow
 
 ## Pricing
 
-- **First 1,000 conversations/month**: FREE
-- Service conversations: ~₹0.30 per conversation (India)
-- Marketing conversations: ~₹0.75 per conversation (India)
-- See [Meta WhatsApp Pricing](https://developers.facebook.com/docs/whatsapp/pricing)
+Meta charges per conversation, not per message:
+
+- First 1,000 service conversations per month: free
+- After that: roughly 0.30 INR per service conversation (India rates)
+- See [Meta's pricing page](https://developers.facebook.com/docs/whatsapp/pricing) for current rates

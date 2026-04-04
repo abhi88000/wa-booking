@@ -67,9 +67,6 @@ app.use('/api/platform', require('./routes/platform'));
 // Tenant Admin APIs (each business's admin panel)
 app.use('/api/tenant', require('./routes/tenant'));
 
-// Subscription & Billing webhooks
-app.use('/api/billing', require('./routes/billing'));
-
 // ── Error Handling ─────────────────────────────────────────
 
 // 404

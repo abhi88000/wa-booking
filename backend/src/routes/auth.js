@@ -74,20 +74,13 @@ router.post('/signup', async (req, res, next) => {
       [tenantId, value.email, passwordHash, value.ownerName]
     );
 
-    // Create trial subscription
-    await pool.query(
-      `INSERT INTO subscriptions (tenant_id, plan, status, trial_ends_at)
-       VALUES ($1, 'trial', 'trial', NOW() + INTERVAL '14 days')`,
-      [tenantId]
-    );
-
     // Generate token
     const token = signTenantToken(user[0], tenantId);
 
     logger.info(`New tenant registered: ${value.businessName} (${tenantId})`);
 
     res.status(201).json({
-      message: 'Account created successfully! Your 14-day free trial has started.',
+      message: 'Account created successfully!',
       token,
       tenant: {
         id: tenantId,

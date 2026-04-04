@@ -1,122 +1,81 @@
 # Production Deployment Guide
 
-## Overview
+Covers deploying the WhatsApp booking platform to a VPS with Docker. Written for Ubuntu on AWS EC2 but should work on any Linux box with Docker.
 
-This guide covers deploying BookingBot SaaS to production. The stack runs on **any VPS** (DigitalOcean, Hetzner, AWS EC2, Azure VM) with Docker installed.
-
-**Recommended minimum specs**: 2 vCPU, 4GB RAM, 40GB SSD (handles ~500 tenants)
+Minimum specs: 2 vCPU, 4 GB RAM, 40 GB disk.
 
 ## Prerequisites
 
-- Ubuntu 22.04+ (or any Docker-compatible OS)
-- Docker Engine 24+ and Docker Compose v2
-- Domain name with DNS access
-- SSL certificate (we'll use Let's Encrypt)
-- SMTP server (for emails — optional)
+- Ubuntu 22.04 or later
+- Docker Engine 24+ with Compose v2
+- A domain with DNS access
+- SSH access to the server
 
-## Step 1: Server Setup
+## 1. Server Setup
 
 ```bash
-# Update system
 sudo apt update && sudo apt upgrade -y
 
-# Install Docker
+# install docker
 curl -fsSL https://get.docker.com -o get-docker.sh
 sudo sh get-docker.sh
 sudo usermod -aG docker $USER
 
-# Install Docker Compose (v2 is built-in with newer Docker)
+# verify
 docker compose version
 
-# Clone your project
-git clone <your-repo-url> /opt/bookingbot
-cd /opt/bookingbot
+# clone the repo
+git clone git@github.com:abhi88000/wa-booking.git /home/ubuntu/wa-booking
+cd /home/ubuntu/wa-booking
 ```
 
-## Step 2: Environment Configuration
+## 2. Environment Variables
 
-Create the `.env` file with all production values:
+Create a `.env` in the project root:
 
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-### Complete Environment Variables
+The four variables that matter:
 
 ```env
-# ─── Database ───────────────────────────────────────────
-DB_USER=bookingbot
-DB_PASSWORD=<GENERATE: openssl rand -hex 32>
-DB_HOST=postgres
-DB_PORT=5432
-DB_NAME=wa_booking_saas
-DB_POOL_MAX=20
-
-# ─── Redis ──────────────────────────────────────────────
-REDIS_URL=redis://redis:6379
-
-# ─── Authentication ────────────────────────────────────
-JWT_SECRET=<GENERATE: openssl rand -hex 64>
-
-
-# ─── WhatsApp (Central Webhook) ───────────────────────
-# This is the verify token YOU set — same value goes in Meta webhook config
-WA_VERIFY_TOKEN=<GENERATE: openssl rand -hex 16>
-
-# ─── Razorpay (Billing) ──────────────────────────────
-RAZORPAY_KEY_ID=rzp_live_...
-RAZORPAY_KEY_SECRET=...
-RAZORPAY_WEBHOOK_SECRET=...
-
-# ─── Application URLs ─────────────────────────────────
-APP_URL=https://api.bookingbot.in
-CORS_ORIGINS=https://app.bookingbot.in,https://admin.bookingbot.in
-
-# ─── n8n (Optional) ───────────────────────────────────
-N8N_USER=admin
-N8N_PASSWORD=<GENERATE: openssl rand -hex 16>
-
-# ─── Node Environment ─────────────────────────────────
-NODE_ENV=production
-PORT=4000
+DB_USER=postgres
+DB_PASSWORD=postgres
+JWT_SECRET=<generate with: openssl rand -hex 32>
+WA_VERIFY_TOKEN=<any random string — same value goes in Meta webhook config>
 ```
 
-## Step 3: DNS Configuration
+Everything else (DB_HOST, REDIS_URL, APP_URL, CORS_ORIGINS) has sensible defaults in `docker-compose.saas.yml`.
 
-Set up the following DNS records (A records pointing to your server IP):
+## 3. DNS Records
+
+Point these A records to your server's public IP:
 
 | Subdomain | Purpose |
 |---|---|
-| `api.bookingbot.in` | Backend API + WhatsApp webhook |
-| `app.bookingbot.in` | Tenant dashboard |
-| `admin.bookingbot.in` | Super admin panel |
-| `n8n.bookingbot.in` | n8n (optional) |
+| `api.yourdomain.com` | Backend API + WhatsApp webhook |
+| `book.yourdomain.com` | Tenant dashboard |
+| `hub.yourdomain.com` | Super admin panel |
 
-## Step 4: SSL with Nginx Reverse Proxy
-
-Create an Nginx reverse proxy with Let's Encrypt SSL:
+## 4. Nginx + SSL
 
 ```bash
-# Install Nginx and Certbot
 sudo apt install nginx certbot python3-certbot-nginx -y
-
-# Get certificates
-sudo certbot --nginx -d api.bookingbot.in -d app.bookingbot.in -d admin.bookingbot.in
+sudo certbot --nginx -d api.yourdomain.com -d book.yourdomain.com -d hub.yourdomain.com
 ```
 
-Create Nginx config:
+Example Nginx config (`/etc/nginx/sites-available/wa-booking`):
 
 ```nginx
-# /etc/nginx/sites-available/bookingbot
-
 # Backend API
 server {
     listen 443 ssl http2;
-    server_name api.bookingbot.in;
+    server_name api.yourdomain.com;
 
-    ssl_certificate /etc/letsencrypt/live/api.bookingbot.in/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/api.bookingbot.in/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/api.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.yourdomain.com/privkey.pem;
 
     client_max_body_size 5m;
 
@@ -132,10 +91,10 @@ server {
 # Tenant Dashboard
 server {
     listen 443 ssl http2;
-    server_name app.bookingbot.in;
+    server_name book.yourdomain.com;
 
-    ssl_certificate /etc/letsencrypt/live/app.bookingbot.in/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/app.bookingbot.in/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/book.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/book.yourdomain.com/privkey.pem;
 
     location / {
         proxy_pass http://127.0.0.1:3000;
@@ -144,13 +103,13 @@ server {
     }
 }
 
-# Super Admin Panel
+# Super Admin
 server {
     listen 443 ssl http2;
-    server_name admin.bookingbot.in;
+    server_name hub.yourdomain.com;
 
-    ssl_certificate /etc/letsencrypt/live/admin.bookingbot.in/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/admin.bookingbot.in/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/hub.yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/hub.yourdomain.com/privkey.pem;
 
     location / {
         proxy_pass http://127.0.0.1:3001;
@@ -159,175 +118,125 @@ server {
     }
 }
 
-# HTTP to HTTPS redirect
+# redirect HTTP
 server {
     listen 80;
-    server_name api.bookingbot.in app.bookingbot.in admin.bookingbot.in;
+    server_name api.yourdomain.com book.yourdomain.com hub.yourdomain.com;
     return 301 https://$host$request_uri;
 }
 ```
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/bookingbot /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/wa-booking /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-## Step 5: Build & Launch
+## 5. Build and Start
 
 ```bash
-cd /opt/bookingbot
-
-# Build and start all services
+cd /home/ubuntu/wa-booking
 docker compose -f docker-compose.saas.yml up -d --build
+```
 
-# Check all services are running
+Check everything came up:
+
+```bash
 docker compose -f docker-compose.saas.yml ps
-
-# Check logs
 docker compose -f docker-compose.saas.yml logs -f backend
 ```
 
-## Step 6: Initialize Platform Admin
+## 6. Create the Platform Admin
+
+Connect to the database and insert an admin user. You can do this through pgAdmin or from the command line:
 
 ```bash
-# Generate a bcrypt password hash
-docker compose -f docker-compose.saas.yml exec backend \
-  node -e "require('bcrypt').hash('YourSecurePassword',10).then(h=>console.log(h))"
-
-# Update the seed admin password
 docker compose -f docker-compose.saas.yml exec postgres \
-  psql -U bookingbot -d wa_booking_saas -c \
-  "UPDATE platform_admins SET password_hash = '\$2b\$10\$YOUR_HASH' WHERE email = 'superadmin@bookingbot.com';"
+  psql -U postgres -d wa_booking_saas -c \
+  "INSERT INTO platform_admins (id, email, password_hash, name, role)
+   VALUES (gen_random_uuid(), 'admin@yourdomain.com',
+           crypt('yourpassword', gen_salt('bf', 10)),
+           'Admin', 'super_admin');"
 ```
 
-## Step 7: Configure WhatsApp Webhook
+Then log in at `https://hub.yourdomain.com`.
 
-1. Go to [Meta Developer Console](https://developers.facebook.com/)
-2. Select your app → WhatsApp → Configuration
-3. Set webhook URL: `https://api.bookingbot.in/webhook/whatsapp`
-4. Set verify token: (same as `WA_VERIFY_TOKEN` in .env)
+## 7. Configure WhatsApp Webhook
+
+1. Open [Meta Developer Console](https://developers.facebook.com/)
+2. Go to your app > WhatsApp > Configuration
+3. Set webhook URL: `https://api.yourdomain.com/api/webhook`
+4. Set verify token: same value as `WA_VERIFY_TOKEN` in your `.env`
 5. Subscribe to: `messages`
-6. Click "Verify and Save"
+6. Click Verify and Save
 
-## Step 8: Verify Everything
+## 8. Verify
 
 ```bash
-# Health check
-curl https://api.bookingbot.in/health
+# health check
+curl https://api.yourdomain.com/health
 
-# Check database
-docker compose -f docker-compose.saas.yml exec postgres \
-  psql -U bookingbot -d wa_booking_saas -c "SELECT COUNT(*) FROM tenants;"
-
-# Test WhatsApp webhook verification
-curl "https://api.bookingbot.in/webhook/whatsapp?hub.mode=subscribe&hub.verify_token=YOUR_TOKEN&hub.challenge=test123"
-# Should return: test123
+# webhook verification (should echo back the challenge)
+curl "https://api.yourdomain.com/api/webhook?hub.mode=subscribe&hub.verify_token=YOUR_TOKEN&hub.challenge=test123"
 ```
 
-## Backup Strategy
-
-### Automated Daily Backups
+## Deploying Updates
 
 ```bash
-# Create backup script
-cat > /opt/bookingbot/scripts/backup.sh << 'EOF'
+cd /home/ubuntu/wa-booking
+git pull origin main
+docker compose -f docker-compose.saas.yml up -d --build backend cron-worker tenant-dashboard super-admin
+```
+
+Only the services you name get rebuilt. Postgres and Redis keep running.
+
+## Backups
+
+Simple cron-based daily backup:
+
+```bash
 #!/bin/bash
-BACKUP_DIR="/opt/backups/bookingbot"
+# /home/ubuntu/wa-booking/scripts/backup.sh
+BACKUP_DIR="/home/ubuntu/backups"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 mkdir -p $BACKUP_DIR
 
-# Database backup
-docker compose -f /opt/bookingbot/docker-compose.saas.yml exec -T postgres \
-  pg_dump -U bookingbot wa_booking_saas | gzip > $BACKUP_DIR/db_$TIMESTAMP.sql.gz
+docker compose -f /home/ubuntu/wa-booking/docker-compose.saas.yml exec -T postgres \
+  pg_dump -U postgres wa_booking_saas | gzip > $BACKUP_DIR/db_$TIMESTAMP.sql.gz
 
-# Keep last 30 days
+# keep last 30 days
 find $BACKUP_DIR -name "*.sql.gz" -mtime +30 -delete
-
-echo "Backup completed: db_$TIMESTAMP.sql.gz"
-EOF
-
-chmod +x /opt/bookingbot/scripts/backup.sh
-
-# Add to crontab (daily at 2 AM)
-(crontab -l 2>/dev/null; echo "0 2 * * * /opt/bookingbot/scripts/backup.sh >> /var/log/bookingbot-backup.log 2>&1") | crontab -
 ```
 
-### Restore from Backup
+Add to crontab: `0 2 * * * /home/ubuntu/wa-booking/scripts/backup.sh`
+
+Restore:
 
 ```bash
-gunzip < /opt/backups/bookingbot/db_20250101_020000.sql.gz | \
+gunzip < /home/ubuntu/backups/db_20250101_020000.sql.gz | \
   docker compose -f docker-compose.saas.yml exec -T postgres \
-  psql -U bookingbot wa_booking_saas
+  psql -U postgres wa_booking_saas
 ```
 
-## Monitoring
-
-### Basic Health Monitoring
+## Logs
 
 ```bash
-# Add to crontab (every 5 minutes)
-cat > /opt/bookingbot/scripts/healthcheck.sh << 'EOF'
-#!/bin/bash
-STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://api.bookingbot.in/health)
-if [ "$STATUS" != "200" ]; then
-  echo "ALERT: BookingBot API down! Status: $STATUS" | mail -s "BookingBot Down" you@email.com
-  docker compose -f /opt/bookingbot/docker-compose.saas.yml restart backend
-fi
-EOF
-```
-
-### Log Monitoring
-
-```bash
-# View real-time backend logs
+# backend logs
 docker compose -f docker-compose.saas.yml logs -f backend --tail 100
 
-# View cron worker logs
+# cron worker
 docker compose -f docker-compose.saas.yml logs -f cron-worker --tail 100
 
-# View all service status
+# everything
 docker compose -f docker-compose.saas.yml ps
 ```
 
-## Updating / Deploying New Versions
-
-```bash
-cd /opt/bookingbot
-
-# Pull latest code
-git pull origin main
-
-# Rebuild and restart (zero-downtime for frontends)
-docker compose -f docker-compose.saas.yml up -d --build
-
-# If database schema changed, run migrations:
-docker compose -f docker-compose.saas.yml exec postgres \
-  psql -U bookingbot -d wa_booking_saas -f /path/to/migration.sql
-```
-
-## Cost Estimates
-
-| Component | Provider | Monthly Cost |
-|---|---|---|
-| VPS (2 vCPU, 4GB) | DigitalOcean / Hetzner | $12-24 |
-| Domain | Any registrar | ~$1 |
-| WhatsApp API | Meta | Free (each tenant pays own) |
-| **Total platform cost** | | **~$13-25/mo** |
-
-At ₹999/mo starter plan with just 20 paying customers = ₹19,980/mo revenue (~$240).
-
 ## Production Checklist
 
-- [ ] Strong passwords for DB, JWT, admin accounts
-- [ ] SSL certificates configured and auto-renewing
-- [ ] WhatsApp webhook verified and working
-- [ ] Platform admin account created with real password
-- [ ] Database backups automated
-- [ ] Health monitoring configured
-- [ ] CORS origins set to actual domains
-- [ ] Rate limiting tested
-- [ ] Log rotation configured
-- [ ] Firewall: only ports 80, 443, 22 exposed
-- [ ] Redis password set (if exposed)
-- [ ] n8n protected with strong credentials (or disabled)
+- [ ] Strong JWT_SECRET and DB password
+- [ ] SSL certificates auto-renewing (certbot handles this)
+- [ ] WhatsApp webhook verified
+- [ ] Platform admin account created
+- [ ] Database backups scheduled
+- [ ] Firewall: only ports 22, 80, 443 open
+- [ ] Elastic IP attached (so IP doesn't change on reboot)

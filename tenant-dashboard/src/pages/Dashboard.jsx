@@ -20,18 +20,14 @@ export default function Dashboard() {
     { label: "Today's Appointments", value: data.stats.today, color: 'text-indigo-600' },
     { label: 'Upcoming', value: data.stats.upcoming, color: 'text-blue-600' },
     { label: 'Total Patients', value: data.stats.total_patients, color: 'text-green-600' },
-    { label: 'Revenue (Month)', value: `₹${Number(data.stats.month_revenue || 0).toLocaleString()}`, color: 'text-purple-600' },
+    { label: 'Active Doctors', value: data.stats.active_doctors || 0, color: 'text-purple-600' },
   ];
 
   return (
     <div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Dashboard</h1>
-        <div className="text-sm text-gray-500">
-          Plan: <span className="font-medium text-indigo-600 capitalize">{data.plan}</span>
-          {' • '}
-          {data.limits.usedAppointmentsMonth}/{data.limits.maxAppointmentsMonth} appointments used
-        </div>
+
       </div>
 
       {/* Stats */}

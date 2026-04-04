@@ -107,7 +107,7 @@ export default function Settings() {
         <div className="flex items-center gap-3">
           <span className={`px-3 py-1 rounded-full text-sm font-medium
             ${settings.wa_status === 'connected' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-            {settings.wa_status === 'connected' ? '✅ Connected' : '⚠️ Not Connected'}
+            {settings.wa_status === 'connected' ? 'Connected' : 'Not Connected'}
           </span>
           {settings.wa_phone_number && (
             <span className="text-sm text-gray-500">{settings.wa_phone_number}</span>
@@ -121,7 +121,7 @@ export default function Settings() {
         <div className="grid grid-cols-2 gap-2">
           {Object.entries(settings.features || {}).map(([key, enabled]) => (
             <div key={key} className={`text-sm px-3 py-2 rounded ${enabled ? 'text-green-700' : 'text-gray-400'}`}>
-              {enabled ? '✅' : '🔒'} {key.replace(/_/g, ' ')}
+              {key.replace(/_/g, ' ')}
             </div>
           ))}
         </div>

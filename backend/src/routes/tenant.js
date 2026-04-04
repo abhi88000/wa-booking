@@ -27,8 +27,8 @@ router.get('/dashboard', async (req, res, next) => {
           (SELECT COUNT(*) FROM appointments WHERE tenant_id = $1 AND status = 'confirmed' AND appointment_date >= CURRENT_DATE) as upcoming,
           (SELECT COUNT(*) FROM appointments WHERE tenant_id = $1 AND appointment_date = CURRENT_DATE AND status NOT IN ('cancelled', 'rescheduled')) as today,
           (SELECT COUNT(*) FROM patients WHERE tenant_id = $1) as total_patients,
-          (SELECT COUNT(*) FROM appointments WHERE tenant_id = $1 AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW())) as month_appointments,
-          (SELECT COALESCE(SUM(amount), 0) FROM payments WHERE tenant_id = $1 AND status = 'paid' AND EXTRACT(MONTH FROM paid_at) = EXTRACT(MONTH FROM NOW())) as month_revenue
+          (SELECT COUNT(*) FROM doctors WHERE tenant_id = $1 AND is_active = true) as active_doctors,
+          (SELECT COUNT(*) FROM appointments WHERE tenant_id = $1 AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW())) as month_appointments
       `, [tid]),
       pool.query(`
         SELECT a.id, a.appointment_date, a.start_time, a.status, 

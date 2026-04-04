@@ -252,6 +252,7 @@ class BookingEngine {
     const state = this.patient.wa_conversation_state;
     const settings = this.tenant.settings || {};
     const windowDays = settings.booking_window_days || 14;
+    const tz = this.tenant.timezone || 'Asia/Kolkata';
 
     // Get doctor's available days
     const { rows: availability } = await pool.query(
@@ -263,17 +264,17 @@ class BookingEngine {
     const availableDays = new Set(availability.map(a => a.day));
     const dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     
-    // Generate next available dates
+    // Generate next available dates using tenant's timezone
     const dates = [];
-    const today = new Date();
+    const now = new Date(new Date().toLocaleString('en-US', { timeZone: tz }));
     for (let i = 1; i <= windowDays && dates.length < 10; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
+      const date = new Date(now);
+      date.setDate(now.getDate() + i);
       const dayName = dayMap[date.getDay()];
       
       if (availableDays.size === 0 || availableDays.has(dayName)) {
         // Check doctor breaks
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
         const { rows: breaks } = await pool.query(
           `SELECT 1 FROM doctor_breaks 
            WHERE doctor_id = $1 AND break_date = $2 AND is_full_day = true`,
@@ -283,7 +284,7 @@ class BookingEngine {
         if (breaks.length === 0) {
           dates.push({
             id: `date_${dateStr}`,
-            title: date.toLocaleDateString('en-IN', { 
+            title: date.toLocaleDateString('en-US', { 
               weekday: 'short', month: 'short', day: 'numeric' 
             }),
             description: dateStr

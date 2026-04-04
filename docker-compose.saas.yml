@@ -62,8 +62,8 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-change-this-to-a-secure-random-string}
       WA_VERIFY_TOKEN: ${WA_VERIFY_TOKEN:-bookingbot-verify-2024}
-      APP_URL: ${APP_URL:-https://yourdomain.com}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001}
+      APP_URL: ${APP_URL:-https://api.futurezminds.in}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://book.futurezminds.in,https://hub.futurezminds.in,http://localhost:3000,http://localhost:3001}
       RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
       RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
 
@@ -74,6 +74,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     command: ["node", "src/cron.js"]
     environment:
       NODE_ENV: production
@@ -82,6 +84,9 @@ services:
       DB_NAME: wa_booking_saas
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-change-this-to-a-secure-random-string}
+      APP_URL: ${APP_URL:-https://yourdomain.com}
 
   # ── n8n (Optional — for advanced workflow automation) ────
   n8n:

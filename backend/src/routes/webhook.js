@@ -13,7 +13,7 @@ const router = express.Router();
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
 const WhatsAppService = require('../services/whatsapp');
-const BookingEngine = require('../services/bookingEngine');
+const MessageRouter = require('../services/messageRouter');
 
 // ── In-memory circuit breaker (resets on restart) ─────────
 // Prevents hammering a tenant whose WA token is broken
@@ -211,11 +211,11 @@ async function processMessage(tenant, msg, contact, phoneNumberId) {
   // Log incoming message
   await logMessage(tenant.id, patient.id, senderPhone, 'inbound', messageType, content, waMessageId);
 
-  // Route to booking engine
+  // Route to message router (decides which module handles it)
   const wa = new WhatsAppService(tenant);
-  const engine = new BookingEngine(tenant, patient, wa);
+  const router = new MessageRouter(tenant, patient, wa);
   
-  await engine.handleMessage(content, messageType, interactiveData);
+  await router.handleMessage(content, messageType, interactiveData);
 }
 
 // ── Get Or Create Patient ─────────────────────────────────

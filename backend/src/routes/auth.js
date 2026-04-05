@@ -108,7 +108,7 @@ router.post('/login', async (req, res, next) => {
 
     // Find user across all tenants
     const { rows } = await pool.query(
-      `SELECT u.*, t.id as tenant_id, t.business_name, t.is_active as tenant_active
+      `SELECT u.*, t.id as tenant_id, t.business_name, t.is_active as tenant_active, t.features
        FROM tenant_users u
        JOIN tenants t ON t.id = u.tenant_id
        WHERE u.email = $1 AND u.is_active = true`,
@@ -137,7 +137,7 @@ router.post('/login', async (req, res, next) => {
 
     res.json({
       token,
-      tenant: { id: user.tenant_id, businessName: user.business_name },
+      tenant: { id: user.tenant_id, businessName: user.business_name, features: user.features || {} },
       user: { id: user.id, email: user.email, name: user.name, role: user.role }
     });
   } catch (err) {

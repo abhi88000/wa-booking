@@ -118,6 +118,38 @@ router.patch('/tenants/:id/toggle', async (req, res, next) => {
   }
 });
 
+// ── Update Tenant Features ────────────────────────────────
+router.patch('/tenants/:id/features', async (req, res, next) => {
+  try {
+    const { features } = req.body;
+    if (!features || typeof features !== 'object') {
+      return res.status(400).json({ error: 'features object required' });
+    }
+
+    // Only allow known feature keys
+    const allowed = ['booking', 'payment_collection', 'ai_chatbot', 'broadcast',
+                     'multi_doctor', 'reminders', 'analytics', 'custom_branding', 'google_calendar'];
+    const sanitized = {};
+    for (const key of allowed) {
+      if (features[key] !== undefined) {
+        sanitized[key] = Boolean(features[key]);
+      }
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE tenants SET features = features || $1::jsonb, updated_at = NOW()
+       WHERE id = $2 RETURNING id, business_name, features`,
+      [JSON.stringify(sanitized), req.params.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Tenant not found' });
+
+    logger.info(`Tenant ${rows[0].id} features updated:`, sanitized);
+    res.json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── Platform Analytics ────────────────────────────────────
 router.get('/analytics', async (req, res, next) => {
   try {

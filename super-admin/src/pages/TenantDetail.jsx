@@ -8,6 +8,23 @@ export default function TenantDetail() {
   const [loading, setLoading] = useState(true);
   const [newPassword, setNewPassword] = useState('');
   const [resetMsg, setResetMsg] = useState('');
+  const [savingFeatures, setSavingFeatures] = useState(false);
+
+  // Module definitions — the 4 core WhatsApp solutions
+  const MODULES = [
+    { key: 'booking', label: 'Appointment Booking', desc: 'Menu-driven doctor/service/date/time booking' },
+    { key: 'payment_collection', label: 'Payments & Invoicing', desc: 'Send payment links, collect payments via WhatsApp' },
+    { key: 'ai_chatbot', label: 'AI Chatbot', desc: 'GPT-powered assistant for FAQs and queries' },
+    { key: 'broadcast', label: 'Broadcast & Marketing', desc: 'Bulk template messages, promos, announcements' },
+  ];
+
+  // Extra feature flags
+  const EXTRA_FEATURES = [
+    { key: 'multi_doctor', label: 'Multi Doctor' },
+    { key: 'reminders', label: 'Reminders' },
+    { key: 'analytics', label: 'Analytics' },
+    { key: 'custom_branding', label: 'Custom Branding' },
+  ];
 
   useEffect(() => {
     api.getTenant(id)
@@ -34,6 +51,18 @@ export default function TenantDetail() {
     } catch (err) {
       setResetMsg(err.response?.data?.error || 'Reset failed');
     }
+  };
+
+  const handleFeatureToggle = async (key) => {
+    const current = tenant.features || {};
+    const updated = { [key]: !current[key] };
+    setSavingFeatures(true);
+    try {
+      const { data } = await api.updateFeatures(id, updated);
+      setTenant({ ...tenant, features: data.features });
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to update feature');
+    } finally { setSavingFeatures(false); }
   };
 
   if (loading) return <div className="text-gray-500 text-center py-20">Loading...</div>;
@@ -139,15 +168,45 @@ export default function TenantDetail() {
         </div>
       </div>
 
-      {/* Feature Flags */}
+      {/* WhatsApp Modules */}
       <div className="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-        <h2 className="font-semibold text-gray-900 mb-4">Features</h2>
+        <h2 className="font-semibold text-gray-900 mb-1">WhatsApp Modules</h2>
+        <p className="text-xs text-gray-400 mb-4">Toggle which solutions this tenant can use</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {MODULES.map(mod => {
+            const enabled = tenant.features?.[mod.key] === true;
+            return (
+              <div key={mod.key} className={`flex items-center justify-between p-4 rounded-lg border ${enabled ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
+                <div>
+                  <p className={`text-sm font-medium ${enabled ? 'text-green-800' : 'text-gray-500'}`}>{mod.label}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{mod.desc}</p>
+                </div>
+                <button onClick={() => handleFeatureToggle(mod.key)} disabled={savingFeatures}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${enabled ? 'bg-green-500' : 'bg-gray-300'}`}>
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${enabled ? 'translate-x-5' : ''}`} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Extra Features */}
+      <div className="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <h2 className="font-semibold text-gray-900 mb-4">Additional Features</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {Object.entries(tenant.features || {}).map(([key, enabled]) => (
-            <div key={key} className={`px-4 py-3 rounded-lg text-sm ${enabled ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-400'}`}>
-              {key.replace(/_/g, ' ')}
-            </div>
-          ))}
+          {EXTRA_FEATURES.map(feat => {
+            const enabled = tenant.features?.[feat.key] === true;
+            return (
+              <div key={feat.key} className="flex items-center justify-between px-4 py-3 rounded-lg bg-gray-50">
+                <span className={`text-sm ${enabled ? 'text-green-700' : 'text-gray-400'}`}>{feat.label}</span>
+                <button onClick={() => handleFeatureToggle(feat.key)} disabled={savingFeatures}
+                  className={`relative w-9 h-5 rounded-full transition-colors ${enabled ? 'bg-green-500' : 'bg-gray-300'}`}>
+                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${enabled ? 'translate-x-4' : ''}`} />
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

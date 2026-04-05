@@ -69,13 +69,14 @@ CREATE TABLE tenants (
   
   -- Feature flags
   features          JSONB DEFAULT '{
-    "ai_chatbot": true,
-    "google_calendar": false,
+    "booking": true,
     "payment_collection": false,
-    "custom_branding": false,
+    "ai_chatbot": false,
+    "broadcast": false,
     "multi_doctor": true,
     "reminders": true,
-    "analytics": false
+    "analytics": false,
+    "custom_branding": false
   }',
   
   -- Settings

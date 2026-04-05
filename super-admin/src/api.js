@@ -31,6 +31,7 @@ export default {
   getTenants: (params) => api.get('/platform/tenants', { params }),
   getTenant: (id) => api.get(`/platform/tenants/${id}`),
   toggleTenant: (id) => api.patch(`/platform/tenants/${id}/toggle`),
+  updateFeatures: (id, features) => api.patch(`/platform/tenants/${id}/features`, { features }),
   updatePlan: (id, data) => api.patch(`/platform/tenants/${id}/plan`, data),
   resetPassword: (id, newPassword) => api.post(`/platform/tenants/${id}/reset-password`, { newPassword }),
   

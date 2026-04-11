@@ -48,10 +48,17 @@ class MessageRouter {
   async handleMessage(content, messageType, interactiveData) {
     const state = this.patient.wa_conversation_state || { state: 'new' };
     const msg = (content || '').toLowerCase().trim();
+    const currentState = state.state || 'new';
 
-    // If patient is mid-conversation in a module, route there
-    if (state.module) {
-      return await this._routeToModule(state.module, content, messageType, interactiveData);
+    // If patient is mid-conversation in booking flow, route straight to booking engine
+    // (any state other than 'new' or 'idle' means they're mid-flow)
+    const bookingStates = [
+      'awaiting_doctor', 'awaiting_service', 'awaiting_date', 'awaiting_time',
+      'awaiting_confirm', 'awaiting_cancel', 'awaiting_reschedule',
+      'reschedule_awaiting_date', 'reschedule_awaiting_time'
+    ];
+    if (bookingStates.includes(currentState)) {
+      return await this._routeToModule('booking', content, messageType, interactiveData);
     }
 
     // Check if content matches a module trigger

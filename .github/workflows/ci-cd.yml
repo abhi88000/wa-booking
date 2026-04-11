@@ -1,0 +1,108 @@
+# ============================================================
+# CI/CD Pipeline — Test, Build, Deploy
+# ============================================================
+# Triggers on push to main branch
+# 1. Runs tests
+# 2. Builds Docker images
+# 3. Deploys to EC2 via SSH
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Run Tests ────────────────────────────────────────────
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: wa_booking_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Initialize test database
+        run: psql -h localhost -U postgres -d wa_booking_test -f db/init-saas.sql
+        env:
+          PGPASSWORD: postgres
+
+      - name: Run tests
+        working-directory: backend
+        run: npm test
+        env:
+          NODE_ENV: test
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: wa_booking_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET: test-secret-key
+
+      - name: Build tenant-dashboard
+        working-directory: tenant-dashboard
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build super-admin
+        working-directory: super-admin
+        run: |
+          npm ci
+          npm run build
+
+  # ── Deploy to EC2 ────────────────────────────────────────
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/wa-booking
+            git pull origin main
+            docker compose -f docker-compose.saas.yml up -d --build
+            echo "Deployed at $(date)"

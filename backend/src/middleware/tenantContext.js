@@ -23,6 +23,10 @@ async function loadTenantContext(req, res, next) {
     }
 
     req.tenant = rows[0];
+
+    // Set tenant context for Row-Level Security
+    await pool.query(`SET LOCAL app.tenant_id = '${req.tenantId}'`);
+
     next();
   } catch (err) {
     logger.error('loadTenantContext error:', err);

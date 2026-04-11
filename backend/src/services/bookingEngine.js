@@ -123,9 +123,10 @@ class BookingEngine {
     );
 
     if (doctors.length === 0) {
-      return await this.wa.sendText(this.phone,
-        'Sorry, no doctors are available right now. Please try again later.'
-      );
+      return await this.wa.sendButtons(this.phone, {
+        bodyText: 'Sorry, no doctors are available right now.',
+        buttons: [{ id: 'book', title: 'Try Again' }]
+      });
     }
 
     // If only 1 doctor, skip selection
@@ -175,7 +176,13 @@ class BookingEngine {
     );
 
     if (rows.length === 0) {
-      return await this.wa.sendText(this.phone, 'Invalid selection. Please try again.');
+      return await this.wa.sendButtons(this.phone, {
+        bodyText: 'Invalid selection. Please use the menu buttons.',
+        buttons: [
+          { id: 'book', title: 'Start Over' },
+          { id: 'cancel_booking', title: 'Cancel' }
+        ]
+      });
     }
 
     await this.setState({ 
@@ -203,7 +210,14 @@ class BookingEngine {
     );
 
     if (services.length === 0) {
-      return await this.wa.sendText(this.phone, 'No services available. Please contact us directly.');
+      await this.setState({ state: 'idle' });
+      return await this.wa.sendButtons(this.phone, {
+        bodyText: 'No services available for this doctor.',
+        buttons: [
+          { id: 'book', title: 'Choose Another' },
+          { id: 'cancel_booking', title: 'Cancel' }
+        ]
+      });
     }
 
     if (services.length === 1) {
@@ -250,7 +264,13 @@ class BookingEngine {
     );
 
     if (rows.length === 0) {
-      return await this.wa.sendText(this.phone, 'Invalid selection. Please try again.');
+      return await this.wa.sendButtons(this.phone, {
+        bodyText: 'Invalid selection. Please use the menu buttons.',
+        buttons: [
+          { id: 'book', title: 'Start Over' },
+          { id: 'cancel_booking', title: 'Cancel' }
+        ]
+      });
     }
 
     await this.setState({
@@ -324,9 +344,14 @@ class BookingEngine {
     }
 
     if (dates.length === 0) {
-      return await this.wa.sendText(this.phone,
-        'Sorry, no available dates in the next few weeks. Please try again later.'
-      );
+      await this.setState({ state: 'idle' });
+      return await this.wa.sendButtons(this.phone, {
+        bodyText: 'Sorry, no available dates in the next few weeks.',
+        buttons: [
+          { id: 'book', title: 'Try Again' },
+          { id: 'cancel_booking', title: 'Cancel' }
+        ]
+      });
     }
 
     // Add cancel option at the end
@@ -418,7 +443,11 @@ class BookingEngine {
     );
 
     if (avail.length === 0) {
-      return await this.wa.sendText(this.phone, 'Doctor is not available on this day.');
+      await this.wa.sendButtons(this.phone, 'Doctor is not available on this day. Please pick another date.', [
+        { id: 'back_to_dates', title: '📅 Pick Another Date' },
+        { id: 'cancel_booking', title: '✕ Cancel' }
+      ]);
+      return;
     }
 
     // Get existing appointments for this day
@@ -476,9 +505,13 @@ class BookingEngine {
     }
 
     if (slots.length === 0) {
-      return await this.wa.sendText(this.phone,
-        'No available slots on this date. Please choose another date.'
-      );
+      return await this.wa.sendButtons(this.phone, {
+        bodyText: 'No available slots on this date.',
+        buttons: [
+          { id: 'book', title: 'Choose Another Date' },
+          { id: 'cancel_booking', title: 'Cancel' }
+        ]
+      });
     }
 
     await this.wa.sendList(this.phone, {
@@ -493,6 +526,10 @@ class BookingEngine {
     if (content === 'cancel_booking') {
       await this.setState({ state: 'idle' });
       return await this.wa.sendText(this.phone, 'Booking cancelled. Send "hi" to start over.');
+    }
+    if (content === 'back_to_dates') {
+      await this.setState({ ...state, state: 'awaiting_date' });
+      return await this.showDateOptions(state.doctorId);
     }
     const time = content.replace('time_', '');
     // Get doctor's slot_duration for end time calculation
@@ -580,6 +617,15 @@ class BookingEngine {
       logger.info(`Appointment created: ${appointment.id}`, {
         tenantId: this.tenantId, patientPhone: this.phone
       });
+    } else {
+      // Gibberish or unexpected input — re-show confirmation buttons
+      await this.wa.sendButtons(this.phone, {
+        bodyText: 'Please confirm or cancel your appointment:',
+        buttons: [
+          { id: 'confirm_yes', title: 'Confirm' },
+          { id: 'confirm_no', title: 'Cancel' }
+        ]
+      });
     }
   }
 
@@ -599,9 +645,10 @@ class BookingEngine {
     );
 
     if (rows.length === 0) {
-      return await this.wa.sendText(this.phone,
-        'You have no upcoming appointments.\n\nType "book" to schedule one!'
-      );
+      return await this.wa.sendButtons(this.phone, {
+        bodyText: 'You have no upcoming appointments.',
+        buttons: [{ id: 'book', title: 'Book Appointment' }]
+      });
     }
 
     let msg = '📋 *Your Upcoming Appointments*\n\n';
@@ -637,16 +684,22 @@ class BookingEngine {
     );
 
     if (rows.length === 0) {
-      return await this.wa.sendText(this.phone, 'No appointments to cancel.');
+      return await this.wa.sendButtons(this.phone, {
+        bodyText: 'No appointments to cancel.',
+        buttons: [{ id: 'book', title: 'Book Appointment' }]
+      });
     }
 
     const sections = [{
       title: 'Select to Cancel',
-      rows: rows.map(a => ({
-        id: `cancel_${a.id}`,
-        title: `${a.doctor_name}`.substring(0, 24),
-        description: `${a.appointment_date} at ${this.formatTime(a.start_time)}`
-      }))
+      rows: [
+        ...rows.map(a => ({
+          id: `cancel_${a.id}`,
+          title: `${a.doctor_name}`.substring(0, 24),
+          description: `${a.appointment_date} at ${this.formatTime(a.start_time)}`
+        })),
+        { id: 'cancel_booking', title: '✕ Go Back', description: 'Return to main menu' }
+      ]
     }];
 
     await this.wa.sendList(this.phone, {
@@ -673,16 +726,22 @@ class BookingEngine {
     );
 
     if (rows.length === 0) {
-      return await this.wa.sendText(this.phone, 'No appointments to reschedule.');
+      return await this.wa.sendButtons(this.phone, {
+        bodyText: 'No appointments to reschedule.',
+        buttons: [{ id: 'book', title: 'Book Appointment' }]
+      });
     }
 
     const sections = [{
       title: 'Select to Reschedule',
-      rows: rows.map(a => ({
-        id: `resched_${a.id}`,
-        title: `${a.doctor_name}`.substring(0, 24),
-        description: `${a.appointment_date} at ${this.formatTime(a.start_time)}`
-      }))
+      rows: [
+        ...rows.map(a => ({
+          id: `resched_${a.id}`,
+          title: `${a.doctor_name}`.substring(0, 24),
+          description: `${a.appointment_date} at ${this.formatTime(a.start_time)}`
+        })),
+        { id: 'cancel_booking', title: '✕ Go Back', description: 'Return to main menu' }
+      ]
     }];
 
     await this.wa.sendList(this.phone, {
@@ -696,6 +755,10 @@ class BookingEngine {
 
   // ── Handle Cancel Selection ──────────────────────────────
   async handleCancelSelection(content, interactiveData, state) {
+    if (content === 'cancel_booking') {
+      await this.setState({ state: 'idle' });
+      return await this.wa.sendText(this.phone, 'OK, going back. Send "hi" to see the menu.');
+    }
     const appointmentId = content.replace('cancel_', '');
 
     const { rows } = await pool.query(
@@ -709,7 +772,13 @@ class BookingEngine {
 
     if (rows.length === 0) {
       await this.setState({ state: 'idle' });
-      return await this.wa.sendText(this.phone, 'Invalid selection. Type "cancel" to try again.');
+      return await this.wa.sendButtons(this.phone, {
+        bodyText: 'Invalid selection.',
+        buttons: [
+          { id: 'cancel', title: 'Try Again' },
+          { id: 'cancel_booking', title: 'Go Back' }
+        ]
+      });
     }
 
     await pool.query(
@@ -737,6 +806,10 @@ class BookingEngine {
 
   // ── Handle Reschedule Selection ─────────────────────────
   async handleRescheduleSelection(content, interactiveData, state) {
+    if (content === 'cancel_booking') {
+      await this.setState({ state: 'idle' });
+      return await this.wa.sendText(this.phone, 'OK, going back. Send "hi" to see the menu.');
+    }
     const appointmentId = content.replace('resched_', '');
 
     const { rows } = await pool.query(
@@ -751,7 +824,13 @@ class BookingEngine {
 
     if (rows.length === 0) {
       await this.setState({ state: 'idle' });
-      return await this.wa.sendText(this.phone, 'Invalid selection. Type "reschedule" to try again.');
+      return await this.wa.sendButtons(this.phone, {
+        bodyText: 'Invalid selection.',
+        buttons: [
+          { id: 'reschedule', title: 'Try Again' },
+          { id: 'cancel_booking', title: 'Go Back' }
+        ]
+      });
     }
 
     const appt = rows[0];
@@ -769,6 +848,10 @@ class BookingEngine {
 
   // ── Handle Reschedule Date Selection ────────────────────
   async handleRescheduleDateSelection(content, interactiveData, state) {
+    if (content === 'cancel_booking') {
+      await this.setState({ state: 'idle' });
+      return await this.wa.sendText(this.phone, 'Reschedule cancelled. Send "hi" to start over.');
+    }
     const dateStr = content.replace('date_', '');
 
     await this.setState({
@@ -782,6 +865,10 @@ class BookingEngine {
 
   // ── Handle Reschedule Time Selection ────────────────────
   async handleRescheduleTimeSelection(content, interactiveData, state) {
+    if (content === 'cancel_booking') {
+      await this.setState({ state: 'idle' });
+      return await this.wa.sendText(this.phone, 'Reschedule cancelled. Send "hi" to start over.');
+    }
     const time = content.replace('time_', '');
     // Get doctor's slot_duration for end time calculation
     const { rows: docSlot } = await pool.query('SELECT slot_duration FROM doctors WHERE id = $1', [state.doctorId]);

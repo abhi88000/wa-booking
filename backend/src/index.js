@@ -11,6 +11,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const logger = require('./utils/logger');
 const pool = require('./db/pool');
+const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -58,35 +59,30 @@ app.get('/health', (req, res) => {
 app.use('/webhook', require('./routes/webhook'));
 
 // Public APIs (tenant onboarding)
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/onboarding', require('./routes/onboarding'));
+app.use('/api/v1/auth', require('./routes/auth'));
+app.use('/api/v1/onboarding', require('./routes/onboarding'));
 
 // Platform Admin APIs (Super Admin)
-app.use('/api/platform', require('./routes/platform'));
+app.use('/api/v1/platform', require('./routes/platform'));
 
 // Tenant Admin APIs (each business's admin panel)
+app.use('/api/v1/tenant', require('./routes/tenant'));
+
+// ── Backward-compatible aliases (remove after frontend migration) ──
+app.use('/api/auth', require('./routes/auth'));
+app.use('/api/onboarding', require('./routes/onboarding'));
+app.use('/api/platform', require('./routes/platform'));
 app.use('/api/tenant', require('./routes/tenant'));
 
 // ── Error Handling ─────────────────────────────────────────
 
 // 404
 app.use((req, res) => {
-  res.status(404).json({ error: 'Not found' });
+  res.status(404).json({ error: 'Not found', code: 'NOT_FOUND' });
 });
 
-// Global error handler
-app.use((err, req, res, next) => {
-  logger.error('Unhandled error:', { 
-    message: err.message, 
-    stack: err.stack,
-    path: req.path 
-  });
-  res.status(err.status || 500).json({
-    error: process.env.NODE_ENV === 'production' 
-      ? 'Internal server error' 
-      : err.message
-  });
-});
+// Global error handler (centralized)
+app.use(errorHandler);
 
 // ── Start Server ───────────────────────────────────────────
 

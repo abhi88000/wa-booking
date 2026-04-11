@@ -119,6 +119,33 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* Payment Settings */}
+      <div className="bg-white rounded-xl shadow-sm p-6 border mb-6">
+        <h2 className="font-semibold text-gray-900 mb-4">Payment Settings</h2>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">UPI ID</label>
+            <input value={s.upi_id || ''} placeholder="e.g. clinic@upi or 9876543210@paytm"
+              onChange={e => setSettings({...settings, settings: {...s, upi_id: e.target.value}})}
+              className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+            <p className="text-xs text-gray-400 mt-1">Patients will be able to pay via UPI after booking. Leave blank to disable.</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">UPI Display Name</label>
+            <input value={s.upi_display_name || ''} placeholder="e.g. Dr. Sharma Clinic"
+              onChange={e => setSettings({...settings, settings: {...s, upi_display_name: e.target.value}})}
+              className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+            <p className="text-xs text-gray-400 mt-1">Name shown to the patient in their UPI app</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <input type="checkbox" id="sendPaymentAfterBooking" checked={s.send_payment_after_booking === true}
+              onChange={e => setSettings({...settings, settings: {...s, send_payment_after_booking: e.target.checked}})}
+              className="w-4 h-4 text-slate-700" />
+            <label htmlFor="sendPaymentAfterBooking" className="text-sm">Automatically send payment link after booking</label>
+          </div>
+        </div>
+      </div>
+
       {/* WhatsApp Connection */}
       <div className="bg-white rounded-xl shadow-sm p-6 border mb-6">
         <div className="flex items-center justify-between mb-4">

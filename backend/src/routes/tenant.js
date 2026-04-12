@@ -222,9 +222,9 @@ router.patch('/appointments/:id/status', async (req, res, next) => {
 router.post('/appointments', requireRole('owner', 'admin', 'staff'), checkAppointmentLimit, async (req, res, next) => {
   try {
     const schema = Joi.object({
-      doctorId: Joi.number().required(),
-      serviceId: Joi.number().allow(null),
-      patientId: Joi.number().allow(null),
+      doctorId: Joi.string().required(),
+      serviceId: Joi.string().allow(null, ''),
+      patientId: Joi.string().allow(null, ''),
       patientName: Joi.string().allow('', null),
       patientPhone: Joi.string().allow('', null),
       appointmentDate: Joi.string().required(),
@@ -304,6 +304,30 @@ router.post('/appointments', requireRole('owner', 'admin', 'staff'), checkAppoin
           }
         } catch (waErr) {
           logger.warn('Failed to notify doctor on manual booking:', waErr.message);
+        }
+
+        // Notify patient about their booking via WhatsApp
+        const patientPhone = value.patientPhone || null;
+        if (patientPhone) {
+          try {
+            const wa = new WhatsAppService(req.tenant);
+            const { rows: docRow2 } = await pool.query(
+              `SELECT name FROM doctors WHERE id = $1 AND tenant_id = $2`,
+              [value.doctorId, req.tenantId]
+            );
+            const docName = docRow2[0]?.name || 'Doctor';
+            await wa.sendText(patientPhone,
+              `✅ *Appointment Confirmed*\n\n` +
+              `Hi ${value.patientName || 'there'}, your appointment has been booked:\n\n` +
+              `👨‍⚕️ ${docName}\n` +
+              `📅 ${formatDateDD(value.appointmentDate)}\n` +
+              `🕐 ${formatTime12(value.startTime)}\n\n` +
+              `You'll receive a reminder before your appointment.\n` +
+              `— ${req.tenant.business_name}`
+            );
+          } catch (waErr) {
+            logger.warn('Failed to notify patient on manual booking:', waErr.message);
+          }
         }
       }
 

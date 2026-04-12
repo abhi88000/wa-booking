@@ -341,8 +341,8 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
     setSaving(true);
     try {
       await api.createAppointment({
-        doctorId: parseInt(form.doctorId),
-        serviceId: form.serviceId ? parseInt(form.serviceId) : null,
+        doctorId: form.doctorId,
+        serviceId: form.serviceId || null,
         patientId: form.patientId || null,
         patientPhone: form.patientPhone,
         patientName: form.patientName,

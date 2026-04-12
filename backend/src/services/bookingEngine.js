@@ -765,50 +765,55 @@ class BookingEngine {
         );
 
         await client.query('COMMIT');
-        client.release();
 
         const appointment = rows[0];
 
-      // Create reminders — only if the reminder time is still in the future
-      const appointmentDateTime = new Date(`${state.appointmentDate}T${state.startTime}`);
-      const now = new Date();
-      
-      const remind24h = new Date(appointmentDateTime);
-      remind24h.setHours(remind24h.getHours() - 24);
-      
-      const remind1h = new Date(appointmentDateTime);
-      remind1h.setHours(remind1h.getHours() - 1);
+        // Create reminders — only if the reminder time is still in the future
+        const appointmentDateTime = new Date(`${state.appointmentDate}T${state.startTime}`);
+        const now = new Date();
+        
+        const remind24h = new Date(appointmentDateTime);
+        remind24h.setHours(remind24h.getHours() - 24);
+        
+        const remind1h = new Date(appointmentDateTime);
+        remind1h.setHours(remind1h.getHours() - 1);
 
-      const reminders = [];
-      if (remind24h > now) reminders.push({ time: remind24h, type: '24h' });
-      if (remind1h > now) reminders.push({ time: remind1h, type: '1h' });
+        const reminders = [];
+        if (remind24h > now) reminders.push({ time: remind24h, type: '24h' });
+        if (remind1h > now) reminders.push({ time: remind1h, type: '1h' });
 
-      if (reminders.length > 0) {
-        const values = reminders.map((_, i) => `($1, $2, $${i*2+3}, $${i*2+4})`).join(', ');
-        const params = [this.tenantId, appointment.id];
-        reminders.forEach(r => { params.push(r.time, r.type); });
-        await pool.query(`INSERT INTO reminders (tenant_id, appointment_id, remind_at, type) VALUES ${values}`, params);
+        if (reminders.length > 0) {
+          const values = reminders.map((_, i) => `($1, $2, $${i*2+3}, $${i*2+4})`).join(', ');
+          const params = [this.tenantId, appointment.id];
+          reminders.forEach(r => { params.push(r.time, r.type); });
+          await pool.query(`INSERT INTO reminders (tenant_id, appointment_id, remind_at, type) VALUES ${values}`, params);
+        }
+
+        // Send confirmation
+        const statusText = this.tenant.settings?.auto_confirm ? 'Confirmed' : 'Pending Confirmation';
+        await this.wa.sendText(this.phone,
+          `✅ *Appointment ${statusText}!*\n\n` +
+          `👨‍⚕️ ${state.doctorName}\n` +
+          `📅 ${this.formatDate(state.appointmentDate)}\n` +
+          `🕐 ${this.formatTime(state.startTime)}\n\n` +
+          `You'll receive a reminder before your appointment.\n` +
+          `Type "status" anytime to check your appointments.`
+        );
+
+        // Notify the doctor/clinic staff about new booking
+        await this.notifyDoctor(state, appointment);
+
+        await this.setState({ state: 'idle' });
+
+        logger.info(`Appointment created: ${appointment.id}`, {
+          tenantId: this.tenantId, patientPhone: this.phone
+        });
+      } catch (txErr) {
+        await client.query('ROLLBACK');
+        throw txErr;
+      } finally {
+        client.release();
       }
-
-      // Send confirmation
-      const statusText = this.tenant.settings?.auto_confirm ? 'Confirmed' : 'Pending Confirmation';
-      await this.wa.sendText(this.phone,
-        `✅ *Appointment ${statusText}!*\n\n` +
-        `👨‍⚕️ ${state.doctorName}\n` +
-        `📅 ${this.formatDate(state.appointmentDate)}\n` +
-        `🕐 ${this.formatTime(state.startTime)}\n\n` +
-        `You'll receive a reminder before your appointment.\n` +
-        `Type "status" anytime to check your appointments.`
-      );
-
-      // Notify the doctor/clinic staff about new booking
-      await this.notifyDoctor(state, appointment);
-
-      await this.setState({ state: 'idle' });
-
-      logger.info(`Appointment created: ${appointment.id}`, {
-        tenantId: this.tenantId, patientPhone: this.phone
-      });
     } else {
       // Gibberish or unexpected input — re-show confirmation buttons
       await this.wa.sendButtons(this.phone, {
@@ -1258,42 +1263,47 @@ class BookingEngine {
       );
 
       await client.query('COMMIT');
-      client.release();
 
       const appointment = rows[0];
 
-    // Create reminders
-    const appointmentDateTime = new Date(`${state.appointmentDate}T${time}`);
-    const now = new Date();
+      // Create reminders
+      const appointmentDateTime = new Date(`${state.appointmentDate}T${time}`);
+      const now = new Date();
 
-    const remind24h = new Date(appointmentDateTime);
-    remind24h.setHours(remind24h.getHours() - 24);
-    const remind1h = new Date(appointmentDateTime);
-    remind1h.setHours(remind1h.getHours() - 1);
+      const remind24h = new Date(appointmentDateTime);
+      remind24h.setHours(remind24h.getHours() - 24);
+      const remind1h = new Date(appointmentDateTime);
+      remind1h.setHours(remind1h.getHours() - 1);
 
-    const reminders = [];
-    if (remind24h > now) reminders.push({ time: remind24h, type: '24h' });
-    if (remind1h > now) reminders.push({ time: remind1h, type: '1h' });
+      const reminders = [];
+      if (remind24h > now) reminders.push({ time: remind24h, type: '24h' });
+      if (remind1h > now) reminders.push({ time: remind1h, type: '1h' });
 
-    if (reminders.length > 0) {
-      const values = reminders.map((_, i) => `($1, $2, $${i*2+3}, $${i*2+4})`).join(', ');
-      const params = [this.tenantId, appointment.id];
-      reminders.forEach(r => { params.push(r.time, r.type); });
-      await pool.query(`INSERT INTO reminders (tenant_id, appointment_id, remind_at, type) VALUES ${values}`, params);
+      if (reminders.length > 0) {
+        const values = reminders.map((_, i) => `($1, $2, $${i*2+3}, $${i*2+4})`).join(', ');
+        const params = [this.tenantId, appointment.id];
+        reminders.forEach(r => { params.push(r.time, r.type); });
+        await pool.query(`INSERT INTO reminders (tenant_id, appointment_id, remind_at, type) VALUES ${values}`, params);
+      }
+
+      await this.wa.sendText(this.phone,
+        `🔄 *Appointment Rescheduled!*\n\n` +
+        `👨‍⚕️ ${state.doctorName}\n` +
+        `📅 ${this.formatDate(state.appointmentDate)}\n` +
+        `🕐 ${this.formatTime(time)}\n\n` +
+        `You'll receive a reminder before your appointment.`
+      );
+
+      await this.setState({ state: 'idle' });
+      logger.info(`Appointment rescheduled: ${state.rescheduleAppointmentId} → ${appointment.id}`, {
+        tenantId: this.tenantId, phone: this.phone
+      });
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
     }
-
-    await this.wa.sendText(this.phone,
-      `🔄 *Appointment Rescheduled!*\n\n` +
-      `👨‍⚕️ ${state.doctorName}\n` +
-      `📅 ${this.formatDate(state.appointmentDate)}\n` +
-      `🕐 ${this.formatTime(time)}\n\n` +
-      `You'll receive a reminder before your appointment.`
-    );
-
-    await this.setState({ state: 'idle' });
-    logger.info(`Appointment rescheduled: ${state.rescheduleAppointmentId} → ${appointment.id}`, {
-      tenantId: this.tenantId, phone: this.phone
-    });
   }
 
   // ── Send Help ───────────────────────────────────────────

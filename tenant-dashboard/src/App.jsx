@@ -186,13 +186,14 @@ function Sidebar({ onLogout, onBranchSwitch }) {
             </Link>
           ))}
         </nav>
-        <div className="p-3 border-t">
-          {!hasBranches && (
-            <button onClick={() => setShowAddBranch(true)}
-              className="w-full text-left px-3 py-2 text-gray-400 hover:text-gray-600 transition text-xs mb-1">
-              + Add another branch
-            </button>
-          )}
+        <div className="p-3 border-t space-y-1">
+          <button onClick={() => setShowAddBranch(true)}
+            className="w-full flex items-center gap-2 px-3 py-2 text-slate-600 hover:bg-slate-50 rounded-lg transition text-sm">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Add Clinic / Branch
+          </button>
           <button onClick={onLogout}
             className="w-full text-left px-3 py-2 text-gray-400 hover:text-gray-600 transition text-sm">
             Log out

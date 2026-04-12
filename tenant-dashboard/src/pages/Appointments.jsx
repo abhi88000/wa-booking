@@ -174,7 +174,7 @@ export default function Appointments() {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLOR[a.status]}`}>
                       {a.status?.replace('_', ' ')}
                     </span>
-                    {a.rescheduled_from && a.notes?.startsWith('Follow-up') && (
+                    {a.rescheduled_from && (
                       <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-500">follow-up</span>
                     )}
                   </td>
@@ -205,7 +205,7 @@ export default function Appointments() {
                   {a.status?.replace('_', ' ')}
                 </span>
               </div>
-              {a.rescheduled_from && a.notes?.startsWith('Follow-up') && (
+              {a.rescheduled_from && (
                 <div className="mt-1">
                   <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-500">follow-up</span>
                 </div>
@@ -256,7 +256,7 @@ export default function Appointments() {
       {followUpTarget && (
         <FollowUpModal appointment={followUpTarget}
           onClose={() => setFollowUpTarget(null)}
-          onDone={() => { setFollowUpTarget(null); load(); }} />
+          onDone={() => { setFollowUpTarget(null); setStatusFilter(''); setPage(1); load(); }} />
       )}
     </div>
   );

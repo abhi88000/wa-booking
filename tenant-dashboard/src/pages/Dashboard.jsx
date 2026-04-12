@@ -95,7 +95,7 @@ function StatusBadge({ status }) {
 
 // ── Appointment Row ───────────────────────────────────────
 function AppointmentRow({ a, showDate }) {
-  const isFollowUp = a.rescheduled_from && a.notes?.startsWith('Follow-up');
+  const isFollowUp = !!a.rescheduled_from;
   return (
     <div className="flex items-center gap-3 py-3">
       <div className="w-10 h-10 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">

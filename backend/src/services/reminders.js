@@ -54,7 +54,17 @@ class ReminderService {
   }
 
   /**
-   * Send a single reminder
+   * Send a single reminder using WhatsApp template messages.
+   * Templates are required because reminders are sent outside
+   * the 24-hour messaging window (Meta policy).
+   *
+   * You must create these templates in Meta Business Manager:
+   *   - appointment_reminder  (for 24h reminders)
+   *   - appointment_soon      (for 1h reminders)
+   *   - appointment_followup  (for follow-up)
+   *
+   * Each template should use {{1}}, {{2}}, {{3}} etc as placeholders.
+   * See TEMPLATE_CONFIG below for the expected parameter order.
    */
   async sendReminder(reminder) {
     const tenant = {
@@ -65,43 +75,59 @@ class ReminderService {
     };
 
     const wa = new WhatsAppService(tenant);
+    const tenantSettings = reminder.tenant_settings || {};
+    const lang = tenantSettings.wa_template_language || 'en';
 
-    let message = '';
-    switch (reminder.type) {
-      case '24h':
-        message = 
-          `📅 *Appointment Reminder*\n\n` +
-          `Hi ${reminder.patient_name || 'there'},\n\n` +
-          `This is a reminder for your appointment tomorrow:\n\n` +
-          `👨‍⚕️ ${reminder.doctor_name}\n` +
-          `📅 ${reminder.appointment_date}\n` +
-          `🕐 ${this.formatTime(reminder.start_time)}\n` +
-          `🏥 ${reminder.business_name}\n\n` +
-          `Reply "cancel" to cancel or "reschedule" to change the time.`;
-        break;
+    // Template config: maps reminder type → template name + parameters
+    // These must match the templates you create in Meta Business Manager
+    const TEMPLATE_CONFIG = {
+      '24h': {
+        name: tenantSettings.template_appointment_reminder || 'appointment_reminder',
+        // Expected template body: "Hi {{1}}, reminder for your appointment tomorrow with {{2}} at {{3}}, {{4}}."
+        params: [
+          reminder.patient_name || 'there',
+          reminder.doctor_name || 'your doctor',
+          this.formatTime(reminder.start_time),
+          reminder.business_name
+        ]
+      },
+      '1h': {
+        name: tenantSettings.template_appointment_soon || 'appointment_soon',
+        // Expected template body: "Hi {{1}}, your appointment with {{2}} is in 1 hour at {{3}}. See you at {{4}}!"
+        params: [
+          reminder.patient_name || 'there',
+          reminder.doctor_name || 'your doctor',
+          this.formatTime(reminder.start_time),
+          reminder.business_name
+        ]
+      },
+      'followup': {
+        name: tenantSettings.template_appointment_followup || 'appointment_followup',
+        // Expected template body: "Hi {{1}}, thank you for visiting {{2}}! Reply 'book' to schedule again."
+        params: [
+          reminder.patient_name || 'there',
+          reminder.business_name
+        ]
+      }
+    };
 
-      case '1h':
-        message = 
-          `⏰ *Your appointment is in 1 hour!*\n\n` +
-          `👨‍⚕️ ${reminder.doctor_name}\n` +
-          `🕐 ${this.formatTime(reminder.start_time)}\n` +
-          `🏥 ${reminder.business_name}\n\n` +
-          `See you soon! 👋`;
-        break;
+    const templateConfig = TEMPLATE_CONFIG[reminder.type];
 
-      case 'followup':
-        message =
-          `Hi ${reminder.patient_name || 'there'},\n\n` +
-          `Thank you for visiting ${reminder.business_name}!\n` +
-          `We hope you had a good experience. 😊\n\n` +
-          `Would you like to book another appointment? Just type "book"!`;
-        break;
-
-      default:
-        message = `Reminder: Your appointment at ${reminder.business_name} is on ${reminder.appointment_date}.`;
+    if (!templateConfig) {
+      logger.warn(`Unknown reminder type: ${reminder.type}, skipping`);
+      return;
     }
 
-    await wa.sendText(reminder.patient_phone, message);
+    // Build template components (body parameters)
+    const components = [{
+      type: 'body',
+      parameters: templateConfig.params.map(val => ({
+        type: 'text',
+        text: String(val)
+      }))
+    }];
+
+    await wa.sendTemplate(reminder.patient_phone, templateConfig.name, lang, components);
 
     // Mark as sent
     await pool.query(
@@ -109,7 +135,7 @@ class ReminderService {
       [reminder.id]
     );
 
-    logger.info(`Reminder sent: ${reminder.id} (${reminder.type}) to ${reminder.patient_phone}`);
+    logger.info(`Reminder sent via template: ${reminder.id} (${reminder.type} → ${templateConfig.name}) to ${reminder.patient_phone}`);
   }
 
   formatTime(timeStr) {

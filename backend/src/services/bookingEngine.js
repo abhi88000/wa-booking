@@ -67,7 +67,13 @@ class BookingEngine {
           return await this.handleNewMessage(content, state);
       }
     } catch (err) {
-      logger.error('BookingEngine error:', err);
+      logger.error('BookingEngine error:', { 
+        error: err.message, 
+        stack: err.stack,
+        state: this.patient.wa_conversation_state,
+        tenantId: this.tenantId,
+        phone: this.phone
+      });
       await this.wa.sendText(this.phone,
         'Sorry, something went wrong. Please try again or type "hi" to start over.'
       );
@@ -499,6 +505,10 @@ class BookingEngine {
     }
     const dateStr = content.replace('date_', '');
     
+    logger.info(`Date selected: ${dateStr}, doctorId: ${state.doctorId}`, {
+      tenantId: this.tenantId, phone: this.phone, state
+    });
+
     await this.setState({
       ...state,
       state: 'awaiting_time',
@@ -524,8 +534,8 @@ class BookingEngine {
     // Get doctor's hours for this day
     const { rows: avail } = await pool.query(
       `SELECT start_time, end_time FROM doctor_availability 
-       WHERE doctor_id = $1 AND day = $2 AND is_active = true`,
-      [doctorId, dayName]
+       WHERE doctor_id = $1 AND tenant_id = $2 AND day = $3 AND is_active = true`,
+      [doctorId, this.tenantId, dayName]
     );
 
     if (avail.length === 0) {

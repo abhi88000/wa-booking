@@ -181,13 +181,13 @@ export default function Doctors() {
         {loading ? <div className="text-gray-500 col-span-3 text-center py-10">Loading...</div> :
           doctors
             .filter(doc => filter === 'all' ? true : filter === 'active' ? doc.is_active : !doc.is_active)
-            .filter(doc => selectedClinic === 'all' ? true : doc.clinic === selectedClinic)
+            .filter(doc => selectedClinic === 'all' ? true : !doc.clinic || doc.clinic === selectedClinic)
             .length === 0 ? (
             <div className="text-gray-400 col-span-3 text-center py-10 text-sm">No {filter} doctors found</div>
           ) :
           doctors
             .filter(doc => filter === 'all' ? true : filter === 'active' ? doc.is_active : !doc.is_active)
-            .filter(doc => selectedClinic === 'all' ? true : doc.clinic === selectedClinic)
+            .filter(doc => selectedClinic === 'all' ? true : !doc.clinic || doc.clinic === selectedClinic)
             .map(doc => (
             <div key={doc.id} className={`bg-white rounded-lg shadow-sm p-5 border ${!doc.is_active ? 'opacity-50' : ''}`}>
               <div className="flex justify-between items-start">

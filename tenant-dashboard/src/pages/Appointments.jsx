@@ -32,7 +32,7 @@ export default function Appointments() {
     try {
       const [d, s] = await Promise.all([api.getDoctors(), api.getServices()]);
       let activeDocs = d.data.filter(doc => doc.is_active);
-      if (clinic !== 'all') activeDocs = activeDocs.filter(doc => doc.clinic === clinic);
+      if (clinic !== 'all') activeDocs = activeDocs.filter(doc => !doc.clinic || doc.clinic === clinic);
       setDoctors(activeDocs);
       setServices(s.data.filter(svc => svc.is_active !== false));
     } catch (err) { console.error(err); }

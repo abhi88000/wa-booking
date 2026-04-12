@@ -83,6 +83,18 @@ export default function Appointments() {
           </button>
         </>
       )}
+      {a.status === 'cancelled' && (
+        <button onClick={() => updateStatus(a.id, 'confirmed')}
+          className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded hover:bg-green-100">
+          Restore
+        </button>
+      )}
+      {a.status === 'no_show' && (
+        <button onClick={() => updateStatus(a.id, 'confirmed')}
+          className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded hover:bg-green-100">
+          Restore
+        </button>
+      )}
       {a.status === 'completed' && (
         <>
           {a.followup && (

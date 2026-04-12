@@ -135,8 +135,9 @@ class MessageRouter {
     const welcome = settings.welcome_message ||
       `Welcome to ${this.tenant.business_name}! How can I help you today?`;
 
-    // If only booking is enabled, go straight to booking engine
-    if (enabled.length === 1 && enabled[0] === 'booking') {
+    // If only booking is enabled (or the only functional module), go straight to booking engine
+    const functionalModules = enabled.filter(m => m === 'booking'); // payments & ai_chatbot not built yet
+    if (functionalModules.length === 1 && functionalModules[0] === 'booking') {
       const engine = new BookingEngine(this.tenant, this.patient, this.wa);
       return await engine.handleMessage('hi', 'text', null);
     }

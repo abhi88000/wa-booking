@@ -10,9 +10,9 @@ export default function Settings() {
   const [waForm, setWaForm] = useState({
     phoneNumberId: '', businessAccountId: '', accessToken: '', displayPhone: ''
   });
-  const [showAddBranch, setShowAddBranch] = useState(false);
-  const [branchForm, setBranchForm] = useState({ name: '', address: '', phone: '' });
-  const [editingBranch, setEditingBranch] = useState(null);
+  const [showAddClinic, setShowAddClinic] = useState(false);
+  const [clinicForm, setClinicForm] = useState({ name: '', address: '', phone: '' });
+  const [editingClinic, setEditingClinic] = useState(null);
 
   useEffect(() => {
     api.getSettings()
@@ -89,37 +89,37 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Branches / Locations */}
+      {/* Clinics / Locations */}
       <div className="bg-white rounded-lg shadow-sm p-6 border mb-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="font-semibold text-gray-900">Branches / Locations</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Manage your clinic locations. Doctors can be assigned to specific branches.</p>
+            <h2 className="font-semibold text-gray-900">Clinics / Locations</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Add your clinic locations. Doctors can be assigned to specific clinics.</p>
           </div>
-          <button onClick={() => { setShowAddBranch(true); setEditingBranch(null); setBranchForm({ name: '', address: '', phone: '' }); }}
+          <button onClick={() => { setShowAddClinic(true); setEditingClinic(null); setClinicForm({ name: '', address: '', phone: '' }); }}
             className="text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-900">
-            + Add Branch
+            + Add Clinic
           </button>
         </div>
 
-        {/* Branch List */}
+        {/* Clinic List */}
         {(s.branches || []).length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-4">No branches added yet. Add your first location above.</p>
+          <p className="text-sm text-gray-400 text-center py-4">No clinics added yet. Add your first location above.</p>
         ) : (
           <div className="space-y-2">
-            {(s.branches || []).map((branch, idx) => (
+            {(s.branches || []).map((clinic, idx) => (
               <div key={idx} className="flex items-center justify-between px-4 py-3 border border-gray-100 rounded-lg">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{branch.name}</p>
+                  <p className="text-sm font-medium text-gray-900">{clinic.name}</p>
                   <p className="text-xs text-gray-400">
-                    {[branch.address, branch.phone].filter(Boolean).join(' · ') || 'No details added'}
+                    {[clinic.address, clinic.phone].filter(Boolean).join(' · ') || 'No details added'}
                   </p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => {
-                    setEditingBranch(idx);
-                    setBranchForm({ name: branch.name, address: branch.address || '', phone: branch.phone || '' });
-                    setShowAddBranch(true);
+                    setEditingClinic(idx);
+                    setClinicForm({ name: clinic.name, address: clinic.address || '', phone: clinic.phone || '' });
+                    setShowAddClinic(true);
                   }} className="text-xs text-gray-500 hover:text-gray-700">Edit</button>
                   <button onClick={() => {
                     const updated = (s.branches || []).filter((_, i) => i !== idx);
@@ -131,41 +131,41 @@ export default function Settings() {
           </div>
         )}
 
-        {/* Add/Edit Branch Form */}
-        {showAddBranch && (
+        {/* Add/Edit Clinic Form */}
+        {showAddClinic && (
           <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
             <h3 className="text-sm font-medium text-gray-700 mb-3">
-              {editingBranch !== null ? 'Edit Branch' : 'Add New Branch'}
+              {editingClinic !== null ? 'Edit Clinic' : 'Add New Clinic'}
             </h3>
             <div className="space-y-3">
-              <input placeholder="Branch name (e.g. Main Road Clinic)" value={branchForm.name}
-                onChange={e => setBranchForm({ ...branchForm, name: e.target.value })}
+              <input placeholder="Clinic name (e.g. Main Road Clinic)" value={clinicForm.name}
+                onChange={e => setClinicForm({ ...clinicForm, name: e.target.value })}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
-              <input placeholder="Address (optional)" value={branchForm.address}
-                onChange={e => setBranchForm({ ...branchForm, address: e.target.value })}
+              <input placeholder="Address (optional)" value={clinicForm.address}
+                onChange={e => setClinicForm({ ...clinicForm, address: e.target.value })}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
-              <input placeholder="Phone (optional)" value={branchForm.phone}
-                onChange={e => setBranchForm({ ...branchForm, phone: e.target.value })}
+              <input placeholder="Phone (optional)" value={clinicForm.phone}
+                onChange={e => setClinicForm({ ...clinicForm, phone: e.target.value })}
                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
               <div className="flex gap-2 justify-end">
-                <button onClick={() => setShowAddBranch(false)}
+                <button onClick={() => setShowAddClinic(false)}
                   className="px-3 py-1.5 text-sm text-gray-500">Cancel</button>
                 <button onClick={() => {
-                  if (!branchForm.name.trim()) return;
+                  if (!clinicForm.name.trim()) return;
                   const branches = [...(s.branches || [])];
-                  const entry = { name: branchForm.name.trim(), address: branchForm.address.trim(), phone: branchForm.phone.trim() };
-                  if (editingBranch !== null) {
-                    branches[editingBranch] = entry;
+                  const entry = { name: clinicForm.name.trim(), address: clinicForm.address.trim(), phone: clinicForm.phone.trim() };
+                  if (editingClinic !== null) {
+                    branches[editingClinic] = entry;
                   } else {
                     branches.push(entry);
                   }
                   setSettings({ ...settings, settings: { ...s, branches } });
-                  setShowAddBranch(false);
-                  setBranchForm({ name: '', address: '', phone: '' });
-                  setEditingBranch(null);
+                  setShowAddClinic(false);
+                  setClinicForm({ name: '', address: '', phone: '' });
+                  setEditingClinic(null);
                 }}
                   className="px-3 py-1.5 text-sm bg-slate-800 text-white rounded-lg hover:bg-slate-900">
-                  {editingBranch !== null ? 'Update' : 'Add'}
+                  {editingClinic !== null ? 'Update' : 'Add'}
                 </button>
               </div>
             </div>

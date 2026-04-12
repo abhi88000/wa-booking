@@ -1,29 +1,38 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../api';
 
 export default function Patients() {
   const [patients, setPatients] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState('recent');
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState(null);
   const [detail, setDetail] = useState(null);
   const [detailData, setDetailData] = useState(null);
   const [form, setForm] = useState({ name: '', phone: '', email: '' });
+  const limit = 30;
 
-
-  useEffect(() => { load(); }, []);
-
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.getPatients({ search: search || undefined });
-      setPatients(data);
+      const { data } = await api.getPatients({
+        search: search || undefined, page, limit, sort
+      });
+      setPatients(data.patients || data);
+      setTotal(data.total || 0);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
-  };
+  }, [search, page, sort]);
 
-  const handleSearch = (e) => { e.preventDefault(); load(); };
+  useEffect(() => { load(); }, [load]);
+
+  // Live search with debounce
+  useEffect(() => {
+    setPage(1);
+  }, [search, sort]);
 
   const openAdd = () => {
     setEditing(null);
@@ -60,6 +69,27 @@ export default function Patients() {
     } catch (err) { console.error(err); }
   };
 
+  // Group patients by when they joined
+  const groupByDate = (list) => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
+    const monthAgo = new Date(today); monthAgo.setMonth(monthAgo.getMonth() - 1);
+
+    const groups = { today: [], thisWeek: [], thisMonth: [], older: [] };
+    list.forEach(p => {
+      const d = new Date(p.created_at);
+      if (d >= today) groups.today.push(p);
+      else if (d >= weekAgo) groups.thisWeek.push(p);
+      else if (d >= monthAgo) groups.thisMonth.push(p);
+      else groups.older.push(p);
+    });
+    return groups;
+  };
+
+  const groups = groupByDate(patients);
+  const totalPages = Math.ceil(total / limit);
+
   const STATUS_COLOR = {
     pending: 'bg-yellow-100 text-yellow-700',
     confirmed: 'bg-green-100 text-green-700',
@@ -68,21 +98,89 @@ export default function Patients() {
     no_show: 'bg-gray-200 text-gray-600',
   };
 
+  const PatientRow = ({ p }) => (
+    <tr key={p.id} className="hover:bg-gray-50">
+      <td className="px-4 py-3">
+        <button onClick={() => viewDetail(p)} className="font-medium text-slate-700 hover:underline">{p.name || '—'}</button>
+      </td>
+      <td className="px-4 py-3 text-gray-600">{p.phone}</td>
+      <td className="px-4 py-3 text-gray-500">{p.email || '—'}</td>
+      <td className="px-4 py-3 text-center">{p.total_appointments}</td>
+      <td className="px-4 py-3 text-gray-500">{p.last_visit || '—'}</td>
+      <td className="px-4 py-3">
+        <div className="flex gap-2">
+          <button onClick={() => openEdit(p)} className="text-xs text-slate-600 hover:underline">Edit</button>
+          <button onClick={() => viewDetail(p)} className="text-xs text-indigo-600 hover:underline">Details</button>
+        </div>
+      </td>
+    </tr>
+  );
+
+  const PatientCard = ({ p }) => (
+    <div className="p-4 active:bg-gray-50" onClick={() => viewDetail(p)}>
+      <div className="flex justify-between items-start">
+        <div>
+          <p className="font-medium text-gray-900">{p.name || 'Unknown'}</p>
+          <p className="text-xs text-gray-400 mt-0.5">{p.phone}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-medium text-slate-700">{p.total_appointments} visits</p>
+          <p className="text-xs text-gray-400">{p.last_visit || 'No visits'}</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const SectionHeader = ({ label, count }) => (
+    <tr>
+      <td colSpan="6" className="bg-gray-50/80 px-4 py-2">
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</span>
+        <span className="text-xs text-gray-400 ml-2">({count})</span>
+      </td>
+    </tr>
+  );
+
+  const MobileSectionHeader = ({ label, count }) => (
+    <div className="bg-gray-50/80 px-4 py-2 border-b">
+      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</span>
+      <span className="text-xs text-gray-400 ml-2">({count})</span>
+    </div>
+  );
+
   return (
     <div>
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
-        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Patients</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+          Patients {total > 0 && <span className="text-gray-400 font-normal text-base">({total})</span>}
+        </h1>
         <button onClick={openAdd}
           className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900">
           + Add Patient
         </button>
       </div>
 
-      <form onSubmit={handleSearch} className="mb-4 flex gap-2">
-        <input placeholder="Search by name or phone..." value={search} onChange={e => setSearch(e.target.value)}
-          className="flex-1 border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
-        <button type="submit" className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900">Search</button>
-      </form>
+      {/* Search + Sort Bar */}
+      <div className="flex flex-col sm:flex-row gap-2 mb-4">
+        <div className="relative flex-1">
+          <svg className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <input placeholder="Search by name or phone..." value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full border border-gray-200 rounded-lg pl-9 pr-4 py-2 text-sm outline-none focus:border-slate-400" />
+          {search && (
+            <button onClick={() => setSearch('')}
+              className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 text-sm">&times;</button>
+          )}
+        </div>
+        <select value={sort} onChange={e => setSort(e.target.value)}
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none sm:w-44">
+          <option value="recent">Newest First</option>
+          <option value="name">Name A-Z</option>
+          <option value="visits">Most Visits</option>
+          <option value="last_visit">Recent Visit</option>
+        </select>
+      </div>
 
       {/* Add/Edit Modal */}
       {showAdd && (
@@ -199,58 +297,64 @@ export default function Patients() {
                   <th className="px-4 py-3 font-medium">Name</th>
                   <th className="px-4 py-3 font-medium">Phone</th>
                   <th className="px-4 py-3 font-medium">Email</th>
-                  <th className="px-4 py-3 font-medium">Appointments</th>
+                  <th className="px-4 py-3 font-medium text-center">Visits</th>
                   <th className="px-4 py-3 font-medium">Last Visit</th>
                   <th className="px-4 py-3 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {patients.map(p => (
-                  <tr key={p.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <button onClick={() => viewDetail(p)} className="font-medium text-slate-700 hover:underline">{p.name || '—'}</button>
-                    </td>
-                    <td className="px-4 py-3">{p.phone}</td>
-                    <td className="px-4 py-3 text-gray-500">{p.email || '—'}</td>
-                    <td className="px-4 py-3">{p.total_appointments}</td>
-                    <td className="px-4 py-3 text-gray-500">{p.last_visit || '—'}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button onClick={() => openEdit(p)} className="text-xs text-slate-700 hover:underline">Edit</button>
-                        <button onClick={() => viewDetail(p)} className="text-xs text-gray-500 hover:underline">Details</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {sort === 'recent' ? (
+                  <>
+                    {groups.today.length > 0 && <><SectionHeader label="Today" count={groups.today.length} />{groups.today.map(p => <PatientRow key={p.id} p={p} />)}</>}
+                    {groups.thisWeek.length > 0 && <><SectionHeader label="This Week" count={groups.thisWeek.length} />{groups.thisWeek.map(p => <PatientRow key={p.id} p={p} />)}</>}
+                    {groups.thisMonth.length > 0 && <><SectionHeader label="This Month" count={groups.thisMonth.length} />{groups.thisMonth.map(p => <PatientRow key={p.id} p={p} />)}</>}
+                    {groups.older.length > 0 && <><SectionHeader label="Older" count={groups.older.length} />{groups.older.map(p => <PatientRow key={p.id} p={p} />)}</>}
+                  </>
+                ) : (
+                  patients.map(p => <PatientRow key={p.id} p={p} />)
+                )}
                 {patients.length === 0 && (
-                  <tr><td colSpan="6" className="px-4 py-8 text-center text-gray-400">No patients found</td></tr>
+                  <tr><td colSpan="6" className="px-4 py-8 text-center text-gray-400">
+                    {search ? 'No patients match your search' : 'No patients yet'}
+                  </td></tr>
                 )}
               </tbody>
             </table>
 
             {/* Mobile */}
             <div className="sm:hidden divide-y">
-              {patients.map(p => (
-                <div key={p.id} className="p-4" onClick={() => viewDetail(p)}>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium text-gray-900">{p.name || 'Unknown'}</p>
-                      <p className="text-xs text-gray-400">{p.phone} {p.email ? `- ${p.email}` : ''}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-slate-700">{p.total_appointments} appts</p>
-                      <p className="text-xs text-gray-400">{p.last_visit || 'No visits'}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+              {sort === 'recent' ? (
+                <>
+                  {groups.today.length > 0 && <><MobileSectionHeader label="Today" count={groups.today.length} />{groups.today.map(p => <PatientCard key={p.id} p={p} />)}</>}
+                  {groups.thisWeek.length > 0 && <><MobileSectionHeader label="This Week" count={groups.thisWeek.length} />{groups.thisWeek.map(p => <PatientCard key={p.id} p={p} />)}</>}
+                  {groups.thisMonth.length > 0 && <><MobileSectionHeader label="This Month" count={groups.thisMonth.length} />{groups.thisMonth.map(p => <PatientCard key={p.id} p={p} />)}</>}
+                  {groups.older.length > 0 && <><MobileSectionHeader label="Older" count={groups.older.length} />{groups.older.map(p => <PatientCard key={p.id} p={p} />)}</>}
+                </>
+              ) : (
+                patients.map(p => <PatientCard key={p.id} p={p} />)
+              )}
               {patients.length === 0 && (
-                <div className="p-8 text-center text-gray-400">No patients found</div>
+                <div className="p-8 text-center text-gray-400">
+                  {search ? 'No patients match your search' : 'No patients yet'}
+                </div>
               )}
             </div>
           </>
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center items-center gap-2 mt-4">
+          <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
+            className="px-4 py-2 text-sm border rounded-lg disabled:opacity-30 hover:bg-gray-50">Previous</button>
+          <span className="px-3 py-2 text-sm text-gray-500">
+            Page {page} of {totalPages}
+          </span>
+          <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
+            className="px-4 py-2 text-sm border rounded-lg disabled:opacity-30 hover:bg-gray-50">Next</button>
+        </div>
+      )}
     </div>
   );
 }

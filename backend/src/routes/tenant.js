@@ -102,7 +102,9 @@ router.get('/appointments', async (req, res, next) => {
       pool.query(`SELECT COUNT(*) FROM appointments a ${needsDoctorJoin ? 'JOIN doctors d ON d.id = a.doctor_id' : ''} ${where}`, params),
       pool.query(`
         SELECT a.*, d.name as doctor_name, p.name as patient_name, p.phone as patient_phone,
-               s.name as service_name
+               s.name as service_name,
+               (SELECT json_build_object('id', f.id, 'date', f.appointment_date, 'time', f.start_time, 'status', f.status)
+                FROM appointments f WHERE f.rescheduled_from = a.id AND f.status NOT IN ('cancelled') LIMIT 1) as followup
         FROM appointments a
         LEFT JOIN doctors d ON d.id = a.doctor_id
         LEFT JOIN patients p ON p.id = a.patient_id
@@ -892,7 +894,7 @@ router.delete('/services/:id', requireRole('owner', 'admin'), async (req, res, n
 
 router.get('/patients', async (req, res, next) => {
   try {
-    const { search, page = 1, limit = 20 } = req.query;
+    const { search, page = 1, limit = 30, sort = 'recent' } = req.query;
     const offset = (page - 1) * limit;
 
     let where = 'WHERE p.tenant_id = $1';
@@ -905,16 +907,30 @@ router.get('/patients', async (req, res, next) => {
       idx++;
     }
 
+    // Get total count for pagination
+    const countParams = [...params];
+    const { rows: countRows } = await pool.query(
+      `SELECT COUNT(*) FROM patients p ${where}`, countParams
+    );
+    const total = parseInt(countRows[0].count, 10);
+
+    // Sort options
+    let orderBy = 'p.created_at DESC';
+    if (sort === 'name') orderBy = 'p.name ASC NULLS LAST';
+    else if (sort === 'visits') orderBy = 'total_appointments DESC';
+    else if (sort === 'last_visit') orderBy = 'last_visit_raw DESC NULLS LAST';
+
     const { rows } = await pool.query(
       `SELECT p.*, 
         (SELECT COUNT(*) FROM appointments WHERE patient_id = p.id AND tenant_id = $1) as total_appointments,
-        (SELECT TO_CHAR(MAX(appointment_date), 'DD Mon YYYY') FROM appointments WHERE patient_id = p.id AND tenant_id = $1 AND appointment_date <= CURRENT_DATE AND status NOT IN ('cancelled', 'rescheduled')) as last_visit
+        (SELECT TO_CHAR(MAX(appointment_date), 'DD Mon YYYY') FROM appointments WHERE patient_id = p.id AND tenant_id = $1 AND appointment_date <= CURRENT_DATE AND status NOT IN ('cancelled', 'rescheduled')) as last_visit,
+        (SELECT MAX(appointment_date) FROM appointments WHERE patient_id = p.id AND tenant_id = $1 AND appointment_date <= CURRENT_DATE AND status NOT IN ('cancelled', 'rescheduled')) as last_visit_raw
        FROM patients p ${where}
-       ORDER BY p.created_at DESC LIMIT $${idx++} OFFSET $${idx++}`,
-      [...params, limit, offset]
+       ORDER BY ${orderBy} LIMIT $${idx++} OFFSET $${idx++}`,
+      [...params, parseInt(limit), offset]
     );
 
-    res.json(rows);
+    res.json({ patients: rows, total, page: parseInt(page), limit: parseInt(limit) });
   } catch (err) {
     next(err);
   }

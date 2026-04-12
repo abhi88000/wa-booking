@@ -82,11 +82,19 @@ export default function Appointments() {
           </button>
         </>
       )}
-      {a.status === 'completed' && (
+      {a.status === 'completed' && !a.followup && (
         <button onClick={() => setFollowUpTarget(a)}
           className="text-xs px-2 py-1 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100">
           Follow Up
         </button>
+      )}
+      {a.status === 'completed' && a.followup && (
+        <span className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded inline-flex items-center gap-1">
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+          Follow-up {a.followup.date?.substring(5)} at {a.followup.time?.substring(0, 5)}
+        </span>
       )}
     </div>
   );
@@ -147,6 +155,9 @@ export default function Appointments() {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLOR[a.status]}`}>
                       {a.status?.replace('_', ' ')}
                     </span>
+                    {a.rescheduled_from && a.notes?.startsWith('Follow-up') && (
+                      <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-500">follow-up</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <ActionButtons a={a} />
@@ -175,6 +186,11 @@ export default function Appointments() {
                   {a.status?.replace('_', ' ')}
                 </span>
               </div>
+              {a.rescheduled_from && a.notes?.startsWith('Follow-up') && (
+                <div className="mt-1">
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-500">follow-up</span>
+                </div>
+              )}
               <div className="mt-2 text-sm text-gray-500 space-y-0.5">
                 <p>{a.doctor_name} {a.service_name ? `- ${a.service_name}` : ''}</p>
                 <p>{a.appointment_date?.substring(0, 10)} at {a.start_time?.substring(0, 5)}</p>
@@ -247,7 +263,7 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
     if (q.length >= 2) {
       try {
         const { data } = await api.getPatients({ search: q });
-        setPatients(data);
+        setPatients(data.patients || data);
       } catch (err) { console.error(err); }
     } else {
       setPatients([]);

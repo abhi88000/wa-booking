@@ -15,15 +15,16 @@ export default function Appointments() {
   const [cancelTarget, setCancelTarget] = useState(null);
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
   const [followUpTarget, setFollowUpTarget] = useState(null);
+  const [hideCancelled, setHideCancelled] = useState(true);
   const { clinic } = useClinic();
 
   useEffect(() => { load(); loadMeta(); }, []);
-  useEffect(() => { load(); loadMeta(); }, [page, statusFilter, clinic]);
+  useEffect(() => { load(); loadMeta(); }, [page, statusFilter, hideCancelled, clinic]);
 
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await api.getAppointments({ page, status: statusFilter || undefined, limit: 20, clinic: clinic !== 'all' ? clinic : undefined });
+      const { data } = await api.getAppointments({ page, status: statusFilter || undefined, limit: 20, clinic: clinic !== 'all' ? clinic : undefined, hideCancelled: hideCancelled && !statusFilter ? true : undefined });
       setAppointments(data.appointments);
       setTotal(data.total);
     } catch (err) { console.error(err); }
@@ -118,6 +119,13 @@ export default function Appointments() {
             <option value="cancelled">Cancelled</option>
             <option value="no_show">No Show</option>
           </select>
+          {!statusFilter && (
+            <label className="flex items-center gap-1.5 text-xs text-gray-500 cursor-pointer whitespace-nowrap">
+              <input type="checkbox" checked={hideCancelled} onChange={e => { setHideCancelled(e.target.checked); setPage(1); }}
+                className="rounded border-gray-300" />
+              Hide cancelled
+            </label>
+          )}
           <button onClick={() => setShowCreate(true)}
             className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900 whitespace-nowrap">
             + Book Appointment

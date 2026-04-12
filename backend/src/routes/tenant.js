@@ -86,13 +86,14 @@ router.get('/dashboard', async (req, res, next) => {
 
 router.get('/appointments', async (req, res, next) => {
   try {
-    const { status, date, doctor_id, clinic, page = 1, limit = 20 } = req.query;
+    const { status, date, doctor_id, clinic, hideCancelled, page = 1, limit = 20 } = req.query;
     const offset = (page - 1) * limit;
     let where = 'WHERE a.tenant_id = $1';
     const params = [req.tenantId];
     let idx = 2;
 
     if (status) { where += ` AND a.status = $${idx++}`; params.push(status); }
+    else if (hideCancelled === 'true') { where += ` AND a.status != 'cancelled'`; }
     if (date) { where += ` AND a.appointment_date = $${idx++}`; params.push(date); }
     if (doctor_id) { where += ` AND a.doctor_id = $${idx++}`; params.push(doctor_id); }
     if (clinic && clinic !== 'all') { where += ` AND (d.clinic = $${idx} OR d.clinic IS NULL)`; idx++; params.push(clinic); }

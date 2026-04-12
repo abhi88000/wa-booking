@@ -24,8 +24,9 @@ async function loadTenantContext(req, res, next) {
 
     req.tenant = rows[0];
 
-    // Set tenant context for Row-Level Security (parameterized to prevent injection)
-    await pool.query(`SET LOCAL app.tenant_id = $1`, [req.tenantId]);
+    // Set tenant context for Row-Level Security
+    // Using set_config() which supports parameterized values (SET LOCAL does not)
+    await pool.query(`SELECT set_config('app.tenant_id', $1, true)`, [req.tenantId]);
 
     next();
   } catch (err) {

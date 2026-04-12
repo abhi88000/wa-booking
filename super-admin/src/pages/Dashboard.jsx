@@ -1,9 +1,11 @@
 ﻿import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     api.getDashboard()
@@ -16,11 +18,11 @@ export default function Dashboard() {
   if (!stats) return <div className="text-red-500 text-center py-20">Failed to load dashboard</div>;
 
   const cards = [
-    { label: 'Total Tenants', value: stats.total_tenants },
-    { label: 'Active Tenants', value: stats.active_tenants },
-    { label: 'Live (Active WA)', value: stats.live_tenants },
-    { label: 'New (30 days)', value: stats.new_tenants_30d },
-    { label: 'Appointments (24h)', value: stats.appointments_24h },
+    { label: 'Total Tenants', value: stats.total_tenants, link: '/tenants' },
+    { label: 'Active Tenants', value: stats.active_tenants, link: '/tenants?status=active' },
+    { label: 'Live (Active WA)', value: stats.live_tenants, link: '/tenants' },
+    { label: 'New (30 days)', value: stats.new_tenants_30d, link: '/tenants' },
+    { label: 'Appointments (24h)', value: stats.appointments_24h, link: '/analytics' },
   ];
 
   const ICONS = {
@@ -37,7 +39,9 @@ export default function Dashboard() {
       
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         {cards.map(card => (
-          <div key={card.label} className="bg-white rounded-lg p-4 border border-gray-100">
+          <div key={card.label}
+            onClick={() => navigate(card.link)}
+            className="bg-white rounded-lg p-4 border border-gray-100 cursor-pointer hover:border-gray-300 hover:shadow-sm transition">
             <div className="flex items-center gap-2 mb-2">
               <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d={ICONS[card.label]} />
@@ -51,16 +55,19 @@ export default function Dashboard() {
 
       <div className="bg-white rounded-lg p-5 border border-gray-100">
         <h2 className="text-sm font-semibold text-gray-900 mb-3">Quick Actions</h2>
-        <div className="flex gap-2">
-          <a href="/tenants" className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition">
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => navigate('/tenants')} className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition">
             View Tenants
-          </a>
-          <a href="/health" className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition">
+          </button>
+          <button onClick={() => navigate('/health')} className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition">
             System Health
-          </a>
-          <a href="/analytics" className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition">
+          </button>
+          <button onClick={() => navigate('/analytics')} className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition">
             Analytics
-          </a>
+          </button>
+          <button onClick={() => navigate('/invite-codes')} className="text-sm bg-gray-100 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-200 transition">
+            Invite Codes
+          </button>
         </div>
       </div>
     </div>

@@ -30,7 +30,7 @@ Register a new business. Requires a valid invite code.
   "phone": "+919876543210",
   "ownerName": "Dr. Ravi Sharma",
   "password": "securepass123",
-  "inviteCode": "FZM-8K2X-NP4R-2026",
+  "inviteCode": "YOUR-INVITE-CODE",
   "timezone": "Asia/Kolkata"
 }
 ```
@@ -50,7 +50,7 @@ Returns JWT token + tenant and user objects.
 Super admin login.
 
 ```json
-{ "email": "admin@futurezminds.in", "password": "yourpassword" }
+{ "email": "admin@example.com", "password": "yourpassword" }
 ```
 
 ---

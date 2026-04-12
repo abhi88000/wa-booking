@@ -38,7 +38,7 @@ export default function Signup({ onLogin }) {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Invite Code</label>
             <input name="inviteCode" value={form.inviteCode} onChange={handleChange}
-              placeholder="e.g. FZM-8K2X-NP4R-2026"
+              placeholder="e.g. XXXX-XXXX-XXXX"
               className="w-full border border-gray-300 rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-slate-400 text-sm" required />
           </div>
 

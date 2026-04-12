@@ -25,7 +25,7 @@ sudo usermod -aG docker $USER
 docker compose version
 
 # clone the repo
-git clone git@github.com:abhi88000/wa-booking.git /home/ubuntu/wa-booking
+git clone git@github.com:youruser/wa-booking.git /home/ubuntu/wa-booking
 cd /home/ubuntu/wa-booking
 ```
 
@@ -42,7 +42,7 @@ The four variables that matter:
 
 ```env
 DB_USER=postgres
-DB_PASSWORD=postgres
+DB_PASSWORD=<generate a strong password>
 JWT_SECRET=<generate with: openssl rand -hex 32>
 WA_VERIFY_TOKEN=<any random string — same value goes in Meta webhook config>
 ```

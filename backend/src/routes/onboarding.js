@@ -96,7 +96,7 @@ router.post('/connect-whatsapp', async (req, res, next) => {
       success: true, 
       message: 'WhatsApp connected successfully!',
       webhookUrl: `${process.env.APP_URL || 'https://yourdomain.com'}/webhook/whatsapp`,
-      verifyToken: process.env.WA_VERIFY_TOKEN || 'bookingbot-verify-2024',
+      verifyToken: process.env.WA_VERIFY_TOKEN ? '***configured***' : 'NOT SET — add WA_VERIFY_TOKEN to .env',
       instruction: 'Configure this webhook URL in your Meta Developer portal under WhatsApp > Configuration'
     });
   } catch (err) {

@@ -112,7 +112,7 @@ export default function Login({ onLogin }) {
         </p>
         <p className="text-center mt-3 text-xs text-gray-400">
           Forgot your password?{' '}
-          <a href="mailto:support@futurezminds.in" className="text-slate-600 hover:underline">Contact support</a>
+          <a href="mailto:support@yourdomain.com" className="text-slate-600 hover:underline">Contact support</a>
         </p>
       </div>
     </div>

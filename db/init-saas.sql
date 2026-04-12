@@ -451,6 +451,6 @@ CREATE TABLE IF NOT EXISTS invite_codes (
 
 CREATE INDEX idx_invite_codes_code ON invite_codes(code);
 
--- Default platform admin (CHANGE PASSWORD IN PRODUCTION!)
-INSERT INTO platform_admins (email, password_hash, name, role) VALUES
-  ('superadmin@bookingbot.com', '$2b$10$placeholder_hash_change_me', 'Super Admin', 'super_admin');
+-- Create your platform admin after deployment:
+-- INSERT INTO platform_admins (email, password_hash, name, role)
+-- VALUES ('admin@yourdomain.com', crypt('yourpassword', gen_salt('bf', 10)), 'Admin', 'super_admin');

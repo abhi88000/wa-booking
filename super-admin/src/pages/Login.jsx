@@ -38,7 +38,7 @@ export default function Login({ onLogin }) {
             <label className="block text-xs text-gray-500 mb-1">Email</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
-              placeholder="admin@futurezminds.in" required />
+              placeholder="admin@example.com" required />
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-1">Password</label>

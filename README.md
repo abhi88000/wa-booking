@@ -7,7 +7,7 @@ Each business (tenant) signs up, connects their WhatsApp number, adds their doct
 
 ## How It Works
 
-1. A clinic owner signs up at `book.futurezminds.in` and goes through a 3-step onboarding (connect WhatsApp, add doctors, set availability)
+1. A clinic owner signs up at `book.yourdomain.com` and goes through a 3-step onboarding (connect WhatsApp, add doctors, set availability)
 2. Patients message the clinic's WhatsApp number
 3. The bot walks them through selecting a doctor, picking a date, choosing a time slot, and confirming
 4. The appointment shows up in the clinic's dashboard in real-time
@@ -88,7 +88,7 @@ Edit `.env` with your values:
 JWT_SECRET=<any random 40+ character string>
 WA_VERIFY_TOKEN=<any string — same goes in Meta Console>
 DB_USER=postgres
-DB_PASSWORD=postgres
+DB_PASSWORD=<generate a strong password>
 ```
 
 ### 2. Start services
@@ -131,9 +131,9 @@ See [docs/whatsapp-setup.md](docs/whatsapp-setup.md) for the full walkthrough. T
 The system is currently deployed on AWS EC2 with:
 
 - Nginx reverse proxy with SSL (Let's Encrypt)
-- `book.futurezminds.in` — Tenant dashboard
-- `hub.futurezminds.in` — Super admin panel
-- `api.futurezminds.in` — Backend API
+- `book.yourdomain.com` — Tenant dashboard
+- `hub.yourdomain.com` — Super admin panel
+- `api.yourdomain.com` — Backend API
 
 To deploy updates:
 ```bash

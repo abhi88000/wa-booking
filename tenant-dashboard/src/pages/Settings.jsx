@@ -10,6 +10,9 @@ export default function Settings() {
   const [waForm, setWaForm] = useState({
     phoneNumberId: '', businessAccountId: '', accessToken: '', displayPhone: ''
   });
+  const [showAddBranch, setShowAddBranch] = useState(false);
+  const [branchForm, setBranchForm] = useState({ name: '', address: '', phone: '' });
+  const [editingBranch, setEditingBranch] = useState(null);
 
   useEffect(() => {
     api.getSettings()
@@ -84,6 +87,91 @@ export default function Settings() {
               className="w-full border rounded-lg px-4 py-2 text-sm outline-none" rows={2} />
           </div>
         </div>
+      </div>
+
+      {/* Branches / Locations */}
+      <div className="bg-white rounded-lg shadow-sm p-6 border mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="font-semibold text-gray-900">Branches / Locations</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Manage your clinic locations. Doctors can be assigned to specific branches.</p>
+          </div>
+          <button onClick={() => { setShowAddBranch(true); setEditingBranch(null); setBranchForm({ name: '', address: '', phone: '' }); }}
+            className="text-sm bg-slate-800 text-white px-3 py-1.5 rounded-lg hover:bg-slate-900">
+            + Add Branch
+          </button>
+        </div>
+
+        {/* Branch List */}
+        {(s.branches || []).length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-4">No branches added yet. Add your first location above.</p>
+        ) : (
+          <div className="space-y-2">
+            {(s.branches || []).map((branch, idx) => (
+              <div key={idx} className="flex items-center justify-between px-4 py-3 border border-gray-100 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{branch.name}</p>
+                  <p className="text-xs text-gray-400">
+                    {[branch.address, branch.phone].filter(Boolean).join(' · ') || 'No details added'}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => {
+                    setEditingBranch(idx);
+                    setBranchForm({ name: branch.name, address: branch.address || '', phone: branch.phone || '' });
+                    setShowAddBranch(true);
+                  }} className="text-xs text-gray-500 hover:text-gray-700">Edit</button>
+                  <button onClick={() => {
+                    const updated = (s.branches || []).filter((_, i) => i !== idx);
+                    setSettings({ ...settings, settings: { ...s, branches: updated } });
+                  }} className="text-xs text-red-400 hover:text-red-600">Remove</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Add/Edit Branch Form */}
+        {showAddBranch && (
+          <div className="mt-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
+            <h3 className="text-sm font-medium text-gray-700 mb-3">
+              {editingBranch !== null ? 'Edit Branch' : 'Add New Branch'}
+            </h3>
+            <div className="space-y-3">
+              <input placeholder="Branch name (e.g. Main Road Clinic)" value={branchForm.name}
+                onChange={e => setBranchForm({ ...branchForm, name: e.target.value })}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
+              <input placeholder="Address (optional)" value={branchForm.address}
+                onChange={e => setBranchForm({ ...branchForm, address: e.target.value })}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
+              <input placeholder="Phone (optional)" value={branchForm.phone}
+                onChange={e => setBranchForm({ ...branchForm, phone: e.target.value })}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => setShowAddBranch(false)}
+                  className="px-3 py-1.5 text-sm text-gray-500">Cancel</button>
+                <button onClick={() => {
+                  if (!branchForm.name.trim()) return;
+                  const branches = [...(s.branches || [])];
+                  const entry = { name: branchForm.name.trim(), address: branchForm.address.trim(), phone: branchForm.phone.trim() };
+                  if (editingBranch !== null) {
+                    branches[editingBranch] = entry;
+                  } else {
+                    branches.push(entry);
+                  }
+                  setSettings({ ...settings, settings: { ...s, branches } });
+                  setShowAddBranch(false);
+                  setBranchForm({ name: '', address: '', phone: '' });
+                  setEditingBranch(null);
+                }}
+                  className="px-3 py-1.5 text-sm bg-slate-800 text-white rounded-lg hover:bg-slate-900">
+                  {editingBranch !== null ? 'Update' : 'Add'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        <p className="text-xs text-gray-400 mt-3">Click "Save Settings" at the bottom to save your changes.</p>
       </div>
 
       {/* Booking Settings */}

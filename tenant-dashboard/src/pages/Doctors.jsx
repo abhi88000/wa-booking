@@ -131,11 +131,12 @@ export default function Doctors() {
                 className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
               {clinics.length > 0 && (
                 <select value={form.clinic} onChange={e => setForm({...form, clinic: e.target.value})}
-                  className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400 text-gray-700">
-                  <option value="">Select Clinic (optional)</option>
-                  {clinics.map((c, i) => (
-                    <option key={i} value={c.name}>{c.name}</option>
-                  ))}
+                  className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400 text-gray-700" required>
+                  <option value="">Select Clinic</option>
+                  {clinics.map((c, i) => {
+                    const label = c.address ? `${c.name} — ${c.address}` : c.name;
+                    return <option key={i} value={label}>{label}</option>;
+                  })}
                 </select>
               )}
               <div className="grid grid-cols-2 gap-3">

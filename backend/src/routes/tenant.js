@@ -891,7 +891,7 @@ router.put('/services/:id', requireRole('owner', 'admin'), async (req, res, next
       `UPDATE services SET 
         name = COALESCE($1, name), description = COALESCE($2, description),
         price = COALESCE($3, price),
-        is_active = COALESCE($4, is_active), updated_at = NOW()
+        is_active = COALESCE($4, is_active)
        WHERE id = $5 AND tenant_id = $6 RETURNING *`,
       [name, description, price, isActive, req.params.id, req.tenantId]
     );
@@ -905,7 +905,7 @@ router.put('/services/:id', requireRole('owner', 'admin'), async (req, res, next
 router.delete('/services/:id', requireRole('owner', 'admin'), async (req, res, next) => {
   try {
     const { rows } = await pool.query(
-      `UPDATE services SET is_active = false, updated_at = NOW() WHERE id = $1 AND tenant_id = $2 RETURNING id`,
+      `UPDATE services SET is_active = false WHERE id = $1 AND tenant_id = $2 RETURNING id`,
       [req.params.id, req.tenantId]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'Service not found' });

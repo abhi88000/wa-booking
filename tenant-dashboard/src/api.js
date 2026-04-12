@@ -46,6 +46,7 @@ export default {
   deleteDoctor: (id) => api.delete(`/tenant/doctors/${id}`),
   getDoctorAvailability: (id) => api.get(`/tenant/doctors/${id}/availability`),
   updateDoctorAvailability: (id, data) => api.put(`/tenant/doctors/${id}/availability`, data),
+  getDoctorSlots: (id, date) => api.get(`/tenant/doctors/${id}/slots`, { params: { date } }),
 
   // Services
   getServices: () => api.get('/tenant/services'),

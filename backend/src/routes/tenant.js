@@ -514,6 +514,78 @@ router.delete('/doctors/:id', requireRole('owner', 'admin'), async (req, res, ne
   }
 });
 
+// ── Doctor Available Slots for a Date ─────────────────────
+
+router.get('/doctors/:id/slots', async (req, res, next) => {
+  try {
+    const doctorId = req.params.id;
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ error: 'date query param required (YYYY-MM-DD)' });
+
+    const [y, m, d] = date.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    const dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const dayName = dayMap[dateObj.getDay()];
+
+    // Get doctor's slot duration
+    const { rows: docRows } = await pool.query(
+      `SELECT slot_duration FROM doctors WHERE id = $1 AND tenant_id = $2`,
+      [doctorId, req.tenantId]
+    );
+    const duration = (docRows.length > 0 && docRows[0].slot_duration) ? docRows[0].slot_duration : 30;
+
+    // Get availability for this day
+    const { rows: avail } = await pool.query(
+      `SELECT start_time, end_time FROM doctor_availability 
+       WHERE doctor_id = $1 AND tenant_id = $2 AND day = $3 AND is_active = true`,
+      [doctorId, req.tenantId, dayName]
+    );
+
+    if (avail.length === 0) return res.json({ slots: [], message: 'Doctor not available on this day' });
+
+    // Get booked appointments
+    const { rows: booked } = await pool.query(
+      `SELECT start_time, end_time FROM appointments 
+       WHERE doctor_id = $1 AND appointment_date = $2 
+       AND status NOT IN ('cancelled', 'rescheduled')`,
+      [doctorId, date]
+    );
+
+    // Get breaks
+    const { rows: breaks } = await pool.query(
+      `SELECT start_time, end_time FROM doctor_breaks
+       WHERE doctor_id = $1 AND tenant_id = $2
+       AND (break_date = $3 OR break_date IS NULL)
+       AND is_full_day = false`,
+      [doctorId, req.tenantId, date]
+    );
+
+    const toMin = (t) => { const [h, mm] = t.toString().split(':').map(Number); return h * 60 + (mm || 0); };
+    const toTime = (m) => `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
+
+    const slots = [];
+    let current = toMin(avail[0].start_time);
+    const end = toMin(avail[0].end_time);
+
+    while (current + duration <= end) {
+      const slotStart = toTime(current);
+      const slotEnd = toTime(current + duration);
+
+      const isBooked = booked.some(b => current < toMin(b.end_time) && (current + duration) > toMin(b.start_time));
+      const inBreak = breaks.some(b => current < toMin(b.end_time) && (current + duration) > toMin(b.start_time));
+
+      if (!isBooked && !inBreak) {
+        slots.push({ startTime: slotStart, endTime: slotEnd });
+      }
+      current += duration;
+    }
+
+    res.json({ slots, duration, day: dayName });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── Doctor Availability ───────────────────────────────────
 
 router.get('/doctors/:id/availability', async (req, res, next) => {

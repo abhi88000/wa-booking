@@ -415,39 +415,55 @@ function CancelModal({ appointment, onClose, onDone }) {
 }
 
 function RescheduleModal({ appointment, doctors, onClose, onDone }) {
-  const [form, setForm] = useState({
-    appointmentDate: '',
-    startTime: '',
-    endTime: '',
-    comment: ''
-  });
+  const [date, setDate] = useState('');
+  const [slots, setSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [comment, setComment] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [noSlotMsg, setNoSlotMsg] = useState('');
 
-  const handleDurationCalc = (startTime) => {
-    if (!startTime) return;
-    const doc = doctors.find(d => d.id === appointment.doctor_id);
-    const dur = doc?.slot_duration || 20;
-    const [h, m] = startTime.split(':').map(Number);
-    const totalMin = h * 60 + m + dur;
-    const endH = String(Math.floor(totalMin / 60)).padStart(2, '0');
-    const endM = String(totalMin % 60).padStart(2, '0');
-    setForm(f => ({ ...f, startTime, endTime: `${endH}:${endM}` }));
+  const today = new Date().toISOString().split('T')[0];
+
+  const fetchSlots = async (dateVal) => {
+    setDate(dateVal);
+    setSelectedSlot(null);
+    setSlots([]);
+    setNoSlotMsg('');
+    if (!dateVal) return;
+    setLoadingSlots(true);
+    try {
+      const res = await api.getDoctorSlots(appointment.doctor_id, dateVal);
+      const data = res.data;
+      if (data.slots.length === 0) {
+        setNoSlotMsg(data.message || 'No available slots on this date');
+      } else {
+        setSlots(data.slots);
+      }
+    } catch (err) {
+      setNoSlotMsg('Failed to load slots');
+    } finally { setLoadingSlots(false); }
+  };
+
+  const fmt12 = (t) => {
+    if (!t) return '';
+    const [h, m] = t.split(':').map(Number);
+    const p = h >= 12 ? 'PM' : 'AM';
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${h12}:${String(m).padStart(2, '0')} ${p}`;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.appointmentDate || !form.startTime || !form.endTime) {
-      setError('Date and time are required');
-      return;
-    }
+    if (!date || !selectedSlot) { setError('Pick a date and time slot'); return; }
     setSaving(true); setError('');
     try {
       await api.rescheduleAppointment(appointment.id, {
-        appointmentDate: form.appointmentDate,
-        startTime: form.startTime,
-        endTime: form.endTime,
-        comment: form.comment || undefined
+        appointmentDate: date,
+        startTime: selectedSlot.startTime,
+        endTime: selectedSlot.endTime,
+        comment: comment || undefined
       });
       onDone();
     } catch (err) {
@@ -457,43 +473,57 @@ function RescheduleModal({ appointment, doctors, onClose, onDone }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
         <h2 className="text-base font-semibold text-gray-900 mb-1">Reschedule Appointment</h2>
         <p className="text-sm text-gray-500 mb-4">
-          {appointment.patient_name || 'Patient'} — {appointment.doctor_name} 
+          {appointment.patient_name || 'Patient'} — {appointment.doctor_name}
           <span className="text-gray-400"> (currently {appointment.appointment_date?.substring(0, 10)} at {appointment.start_time?.substring(0, 5)})</span>
         </p>
         {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-3 text-sm">{error}</div>}
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-xs text-gray-500 block mb-1">New Date</label>
-            <input type="date" value={form.appointmentDate} required
-              onChange={e => setForm({...form, appointmentDate: e.target.value})}
+            <input type="date" value={date} min={today} required
+              onChange={e => fetchSlots(e.target.value)}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+
+          {loadingSlots && <p className="text-sm text-gray-400">Loading slots...</p>}
+
+          {noSlotMsg && <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg">{noSlotMsg}</p>}
+
+          {slots.length > 0 && (
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Start Time</label>
-              <input type="time" value={form.startTime} required
-                onChange={e => handleDurationCalc(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
+              <label className="text-xs text-gray-500 block mb-2">Available Slots</label>
+              <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                {slots.map(s => (
+                  <button type="button" key={s.startTime}
+                    onClick={() => setSelectedSlot(s)}
+                    className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all
+                      ${selectedSlot?.startTime === s.startTime
+                        ? 'bg-slate-800 text-white border-slate-800'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-slate-400'}`}>
+                    {fmt12(s.startTime)}
+                  </button>
+                ))}
+              </div>
+              {selectedSlot && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Selected: {fmt12(selectedSlot.startTime)} – {fmt12(selectedSlot.endTime)}
+                </p>
+              )}
             </div>
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">End Time</label>
-              <input type="time" value={form.endTime}
-                onChange={e => setForm({...form, endTime: e.target.value})}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
-            </div>
-          </div>
+          )}
+
           <div>
             <label className="text-xs text-gray-500 block mb-1">Note to patient (sent via WhatsApp)</label>
             <textarea rows={2} placeholder="e.g. Doctor's schedule changed..."
-              value={form.comment} onChange={e => setForm({...form, comment: e.target.value})}
+              value={comment} onChange={e => setComment(e.target.value)}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
           </div>
           <div className="flex gap-3 justify-end pt-1">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-500">Back</button>
-            <button type="submit" disabled={saving}
+            <button type="submit" disabled={saving || !selectedSlot}
               className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900 disabled:opacity-50">
               {saving ? 'Rescheduling...' : 'Reschedule'}
             </button>

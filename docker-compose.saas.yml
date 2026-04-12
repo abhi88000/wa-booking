@@ -63,7 +63,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       WA_VERIFY_TOKEN: ${WA_VERIFY_TOKEN:-}
       APP_URL: ${APP_URL:-http://localhost:4000}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
 
   # ── Cron Worker (Reminders + Scheduled Jobs) ─────────────
   cron-worker:

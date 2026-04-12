@@ -37,7 +37,7 @@ app.use(compression());
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({
-  origin: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').map(s => s.trim()) : true,
+  origin: process.env.CORS_ORIGINS?.trim() ? process.env.CORS_ORIGINS.split(',').map(s => s.trim()) : true,
   credentials: true
 }));
 app.use(morgan('combined', {

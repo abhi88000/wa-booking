@@ -47,34 +47,11 @@ class MessageRouter {
   // Route incoming message to the right engine
   async handleMessage(content, messageType, interactiveData) {
     const state = this.patient.wa_conversation_state || { state: 'new' };
-    const msg = (content || '').toLowerCase().trim();
     const currentState = state.state || 'new';
 
-    // If patient is mid-conversation in booking flow, route straight to booking engine
-    // (any state other than 'new' or 'idle' means they're mid-flow)
-    const bookingStates = [
-      'awaiting_doctor', 'awaiting_service', 'awaiting_date', 'awaiting_time',
-      'awaiting_confirm', 'awaiting_cancel', 'awaiting_reschedule',
-      'reschedule_awaiting_date', 'reschedule_awaiting_time'
-    ];
-    if (bookingStates.includes(currentState)) {
-      return await this._routeToModule('booking', content, messageType, interactiveData);
-    }
-
-    // Check if content matches a module trigger
-    const moduleChoice = this._detectModuleChoice(msg, content);
-    if (moduleChoice) {
-      if (!this.isEnabled(moduleChoice)) {
-        await this.wa.sendText(this.patient.phone,
-          'This feature is not available on your current plan. Contact support to enable it.'
-        );
-        return;
-      }
-      return await this._routeToModule(moduleChoice, content, messageType, interactiveData);
-    }
-
-    // Default: show the main menu with available modules
-    return await this.showMainMenu();
+    // Route everything to booking engine — it's the only functional module
+    const engine = new BookingEngine(this.tenant, this.patient, this.wa);
+    return await engine.handleMessage(content, messageType, interactiveData);
   }
 
   // Detect which module the user wants based on message content

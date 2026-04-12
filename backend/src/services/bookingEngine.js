@@ -33,6 +33,9 @@ class BookingEngine {
         case 'idle':
           return await this.handleNewMessage(content, state);
 
+        case 'awaiting_clinic':
+          return await this.handleClinicSelection(content, interactiveData, state);
+
         case 'awaiting_doctor':
           return await this.handleDoctorSelection(content, interactiveData, state);
 
@@ -113,14 +116,92 @@ class BookingEngine {
     await this.setState({ state: 'idle' });
   }
 
-  // ── Start Booking: Show Doctors ─────────────────────────
+  // ── Start Booking: Show Clinics or Doctors ──────────────
   async startBookingFlow() {
-    const { rows: doctors } = await pool.query(
-      `SELECT id, name, specialization, consultation_fee 
-       FROM doctors WHERE tenant_id = $1 AND is_active = true
-       ORDER BY name`,
-      [this.tenantId]
-    );
+    // Check if tenant has clinics configured
+    const clinics = this.tenant.settings?.branches || [];
+
+    if (clinics.length > 1) {
+      // Multiple clinics — ask user to pick one first
+      const sections = [{
+        title: 'Our Locations',
+        rows: [
+          ...clinics.map((c, i) => {
+            const label = c.address ? `${c.name} — ${c.address}` : c.name;
+            return {
+              id: `clinic_${i}`,
+              title: c.name.substring(0, 24),
+              description: c.address ? c.address.substring(0, 72) : ''
+            };
+          }),
+          { id: 'cancel_booking', title: '✕ Cancel', description: 'Go back to main menu' }
+        ]
+      }];
+
+      await this.wa.sendList(this.phone, {
+        headerText: this.tenant.business_name,
+        bodyText: 'Please select a clinic location:',
+        buttonText: 'View Clinics',
+        sections
+      });
+
+      return await this.setState({ state: 'awaiting_clinic' });
+    }
+
+    // Single clinic — auto-select it
+    const selectedClinic = clinics.length === 1
+      ? (clinics[0].address ? `${clinics[0].name} — ${clinics[0].address}` : clinics[0].name)
+      : null;
+
+    return await this.showDoctors(selectedClinic);
+  }
+
+  // ── Handle Clinic Selection ─────────────────────────────
+  async handleClinicSelection(content, interactiveData, state) {
+    if (content === 'cancel_booking') {
+      await this.setState({ state: 'idle' });
+      return await this.wa.sendText(this.phone, 'Booking cancelled. Send "hi" to start over.');
+    }
+
+    const clinics = this.tenant.settings?.branches || [];
+    const idx = parseInt((content || '').replace('clinic_', ''), 10);
+    const clinic = clinics[idx];
+
+    if (!clinic) {
+      return await this.wa.sendButtons(this.phone, {
+        bodyText: 'Invalid selection. Please use the menu buttons.',
+        buttons: [
+          { id: 'book', title: 'Start Over' },
+          { id: 'cancel_booking', title: 'Cancel' }
+        ]
+      });
+    }
+
+    const clinicLabel = clinic.address ? `${clinic.name} — ${clinic.address}` : clinic.name;
+    return await this.showDoctors(clinicLabel);
+  }
+
+  // ── Show Doctors (filtered by clinic if set) ────────────
+  async showDoctors(clinicLabel) {
+    let doctors;
+    if (clinicLabel) {
+      const { rows } = await pool.query(
+        `SELECT id, name, specialization, consultation_fee 
+         FROM doctors WHERE tenant_id = $1 AND is_active = true
+         AND (clinic = $2 OR clinic IS NULL)
+         ORDER BY name`,
+        [this.tenantId, clinicLabel]
+      );
+      doctors = rows;
+    } else {
+      const { rows } = await pool.query(
+        `SELECT id, name, specialization, consultation_fee 
+         FROM doctors WHERE tenant_id = $1 AND is_active = true
+         ORDER BY name`,
+        [this.tenantId]
+      );
+      doctors = rows;
+    }
 
     if (doctors.length === 0) {
       return await this.wa.sendButtons(this.phone, {
@@ -134,7 +215,8 @@ class BookingEngine {
       await this.setState({ 
         state: 'awaiting_service', 
         doctorId: doctors[0].id,
-        doctorName: doctors[0].name 
+        doctorName: doctors[0].name,
+        clinic: clinicLabel
       });
       return await this.showServices(doctors[0].id);
     }
@@ -153,13 +235,15 @@ class BookingEngine {
     }];
 
     await this.wa.sendList(this.phone, {
-      headerText: `${this.tenant.business_name}`,
-      bodyText: 'Please select a doctor for your appointment:',
+      headerText: this.tenant.business_name,
+      bodyText: clinicLabel
+        ? `Doctors at ${clinicLabel.split(' — ')[0]}:`
+        : 'Please select a doctor for your appointment:',
       buttonText: 'View Doctors',
       sections
     });
 
-    await this.setState({ state: 'awaiting_doctor' });
+    await this.setState({ state: 'awaiting_doctor', clinic: clinicLabel });
   }
 
   // ── Handle Doctor Selection ─────────────────────────────
@@ -189,7 +273,8 @@ class BookingEngine {
       ...state, 
       state: 'awaiting_service',
       doctorId: rows[0].id,
-      doctorName: rows[0].name
+      doctorName: rows[0].name,
+      clinic: state.clinic || null
     });
 
     return await this.showServices(rows[0].id);

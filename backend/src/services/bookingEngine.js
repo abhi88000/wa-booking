@@ -401,7 +401,7 @@ class BookingEngine {
     // Generate next available dates using tenant's timezone
     const dates = [];
     const now = new Date(new Date().toLocaleString('en-US', { timeZone: tz }));
-    for (let i = 1; i <= windowDays && dates.length < 10; i++) {
+    for (let i = 1; i <= windowDays && dates.length < 9; i++) {
       const date = new Date(now);
       date.setDate(now.getDate() + i);
       const dayName = dayMap[date.getDay()];
@@ -573,7 +573,7 @@ class BookingEngine {
     let current = this.timeToMinutes(startTime);
     const end = this.timeToMinutes(endTime);
 
-    while (current + duration <= end && slots.length < 10) {
+    while (current + duration <= end && slots.length < 9) {
       const slotStart = this.minutesToTime(current);
       const slotEnd = this.minutesToTime(current + duration);
 

@@ -707,20 +707,51 @@ class BookingEngine {
     }
 
     if (content === 'confirm_yes' || content.toLowerCase().includes('yes') || content.toLowerCase().includes('confirm')) {
-      // Create the appointment
-      const { rows } = await pool.query(
-        `INSERT INTO appointments (tenant_id, patient_id, doctor_id, service_id,
-         appointment_date, start_time, end_time, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-         RETURNING *`,
-        [
-          this.tenantId, this.patient.id, state.doctorId, state.serviceId,
-          state.appointmentDate, state.startTime, state.endTime,
-          this.tenant.settings?.auto_confirm ? 'confirmed' : 'pending'
-        ]
-      );
+      // Use transaction with conflict check to prevent double-booking
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
 
-      const appointment = rows[0];
+        // Lock the time range for this doctor+date to prevent concurrent bookings
+        const { rows: conflict } = await client.query(
+          `SELECT id FROM appointments 
+           WHERE doctor_id = $1 AND appointment_date = $2 AND tenant_id = $3
+           AND status NOT IN ('cancelled', 'rescheduled')
+           AND start_time < $5 AND end_time > $4
+           FOR UPDATE`,
+          [state.doctorId, state.appointmentDate, this.tenantId, state.startTime, state.endTime]
+        );
+
+        if (conflict.length > 0) {
+          await client.query('ROLLBACK');
+          client.release();
+          await this.setState({ state: 'idle' });
+          return await this.wa.sendButtons(this.phone, {
+            bodyText: 'Sorry, this slot was just booked by someone else. Please pick another time.',
+            buttons: [
+              { id: 'book', title: 'Pick Another Slot' },
+              { id: 'cancel_booking', title: 'Cancel' }
+            ]
+          });
+        }
+
+        // Create the appointment
+        const { rows } = await client.query(
+          `INSERT INTO appointments (tenant_id, patient_id, doctor_id, service_id,
+           appointment_date, start_time, end_time, status)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+           RETURNING *`,
+          [
+            this.tenantId, this.patient.id, state.doctorId, state.serviceId,
+            state.appointmentDate, state.startTime, state.endTime,
+            this.tenant.settings?.auto_confirm ? 'confirmed' : 'pending'
+          ]
+        );
+
+        await client.query('COMMIT');
+        client.release();
+
+        const appointment = rows[0];
 
       // Create reminders — only if the reminder time is still in the future
       const appointmentDateTime = new Date(`${state.appointmentDate}T${state.startTime}`);
@@ -753,6 +784,9 @@ class BookingEngine {
         `You'll receive a reminder before your appointment.\n` +
         `Type "status" anytime to check your appointments.`
       );
+
+      // Notify the doctor/clinic staff about new booking
+      await this.notifyDoctor(state, appointment);
 
       await this.setState({ state: 'idle' });
 
@@ -1157,30 +1191,60 @@ class BookingEngine {
     const duration = (docSlot.length > 0 && docSlot[0].slot_duration) ? docSlot[0].slot_duration : 30;
     const endTime = this.minutesToTime(this.timeToMinutes(time) + duration);
 
-    // Cancel old appointment
-    await pool.query(
-      `UPDATE appointments SET status = 'rescheduled', updated_at = NOW() WHERE id = $1`,
-      [state.rescheduleAppointmentId]
-    );
-    await pool.query(
-      `DELETE FROM reminders WHERE appointment_id = $1 AND sent = false`,
-      [state.rescheduleAppointmentId]
-    );
+    // Use transaction to prevent double-booking during reschedule
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    // Create new appointment
-    const { rows } = await pool.query(
-      `INSERT INTO appointments (tenant_id, patient_id, doctor_id, service_id,
-       appointment_date, start_time, end_time, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       RETURNING *`,
-      [
-        this.tenantId, this.patient.id, state.doctorId, state.serviceId,
-        state.appointmentDate, time, endTime,
-        this.tenant.settings?.auto_confirm ? 'confirmed' : 'pending'
-      ]
-    );
+      // Lock and check for conflicts on the new slot
+      const { rows: conflict } = await client.query(
+        `SELECT id FROM appointments 
+         WHERE doctor_id = $1 AND appointment_date = $2 AND tenant_id = $3
+         AND status NOT IN ('cancelled', 'rescheduled')
+         AND start_time < $5 AND end_time > $4
+         FOR UPDATE`,
+        [state.doctorId, state.appointmentDate, this.tenantId, time, endTime]
+      );
 
-    const appointment = rows[0];
+      if (conflict.length > 0) {
+        await client.query('ROLLBACK');
+        client.release();
+        return await this.wa.sendButtons(this.phone, {
+          bodyText: 'Sorry, this slot was just booked by someone else. Please pick another time.',
+          buttons: [
+            { id: 'reschedule', title: 'Pick Another Slot' },
+            { id: 'cancel_booking', title: 'Cancel' }
+          ]
+        });
+      }
+
+      // Cancel old appointment
+      await client.query(
+        `UPDATE appointments SET status = 'rescheduled', updated_at = NOW() WHERE id = $1`,
+        [state.rescheduleAppointmentId]
+      );
+      await client.query(
+        `DELETE FROM reminders WHERE appointment_id = $1 AND sent = false`,
+        [state.rescheduleAppointmentId]
+      );
+
+      // Create new appointment
+      const { rows } = await client.query(
+        `INSERT INTO appointments (tenant_id, patient_id, doctor_id, service_id,
+         appointment_date, start_time, end_time, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING *`,
+        [
+          this.tenantId, this.patient.id, state.doctorId, state.serviceId,
+          state.appointmentDate, time, endTime,
+          this.tenant.settings?.auto_confirm ? 'confirmed' : 'pending'
+        ]
+      );
+
+      await client.query('COMMIT');
+      client.release();
+
+      const appointment = rows[0];
 
     // Create reminders
     const appointmentDateTime = new Date(`${state.appointmentDate}T${time}`);
@@ -1227,6 +1291,31 @@ class BookingEngine {
       `🔄 *Reschedule* — Change appointment time\n\n` +
       `Just type any of these words or tap the buttons!`
     );
+  }
+
+  // ── Notify Doctor about new booking ─────────────────────
+  async notifyDoctor(state, appointment) {
+    try {
+      // Get doctor's phone number
+      const { rows } = await pool.query(
+        `SELECT phone FROM doctors WHERE id = $1 AND tenant_id = $2`,
+        [state.doctorId, this.tenantId]
+      );
+      const doctorPhone = rows[0]?.phone;
+      if (!doctorPhone) return; // Doctor has no phone registered
+
+      await this.wa.sendText(doctorPhone,
+        `📋 *New Appointment Booked*\n\n` +
+        `Patient: ${this.patient.name || this.phone}\n` +
+        `📅 ${this.formatDate(state.appointmentDate)}\n` +
+        `🕐 ${this.formatTime(state.startTime)} - ${this.formatTime(state.endTime)}\n` +
+        `📝 ${state.serviceName || 'General'}\n\n` +
+        `Status: ${appointment.status}`
+      );
+    } catch (err) {
+      // Non-critical — don't fail the booking if doctor notification fails
+      logger.warn('Failed to notify doctor:', err.message);
+    }
   }
 
   // ── State Management ────────────────────────────────────

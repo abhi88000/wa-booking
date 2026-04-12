@@ -216,11 +216,17 @@ export default function Appointments() {
 function CreateAppointmentModal({ doctors, services, onClose }) {
   const [form, setForm] = useState({
     doctorId: '', serviceId: '', patientPhone: '', patientName: '',
-    appointmentDate: '', startTime: '', endTime: '', notes: ''
+    appointmentDate: '', notes: ''
   });
   const [saving, setSaving] = useState(false);
   const [patients, setPatients] = useState([]);
   const [patientSearch, setPatientSearch] = useState('');
+  const [slots, setSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [noSlotMsg, setNoSlotMsg] = useState('');
+
+  const today = new Date().toISOString().split('T')[0];
 
   const searchPatients = async (q) => {
     setPatientSearch(q);
@@ -240,21 +246,55 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
     setPatients([]);
   };
 
-  const handleDurationCalc = (startTime) => {
-    if (!startTime || !form.doctorId) return;
-    const doc = doctors.find(d => d.id === parseInt(form.doctorId));
-    const dur = doc?.slot_duration || 20;
-    const [h, m] = startTime.split(':').map(Number);
-    const totalMin = h * 60 + m + dur;
-    const endH = String(Math.floor(totalMin / 60)).padStart(2, '0');
-    const endM = String(totalMin % 60).padStart(2, '0');
-    setForm(f => ({ ...f, startTime, endTime: `${endH}:${endM}` }));
+  const fetchSlots = async (dateVal) => {
+    setForm(f => ({ ...f, appointmentDate: dateVal }));
+    setSelectedSlot(null);
+    setSlots([]);
+    setNoSlotMsg('');
+    if (!dateVal || !form.doctorId) return;
+    setLoadingSlots(true);
+    try {
+      const res = await api.getDoctorSlots(form.doctorId, dateVal);
+      if (res.data.slots.length === 0) {
+        setNoSlotMsg(res.data.message || 'No available slots on this date');
+      } else {
+        setSlots(res.data.slots);
+      }
+    } catch (err) {
+      setNoSlotMsg('Failed to load slots');
+    } finally { setLoadingSlots(false); }
+  };
+
+  const handleDoctorChange = (doctorId) => {
+    setForm(f => ({ ...f, doctorId }));
+    setSelectedSlot(null);
+    setSlots([]);
+    setNoSlotMsg('');
+    // Re-fetch slots if date already selected
+    if (form.appointmentDate && doctorId) {
+      setLoadingSlots(true);
+      api.getDoctorSlots(doctorId, form.appointmentDate)
+        .then(res => {
+          if (res.data.slots.length === 0) setNoSlotMsg(res.data.message || 'No slots');
+          else setSlots(res.data.slots);
+        })
+        .catch(() => setNoSlotMsg('Failed to load slots'))
+        .finally(() => setLoadingSlots(false));
+    }
+  };
+
+  const fmt12 = (t) => {
+    if (!t) return '';
+    const [h, m] = t.split(':').map(Number);
+    const p = h >= 12 ? 'PM' : 'AM';
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${h12}:${String(m).padStart(2, '0')} ${p}`;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.doctorId || !form.appointmentDate || !form.startTime) {
-      alert('Doctor, date and start time are required');
+    if (!form.doctorId || !form.appointmentDate || !selectedSlot) {
+      alert('Doctor, date and time slot are required');
       return;
     }
     setSaving(true);
@@ -266,8 +306,8 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
         patientPhone: form.patientPhone,
         patientName: form.patientName,
         appointmentDate: form.appointmentDate,
-        startTime: form.startTime,
-        endTime: form.endTime,
+        startTime: selectedSlot.startTime,
+        endTime: selectedSlot.endTime,
         notes: form.notes,
         status: 'confirmed'
       });
@@ -319,7 +359,7 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-500 block mb-1">Doctor *</label>
-              <select value={form.doctorId} onChange={e => setForm({...form, doctorId: e.target.value})} required
+              <select value={form.doctorId} onChange={e => handleDoctorChange(e.target.value)} required
                 className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400">
                 <option value="">Select Doctor</option>
                 {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -336,24 +376,39 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
           </div>
           <div>
             <label className="text-xs text-gray-500 block mb-1">Date *</label>
-            <input type="date" value={form.appointmentDate} required
-              onChange={e => setForm({...form, appointmentDate: e.target.value})}
+            <input type="date" value={form.appointmentDate} min={today} required
+              onChange={e => fetchSlots(e.target.value)}
               className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
+            {!form.doctorId && form.appointmentDate && (
+              <p className="text-xs text-amber-600 mt-1">Select a doctor first to see available slots</p>
+            )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+
+          {loadingSlots && <p className="text-sm text-gray-400">Loading slots...</p>}
+          {noSlotMsg && <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg">{noSlotMsg}</p>}
+
+          {slots.length > 0 && (
             <div>
-              <label className="text-xs text-gray-500 block mb-1">Start Time *</label>
-              <input type="time" value={form.startTime} required
-                onChange={e => handleDurationCalc(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
+              <label className="text-xs text-gray-500 block mb-2">Available Slots *</label>
+              <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                {slots.map(s => (
+                  <button type="button" key={s.startTime}
+                    onClick={() => setSelectedSlot(s)}
+                    className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all
+                      ${selectedSlot?.startTime === s.startTime
+                        ? 'bg-slate-800 text-white border-slate-800'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-slate-400'}`}>
+                    {fmt12(s.startTime)}
+                  </button>
+                ))}
+              </div>
+              {selectedSlot && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Selected: {fmt12(selectedSlot.startTime)} – {fmt12(selectedSlot.endTime)}
+                </p>
+              )}
             </div>
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">End Time</label>
-              <input type="time" value={form.endTime}
-                onChange={e => setForm({...form, endTime: e.target.value})}
-                className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
-            </div>
-          </div>
+          )}
           <div>
             <label className="text-xs text-gray-500 block mb-1">Notes</label>
             <textarea rows={2} placeholder="Optional notes..." value={form.notes}
@@ -362,7 +417,7 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
           </div>
           <div className="flex gap-3 justify-end mt-4">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-500">Cancel</button>
-            <button type="submit" disabled={saving}
+            <button type="submit" disabled={saving || !selectedSlot}
               className="bg-slate-800 text-white px-6 py-2 rounded-lg text-sm hover:bg-slate-900 disabled:opacity-50">
               {saving ? 'Booking...' : 'Book Appointment'}
             </button>

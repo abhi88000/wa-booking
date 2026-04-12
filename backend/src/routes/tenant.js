@@ -156,6 +156,23 @@ router.patch('/appointments/:id/status', async (req, res, next) => {
       [status, req.params.id, req.tenantId, comment || null]
     );
 
+    // Send WhatsApp notification to patient on confirm
+    if (status === 'confirmed' && appt.patient_phone && req.tenant?.wa_status === 'connected') {
+      try {
+        const wa = new WhatsAppService(req.tenant);
+        const time = formatTime12(appt.start_time);
+        const date = formatDateDD(appt.appointment_date);
+        await wa.sendText(appt.patient_phone,
+          `✅ *Appointment Confirmed*\n\n` +
+          `👨‍⚕️ ${appt.doctor_name || 'Doctor'}\n` +
+          `📅 ${date} at ${time}\n\n` +
+          `Your appointment has been confirmed by ${req.tenant.business_name}. See you there!`
+        );
+      } catch (waErr) {
+        logger.warn('Failed to send confirm notification:', waErr.message);
+      }
+    }
+
     // Send WhatsApp notification to patient on cancel
     if (status === 'cancelled' && appt.patient_phone && req.tenant?.wa_status === 'connected') {
       try {

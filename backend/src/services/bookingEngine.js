@@ -891,9 +891,9 @@ class BookingEngine {
       [appointmentId]
     );
 
-    // Delete pending reminders for this appointment
+    // Delete unsent reminders for this appointment
     await pool.query(
-      `DELETE FROM reminders WHERE appointment_id = $1 AND status = 'pending'`,
+      `DELETE FROM reminders WHERE appointment_id = $1 AND sent = false`,
       [appointmentId]
     );
 
@@ -986,7 +986,7 @@ class BookingEngine {
       [state.rescheduleAppointmentId]
     );
     await pool.query(
-      `DELETE FROM reminders WHERE appointment_id = $1 AND status = 'pending'`,
+      `DELETE FROM reminders WHERE appointment_id = $1 AND sent = false`,
       [state.rescheduleAppointmentId]
     );
 

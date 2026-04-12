@@ -10,7 +10,7 @@ const Joi = require('joi');
 const axios = require('axios');
 const pool = require('../db/pool');
 const { authTenant, requireRole } = require('../middleware/auth');
-const { loadTenantContext } = require('../middleware/tenantContext');
+const { loadTenantContext, checkAppointmentLimit } = require('../middleware/tenantContext');
 const logger = require('../utils/logger');
 const WhatsAppService = require('../services/whatsapp');
 
@@ -214,7 +214,7 @@ router.patch('/appointments/:id/status', async (req, res, next) => {
 
 // ── CREATE APPOINTMENT (MANUAL) ───────────────────────────
 
-router.post('/appointments', requireRole('owner', 'admin', 'staff'), async (req, res, next) => {
+router.post('/appointments', requireRole('owner', 'admin', 'staff'), checkAppointmentLimit, async (req, res, next) => {
   try {
     const schema = Joi.object({
       doctorId: Joi.number().required(),

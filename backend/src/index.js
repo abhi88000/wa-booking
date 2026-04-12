@@ -37,7 +37,9 @@ app.use(compression());
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({
-  origin: process.env.CORS_ORIGINS?.trim() ? process.env.CORS_ORIGINS.split(',').map(s => s.trim()) : true,
+  origin: process.env.CORS_ORIGINS?.trim()
+    ? process.env.CORS_ORIGINS.split(',').map(s => s.trim())
+    : (process.env.NODE_ENV === 'production' ? false : true),
   credentials: true
 }));
 app.use(morgan('combined', {
@@ -62,6 +64,19 @@ const webhookLimiter = rateLimit({
   legacyHeaders: false
 });
 app.use('/webhook/', webhookLimiter);
+
+// Strict rate limit on login endpoints (brute force protection)
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15 min
+  max: 10,                    // 10 attempts per 15 min per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts, please try again after 15 minutes' }
+});
+app.use('/api/v1/auth/login', loginLimiter);
+app.use('/api/v1/auth/platform/login', loginLimiter);
+app.use('/api/auth/login', loginLimiter);
+app.use('/api/auth/platform/login', loginLimiter);
 
 // ── Routes ─────────────────────────────────────────────────
 

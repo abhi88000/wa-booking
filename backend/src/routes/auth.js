@@ -87,7 +87,7 @@ router.post('/signup', async (req, res, next) => {
     }
 
     // Create owner user
-    const passwordHash = await bcrypt.hash(value.password, 10);
+    const passwordHash = await bcrypt.hash(value.password, 12);
     const { rows: user } = await pool.query(
       `INSERT INTO tenant_users (tenant_id, email, password_hash, name, role)
        VALUES ($1, $2, $3, $4, 'owner') RETURNING id, email, name, role`,

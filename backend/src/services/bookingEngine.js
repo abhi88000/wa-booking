@@ -707,6 +707,22 @@ class BookingEngine {
     }
 
     if (content === 'confirm_yes' || content.toLowerCase().includes('yes') || content.toLowerCase().includes('confirm')) {
+      // Check appointment limit for this tenant
+      const maxAppts = this.tenant.max_appointments_month || 500;
+      const { rows: limitCheck } = await pool.query(
+        `SELECT COUNT(*) as count FROM appointments 
+         WHERE tenant_id = $1 
+         AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW())
+         AND EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM NOW())`,
+        [this.tenantId]
+      );
+      if (parseInt(limitCheck[0].count) >= maxAppts) {
+        await this.setState({ state: 'idle' });
+        return await this.wa.sendText(this.phone,
+          `Sorry, ${this.tenant.business_name} has reached their monthly booking limit. Please contact the clinic directly.`
+        );
+      }
+
       // Use transaction with conflict check to prevent double-booking
       const client = await pool.connect();
       try {

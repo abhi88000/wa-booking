@@ -537,7 +537,7 @@ class BookingEngine {
   }
 
   // ── Show Available Time Slots ───────────────────────────
-  async showTimeSlots(doctorId, dateStr) {
+  async showTimeSlots(doctorId, dateStr, page = 0) {
     const [y, m, d] = dateStr.split('-').map(Number);
     const date = new Date(y, m - 1, d);
     const dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -583,15 +583,15 @@ class BookingEngine {
       [doctorId, this.tenantId, dateStr]
     );
 
-    // Generate slots
-    const slots = [];
+    // Generate ALL available slots first
+    const allSlots = [];
     const startTime = avail[0].start_time;
     const endTime = avail[0].end_time;
 
     let current = this.timeToMinutes(startTime);
     const end = this.timeToMinutes(endTime);
 
-    while (current + duration <= end && slots.length < 9) {
+    while (current + duration <= end) {
       const slotStart = this.minutesToTime(current);
       const slotEnd = this.minutesToTime(current + duration);
 
@@ -610,7 +610,7 @@ class BookingEngine {
       });
 
       if (!isBooked && !inBreak) {
-        slots.push({
+        allSlots.push({
           id: `time_${slotStart}`,
           title: this.formatTime(slotStart),
           description: `${this.formatTime(slotStart)} - ${this.formatTime(slotEnd)}`
@@ -620,7 +620,7 @@ class BookingEngine {
       current += duration;
     }
 
-    if (slots.length === 0) {
+    if (allSlots.length === 0) {
       return await this.wa.sendButtons(this.phone, {
         bodyText: 'No available slots on this date.',
         buttons: [
@@ -630,10 +630,25 @@ class BookingEngine {
       });
     }
 
+    // Paginate: 8 slots per page (leaving room for nav + cancel)
+    const PAGE_SIZE = 8;
+    const totalPages = Math.ceil(allSlots.length / PAGE_SIZE);
+    const currentPage = Math.min(page, totalPages - 1);
+    const pageSlots = allSlots.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+
+    const rows = [...pageSlots];
+
+    // Add "More slots" button if there are more pages
+    if (currentPage < totalPages - 1) {
+      rows.push({ id: `slots_page_${currentPage + 1}`, title: 'More Slots →', description: `Page ${currentPage + 2} of ${totalPages}` });
+    }
+    rows.push({ id: 'cancel_booking', title: 'Cancel', description: 'Go back to main menu' });
+
+    const pageInfo = totalPages > 1 ? ` (Page ${currentPage + 1}/${totalPages})` : '';
     await this.wa.sendList(this.phone, {
-      bodyText: `Available slots for ${dateStr}:`,
+      bodyText: `Available slots for ${this.formatDate(dateStr)}${pageInfo}:`,
       buttonText: 'View Slots',
-      sections: [{ title: 'Time Slots', rows: [...slots, { id: 'cancel_booking', title: 'Cancel', description: 'Go back to main menu' }] }]
+      sections: [{ title: 'Time Slots', rows }]
     });
   }
 
@@ -646,6 +661,11 @@ class BookingEngine {
     if (content === 'back_to_dates') {
       await this.setState({ ...state, state: 'awaiting_date' });
       return await this.showDateOptions(state.doctorId);
+    }
+    // Pagination: show next page of slots
+    if (content.startsWith('slots_page_')) {
+      const page = parseInt(content.replace('slots_page_', ''));
+      return await this.showTimeSlots(state.doctorId, state.appointmentDate, page);
     }
     const time = content.replace('time_', '');
     // Get doctor's slot_duration for end time calculation
@@ -1125,6 +1145,11 @@ class BookingEngine {
     if (content === 'cancel_booking') {
       await this.setState({ state: 'idle' });
       return await this.wa.sendText(this.phone, 'Reschedule cancelled. Send "hi" to start over.');
+    }
+    // Pagination: show next page of slots
+    if (content.startsWith('slots_page_')) {
+      const page = parseInt(content.replace('slots_page_', ''));
+      return await this.showTimeSlots(state.doctorId, state.appointmentDate, page);
     }
     const time = content.replace('time_', '');
     // Get doctor's slot_duration for end time calculation

@@ -220,15 +220,19 @@ function Sidebar({ onLogout, onBranchSwitch }) {
 }
 
 function AddBranchModal({ onClose, onCreated }) {
-  const [form, setForm] = useState({ businessName: '', businessType: 'clinic', phone: '', city: '' });
+  const [businessName, setBusinessName] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const tenantInfo = JSON.parse(localStorage.getItem('tenant_info') || '{}');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true); setError('');
     try {
-      const { data } = await api.addBranch(form);
+      const { data } = await api.addBranch({
+        businessName,
+        businessType: tenantInfo.businessType || 'clinic'
+      });
       onCreated(data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create branch');
@@ -237,7 +241,7 @@ function AddBranchModal({ onClose, onCreated }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+      <div className="bg-white rounded-lg p-6 w-full max-w-sm">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-base font-semibold text-gray-900">Add New Branch</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">&times;</button>
@@ -246,39 +250,12 @@ function AddBranchModal({ onClose, onCreated }) {
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="text-xs text-gray-500 block mb-1">Branch Name</label>
-            <input placeholder="e.g. Downtown Clinic" value={form.businessName}
-              onChange={e => setForm({...form, businessName: e.target.value})}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" required />
+            <input placeholder="e.g. Main Road Clinic" value={businessName}
+              onChange={e => setBusinessName(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" required autoFocus />
+            <p className="text-[11px] text-gray-400 mt-1">Other details (phone, city, doctors) can be set in Settings after creating.</p>
           </div>
-          <div>
-            <label className="text-xs text-gray-500 block mb-1">Type</label>
-            <select value={form.businessType} onChange={e => setForm({...form, businessType: e.target.value})}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400">
-              <option value="clinic">Clinic</option>
-              <option value="salon">Salon</option>
-              <option value="dental">Dental</option>
-              <option value="spa">Spa</option>
-              <option value="consulting">Consulting</option>
-              <option value="veterinary">Veterinary</option>
-              <option value="physiotherapy">Physiotherapy</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">Phone</label>
-              <input placeholder="+91..." value={form.phone}
-                onChange={e => setForm({...form, phone: e.target.value})}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
-            </div>
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">City</label>
-              <input placeholder="City" value={form.city}
-                onChange={e => setForm({...form, city: e.target.value})}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
-            </div>
-          </div>
-          <div className="flex gap-3 justify-end pt-2">
+          <div className="flex gap-3 justify-end pt-1">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-500">Cancel</button>
             <button type="submit" disabled={saving}
               className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900 disabled:opacity-50">

@@ -96,24 +96,10 @@ export default function Appointments() {
         </button>
       )}
       {a.status === 'completed' && (
-        <>
-          {a.followup && (
-            <span className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${
-              a.followup.status === 'completed' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'
-            }`}>
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-              {a.followup.status === 'completed' ? 'Follow-up done' : `Follow-up ${fmtDate(a.followup.date, true)}`}
-            </span>
-          )}
-          {(!a.followup || a.followup.status === 'completed') && (
-            <button onClick={() => setFollowUpTarget(a)}
-              className="text-xs px-2 py-1 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100">
-              {a.followup ? 'Another Follow Up' : 'Follow Up'}
-            </button>
-          )}
-        </>
+        <button onClick={() => setFollowUpTarget(a)}
+          className="text-xs px-2 py-1 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100">
+          Follow Up
+        </button>
       )}
     </div>
   );
@@ -174,9 +160,7 @@ export default function Appointments() {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLOR[a.status]}`}>
                       {a.status?.replace('_', ' ')}
                     </span>
-                    {a.rescheduled_from && (
-                      <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-500">follow-up</span>
-                    )}
+
                   </td>
                   <td className="px-4 py-3">
                     <ActionButtons a={a} />
@@ -205,11 +189,7 @@ export default function Appointments() {
                   {a.status?.replace('_', ' ')}
                 </span>
               </div>
-              {a.rescheduled_from && (
-                <div className="mt-1">
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-500">follow-up</span>
-                </div>
-              )}
+
               <div className="mt-2 text-sm text-gray-500 space-y-0.5">
                 <p>{a.doctor_name} {a.service_name ? `- ${a.service_name}` : ''}</p>
                 <p>{fmtDate(a.appointment_date)} at {fmt12(a.start_time)}</p>

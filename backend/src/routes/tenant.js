@@ -104,10 +104,7 @@ router.get('/appointments', async (req, res, next) => {
       pool.query(`SELECT COUNT(*) FROM appointments a ${needsDoctorJoin ? 'JOIN doctors d ON d.id = a.doctor_id' : ''} ${where}`, params),
       pool.query(`
         SELECT a.*, d.name as doctor_name, p.name as patient_name, p.phone as patient_phone,
-               s.name as service_name,
-               (SELECT json_build_object('id', f.id, 'date', f.appointment_date, 'time', f.start_time, 'status', f.status)
-                FROM appointments f WHERE f.rescheduled_from = a.id AND f.status NOT IN ('cancelled')
-                ORDER BY f.created_at DESC LIMIT 1) as followup
+               s.name as service_name
         FROM appointments a
         LEFT JOIN doctors d ON d.id = a.doctor_id
         LEFT JOIN patients p ON p.id = a.patient_id

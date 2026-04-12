@@ -17,6 +17,13 @@ class BookingEngine {
     this.phone = patient.phone;
   }
 
+  // Format a DB date to short string
+  formatDate(d) {
+    if (!d) return '';
+    if (typeof d === 'string') return d.substring(0, 10);
+    return d.toISOString().substring(0, 10);
+  }
+
   // ── Main Message Handler ────────────────────────────────
   async handleMessage(content, messageType, interactiveData) {
     try {
@@ -752,7 +759,7 @@ class BookingEngine {
     let msg = '📋 *Your Upcoming Appointments*\n\n';
     rows.forEach((a, i) => {
       msg += `${i + 1}. ${a.doctor_name}\n`;
-      msg += `   📅 ${a.appointment_date} at ${this.formatTime(a.start_time)}\n`;
+      msg += `   📅 ${this.formatDate(a.appointment_date)} at ${this.formatTime(a.start_time)}\n`;
       msg += `   📝 ${a.service_name || 'General'}\n`;
       msg += `   Status: ${a.status}\n\n`;
     });
@@ -794,7 +801,7 @@ class BookingEngine {
         ...rows.map(a => ({
           id: `cancel_${a.id}`,
           title: `${a.doctor_name}`.substring(0, 24),
-          description: `${a.appointment_date} at ${this.formatTime(a.start_time)}`
+          description: `${this.formatDate(a.appointment_date)} at ${this.formatTime(a.start_time)}`
         })),
         { id: 'cancel_booking', title: 'Go Back', description: 'Return to main menu' }
       ]
@@ -836,7 +843,7 @@ class BookingEngine {
         ...rows.map(a => ({
           id: `resched_${a.id}`,
           title: `${a.doctor_name}`.substring(0, 24),
-          description: `${a.appointment_date} at ${this.formatTime(a.start_time)}`
+          description: `${this.formatDate(a.appointment_date)} at ${this.formatTime(a.start_time)}`
         })),
         { id: 'cancel_booking', title: 'Go Back', description: 'Return to main menu' }
       ]
@@ -894,7 +901,7 @@ class BookingEngine {
     await this.wa.sendText(this.phone,
       `❌ *Appointment Cancelled*\n\n` +
       `👨‍⚕️ ${a.doctor_name}\n` +
-      `📅 ${a.appointment_date} at ${this.formatTime(a.start_time)}\n\n` +
+      `📅 ${this.formatDate(a.appointment_date)} at ${this.formatTime(a.start_time)}\n\n` +
       `Type "book" to schedule a new appointment.`
     );
 

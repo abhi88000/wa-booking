@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
 import { useClinic } from '../ClinicContext';
+import { fmtDate, fmt12 } from '../utils';
 
 export default function Appointments() {
   const [appointments, setAppointments] = useState([]);
@@ -82,19 +83,25 @@ export default function Appointments() {
           </button>
         </>
       )}
-      {a.status === 'completed' && !a.followup && (
-        <button onClick={() => setFollowUpTarget(a)}
-          className="text-xs px-2 py-1 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100">
-          Follow Up
-        </button>
-      )}
-      {a.status === 'completed' && a.followup && (
-        <span className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded inline-flex items-center gap-1">
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-          Follow-up {a.followup.date?.substring(5)} at {a.followup.time?.substring(0, 5)}
-        </span>
+      {a.status === 'completed' && (
+        <>
+          {a.followup && (
+            <span className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${
+              a.followup.status === 'completed' ? 'bg-blue-50 text-blue-600' : 'bg-green-50 text-green-600'
+            }`}>
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              {a.followup.status === 'completed' ? 'Follow-up done' : `Follow-up ${fmtDate(a.followup.date, true)}`}
+            </span>
+          )}
+          {(!a.followup || a.followup.status === 'completed') && (
+            <button onClick={() => setFollowUpTarget(a)}
+              className="text-xs px-2 py-1 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100">
+              {a.followup ? 'Another Follow Up' : 'Follow Up'}
+            </button>
+          )}
+        </>
       )}
     </div>
   );
@@ -149,8 +156,8 @@ export default function Appointments() {
                   </td>
                   <td className="px-4 py-3">{a.doctor_name}</td>
                   <td className="px-4 py-3">{a.service_name || '—'}</td>
-                  <td className="px-4 py-3">{a.appointment_date?.substring(0, 10)}</td>
-                  <td className="px-4 py-3">{a.start_time?.substring(0, 5)}</td>
+                  <td className="px-4 py-3">{fmtDate(a.appointment_date)}</td>
+                  <td className="px-4 py-3">{fmt12(a.start_time)}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLOR[a.status]}`}>
                       {a.status?.replace('_', ' ')}
@@ -193,7 +200,7 @@ export default function Appointments() {
               )}
               <div className="mt-2 text-sm text-gray-500 space-y-0.5">
                 <p>{a.doctor_name} {a.service_name ? `- ${a.service_name}` : ''}</p>
-                <p>{a.appointment_date?.substring(0, 10)} at {a.start_time?.substring(0, 5)}</p>
+                <p>{fmtDate(a.appointment_date)} at {fmt12(a.start_time)}</p>
               </div>
               {['pending', 'confirmed', 'completed'].includes(a.status) && (
                 <div className="mt-3">
@@ -311,14 +318,6 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
         .catch(() => setNoSlotMsg('Failed to load slots'))
         .finally(() => setLoadingSlots(false));
     }
-  };
-
-  const fmt12 = (t) => {
-    if (!t) return '';
-    const [h, m] = t.split(':').map(Number);
-    const p = h >= 12 ? 'PM' : 'AM';
-    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return `${h12}:${String(m).padStart(2, '0')} ${p}`;
   };
 
   const handleSubmit = async (e) => {
@@ -478,7 +477,7 @@ function CancelModal({ appointment, onClose, onDone }) {
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
         <h2 className="text-base font-semibold text-gray-900 mb-1">Cancel Appointment</h2>
         <p className="text-sm text-gray-500 mb-4">
-          {appointment.patient_name || 'Patient'} — {appointment.doctor_name} on {appointment.appointment_date?.substring(0, 10)} at {appointment.start_time?.substring(0, 5)}
+          {appointment.patient_name || 'Patient'} — {appointment.doctor_name} on {fmtDate(appointment.appointment_date)} at {fmt12(appointment.start_time)}
         </p>
         {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-3 text-sm">{error}</div>}
         <div className="mb-4">
@@ -531,14 +530,6 @@ function RescheduleModal({ appointment, doctors, onClose, onDone }) {
     } finally { setLoadingSlots(false); }
   };
 
-  const fmt12 = (t) => {
-    if (!t) return '';
-    const [h, m] = t.split(':').map(Number);
-    const p = h >= 12 ? 'PM' : 'AM';
-    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return `${h12}:${String(m).padStart(2, '0')} ${p}`;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!date || !selectedSlot) { setError('Pick a date and time slot'); return; }
@@ -562,7 +553,7 @@ function RescheduleModal({ appointment, doctors, onClose, onDone }) {
         <h2 className="text-base font-semibold text-gray-900 mb-1">Reschedule Appointment</h2>
         <p className="text-sm text-gray-500 mb-4">
           {appointment.patient_name || 'Patient'} — {appointment.doctor_name}
-          <span className="text-gray-400"> (currently {appointment.appointment_date?.substring(0, 10)} at {appointment.start_time?.substring(0, 5)})</span>
+          <span className="text-gray-400"> (currently {fmtDate(appointment.appointment_date)} at {fmt12(appointment.start_time)})</span>
         </p>
         {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-3 text-sm">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -651,14 +642,6 @@ function FollowUpModal({ appointment, onClose, onDone }) {
     } finally { setLoadingSlots(false); }
   };
 
-  const fmt12 = (t) => {
-    if (!t) return '';
-    const [h, m] = t.split(':').map(Number);
-    const p = h >= 12 ? 'PM' : 'AM';
-    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-    return `${h12}:${String(m).padStart(2, '0')} ${p}`;
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!date || !selectedSlot) { setError('Pick a date and time slot'); return; }
@@ -682,7 +665,7 @@ function FollowUpModal({ appointment, onClose, onDone }) {
         <h2 className="text-base font-semibold text-gray-900 mb-1">Schedule Follow-Up</h2>
         <p className="text-sm text-gray-500 mb-4">
           {appointment.patient_name || 'Patient'} — {appointment.doctor_name}
-          <span className="text-gray-400"> (completed {appointment.appointment_date?.substring(0, 10)})</span>
+          <span className="text-gray-400"> (completed {fmtDate(appointment.appointment_date)})</span>
         </p>
         {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-3 text-sm">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-4">

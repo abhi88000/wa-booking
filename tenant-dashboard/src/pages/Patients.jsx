@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../api';
+import { fmtDate, fmt12 } from '../utils';
 
 export default function Patients() {
   const [patients, setPatients] = useState([]);
@@ -246,7 +247,7 @@ export default function Patients() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Joined</span>
-                  <span className="font-medium">{new Date(detail.created_at).toLocaleDateString()}</span>
+                  <span className="font-medium">{fmtDate(detail.created_at)}</span>
                 </div>
               </div>
 
@@ -269,7 +270,7 @@ export default function Patients() {
                         </span>
                       </div>
                       <p className="text-xs text-gray-500 mt-1">
-                        {a.appointment_date?.substring(0, 10)} at {a.start_time?.substring(0, 5)}
+                        {fmtDate(a.appointment_date)} at {fmt12(a.start_time)}
                         {a.service_name ? ` - ${a.service_name}` : ''}
                       </p>
                     </div>

@@ -45,11 +45,13 @@ router.get('/dashboard', async (req, res, next) => {
       })(),
       pool.query(`
         SELECT a.id, a.appointment_date, a.start_time, a.status, 
-               d.name as doctor_name, p.name as patient_name, p.phone as patient_phone
+               d.name as doctor_name, p.name as patient_name, p.phone as patient_phone,
+               a.rescheduled_from, a.notes
         FROM appointments a
         LEFT JOIN doctors d ON d.id = a.doctor_id
         LEFT JOIN patients p ON p.id = a.patient_id
         WHERE a.tenant_id = $1 AND a.appointment_date >= CURRENT_DATE
+        AND a.status NOT IN ('cancelled', 'rescheduled')
         ${clinicFilter ? 'AND (d.clinic = $2 OR d.clinic IS NULL)' : ''}
         ORDER BY a.appointment_date, a.start_time LIMIT 10
       `, clinicFilter ? [tid, clinicFilter] : [tid]),
@@ -104,7 +106,8 @@ router.get('/appointments', async (req, res, next) => {
         SELECT a.*, d.name as doctor_name, p.name as patient_name, p.phone as patient_phone,
                s.name as service_name,
                (SELECT json_build_object('id', f.id, 'date', f.appointment_date, 'time', f.start_time, 'status', f.status)
-                FROM appointments f WHERE f.rescheduled_from = a.id AND f.status NOT IN ('cancelled') LIMIT 1) as followup
+                FROM appointments f WHERE f.rescheduled_from = a.id AND f.status NOT IN ('cancelled')
+                ORDER BY f.created_at DESC LIMIT 1) as followup
         FROM appointments a
         LEFT JOIN doctors d ON d.id = a.doctor_id
         LEFT JOIN patients p ON p.id = a.patient_id

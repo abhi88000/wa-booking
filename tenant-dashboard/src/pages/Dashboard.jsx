@@ -95,13 +95,17 @@ function StatusBadge({ status }) {
 
 // ── Appointment Row ───────────────────────────────────────
 function AppointmentRow({ a, showDate }) {
+  const isFollowUp = a.rescheduled_from && a.notes?.startsWith('Follow-up');
   return (
     <div className="flex items-center gap-3 py-3">
       <div className="w-10 h-10 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center shrink-0">
         <span className="text-[11px] font-semibold text-slate-500 leading-none">{formatTime(a.start_time).split(' ')[0]}</span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-gray-800 truncate">{a.patient_name || 'Walk-in'}</p>
+        <p className="text-sm font-medium text-gray-800 truncate">
+          {a.patient_name || 'Walk-in'}
+          {isFollowUp && <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-500">follow-up</span>}
+        </p>
         <p className="text-xs text-gray-400 truncate">
           {a.doctor_name}{showDate ? ` · ${formatDate(a.appointment_date)}` : ''}
         </p>

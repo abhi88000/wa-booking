@@ -5,7 +5,11 @@
 const jwt = require('jsonwebtoken');
 const pool = require('../db/pool');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'change-this-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  console.error('FATAL: JWT_SECRET environment variable is required');
+  process.exit(1);
+}
 
 /**
  * Authenticate platform admin (Super Admin)

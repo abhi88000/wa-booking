@@ -11,9 +11,9 @@ const pool = require('../db/pool');
 const { signPlatformToken, signTenantToken } = require('../middleware/auth');
 const logger = require('../utils/logger');
 
-// ── Valid invite codes (manage via super admin or env) ─────
+// ── Valid invite codes — checked against DB first, env fallback ─────
 const VALID_INVITE_CODES = new Set(
-  (process.env.INVITE_CODES || 'FZM-8K2X-NP4R-2026').split(',').map(c => c.trim().toUpperCase())
+  (process.env.INVITE_CODES || '').split(',').map(c => c.trim().toUpperCase()).filter(Boolean)
 );
 
 // ── Tenant Signup (Business Registration) ─────────────────
@@ -35,8 +35,20 @@ router.post('/signup', async (req, res, next) => {
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
 
-    // Validate invite code
-    if (!VALID_INVITE_CODES.has(value.inviteCode.trim().toUpperCase())) {
+    // Validate invite code — check DB first, then env fallback
+    const codeUpper = value.inviteCode.trim().toUpperCase();
+    let inviteCodeId = null;
+
+    const { rows: dbCodes } = await pool.query(
+      `SELECT id FROM invite_codes
+       WHERE UPPER(code) = $1 AND is_active = true AND used_by_tenant_id IS NULL
+         AND (expires_at IS NULL OR expires_at > NOW())`,
+      [codeUpper]
+    );
+
+    if (dbCodes.length > 0) {
+      inviteCodeId = dbCodes[0].id;
+    } else if (!VALID_INVITE_CODES.has(codeUpper)) {
       return res.status(403).json({ error: 'Invalid invite code. Contact us to get access.' });
     }
 
@@ -65,6 +77,14 @@ router.post('/signup', async (req, res, next) => {
     );
 
     const tenantId = tenant[0].id;
+
+    // Mark invite code as used (single-use)
+    if (inviteCodeId) {
+      await pool.query(
+        `UPDATE invite_codes SET used_by_tenant_id = $1, used_at = NOW() WHERE id = $2`,
+        [tenantId, inviteCodeId]
+      );
+    }
 
     // Create owner user
     const passwordHash = await bcrypt.hash(value.password, 10);

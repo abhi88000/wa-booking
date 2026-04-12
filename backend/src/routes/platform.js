@@ -258,6 +258,7 @@ router.post('/fix/:tenantId/reset-conversations', async (req, res, next) => {
 
 // ── Reset Tenant User Password ────────────────────────────
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 
 router.post('/tenants/:id/reset-password', async (req, res, next) => {
   try {
@@ -283,6 +284,62 @@ router.post('/tenants/:id/reset-password', async (req, res, next) => {
 
     logger.info(`Password reset for tenant ${req.params.id} user ${users[0].email} by platform admin`);
     res.json({ success: true, email: users[0].email });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── INVITE CODES ──────────────────────────────────────────
+
+// Generate a new invite code
+router.post('/invite-codes', async (req, res, next) => {
+  try {
+    const { note, expiresInDays } = req.body;
+    // Generate code: FZM-XXXX-XXXX
+    const rand = crypto.randomBytes(4).toString('hex').toUpperCase();
+    const code = `FZM-${rand.slice(0, 4)}-${rand.slice(4, 8)}`;
+
+    const expiresAt = expiresInDays
+      ? new Date(Date.now() + expiresInDays * 86400000)
+      : null;
+
+    const { rows } = await pool.query(
+      `INSERT INTO invite_codes (code, created_by, expires_at, note)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [code, req.admin.id, expiresAt, note || null]
+    );
+
+    logger.info(`Invite code generated: ${code} by admin ${req.admin.email}`);
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// List all invite codes
+router.get('/invite-codes', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(`
+      SELECT ic.*, t.business_name as used_by_business
+      FROM invite_codes ic
+      LEFT JOIN tenants t ON t.id = ic.used_by_tenant_id
+      ORDER BY ic.created_at DESC
+    `);
+    res.json(rows);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Delete (deactivate) an invite code
+router.delete('/invite-codes/:id', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `UPDATE invite_codes SET is_active = false WHERE id = $1 AND used_by_tenant_id IS NULL RETURNING id`,
+      [req.params.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Code not found or already used' });
+    res.json({ success: true });
   } catch (err) {
     next(err);
   }

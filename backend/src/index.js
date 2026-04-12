@@ -3,6 +3,19 @@
 // ============================================================
 
 require('dotenv').config();
+
+// ── Startup Validation ─────────────────────────────────────
+const REQUIRED_ENV = ['JWT_SECRET', 'WA_VERIFY_TOKEN'];
+const missing = REQUIRED_ENV.filter(k => !process.env[k]);
+if (missing.length > 0) {
+  console.error(`FATAL: Missing required environment variables: ${missing.join(', ')}`);
+  process.exit(1);
+}
+if (process.env.NODE_ENV === 'production' && !process.env.CORS_ORIGINS) {
+  console.error('FATAL: CORS_ORIGINS must be set in production');
+  process.exit(1);
+}
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -22,7 +35,7 @@ app.use(compression());
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({
-  origin: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : '*',
+  origin: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').map(s => s.trim()) : true,
   credentials: true
 }));
 app.use(morgan('combined', {
@@ -92,10 +105,24 @@ async function start() {
     const result = await pool.query('SELECT NOW()');
     logger.info(`Database connected: ${result.rows[0].now}`);
 
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       logger.info(`SaaS Backend running on port ${PORT}`);
       logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
     });
+
+    // Graceful shutdown
+    const shutdown = async (signal) => {
+      logger.info(`${signal} received — shutting down gracefully`);
+      server.close(async () => {
+        await pool.end();
+        logger.info('Database pool closed');
+        process.exit(0);
+      });
+      // Force exit after 10s if connections won't close
+      setTimeout(() => { process.exit(1); }, 10000);
+    };
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
   } catch (err) {
     logger.error('Failed to start server:', err);
     process.exit(1);

@@ -44,4 +44,9 @@ export default {
   validateWA: (id) => api.post(`/platform/health/${id}/validate-wa`),
   getTenantErrors: (id) => api.get(`/platform/errors/${id}`),
   resetConversations: (id) => api.post(`/platform/fix/${id}/reset-conversations`),
+
+  // Invite Codes
+  getInviteCodes: () => api.get('/platform/invite-codes'),
+  createInviteCode: (data) => api.post('/platform/invite-codes', data),
+  deleteInviteCode: (id) => api.delete(`/platform/invite-codes/${id}`),
 };

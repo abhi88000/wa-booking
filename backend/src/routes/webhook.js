@@ -57,7 +57,11 @@ router.get('/whatsapp', (req, res) => {
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
-  const VERIFY_TOKEN = process.env.WA_VERIFY_TOKEN || 'bookingbot-verify-2024';
+  const VERIFY_TOKEN = process.env.WA_VERIFY_TOKEN;
+  if (!VERIFY_TOKEN) {
+    logger.error('WA_VERIFY_TOKEN not set — webhook verification will fail');
+    return res.sendStatus(500);
+  }
 
   if (mode === 'subscribe' && token === VERIFY_TOKEN) {
     logger.info('WhatsApp webhook verified successfully');

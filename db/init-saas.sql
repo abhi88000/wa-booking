@@ -434,6 +434,23 @@ INSERT INTO plans (name, display_name, monthly_price, yearly_price, max_doctors,
     "analytics": true, "priority_support": true
   }');
 
+-- ============================================================
+-- INVITE CODES (Single-use registration codes)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS invite_codes (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code VARCHAR(30) NOT NULL UNIQUE,
+  created_by UUID REFERENCES platform_admins(id),
+  used_by_tenant_id UUID REFERENCES tenants(id),
+  used_at TIMESTAMPTZ,
+  expires_at TIMESTAMPTZ,
+  is_active BOOLEAN DEFAULT true,
+  note VARCHAR(200),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_invite_codes_code ON invite_codes(code);
+
 -- Default platform admin (CHANGE PASSWORD IN PRODUCTION!)
 INSERT INTO platform_admins (email, password_hash, name, role) VALUES
   ('superadmin@bookingbot.com', '$2b$10$placeholder_hash_change_me', 'Super Admin', 'super_admin');

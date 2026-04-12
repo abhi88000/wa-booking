@@ -702,8 +702,9 @@ class BookingEngine {
 
       const appointment = rows[0];
 
-      // Create reminders (24h + 1h before)
+      // Create reminders — only if the reminder time is still in the future
       const appointmentDateTime = new Date(`${state.appointmentDate}T${state.startTime}`);
+      const now = new Date();
       
       const remind24h = new Date(appointmentDateTime);
       remind24h.setHours(remind24h.getHours() - 24);
@@ -711,11 +712,16 @@ class BookingEngine {
       const remind1h = new Date(appointmentDateTime);
       remind1h.setHours(remind1h.getHours() - 1);
 
-      await pool.query(
-        `INSERT INTO reminders (tenant_id, appointment_id, remind_at, type) 
-         VALUES ($1, $2, $3, '24h'), ($1, $2, $4, '1h')`,
-        [this.tenantId, appointment.id, remind24h, remind1h]
-      );
+      const reminders = [];
+      if (remind24h > now) reminders.push({ time: remind24h, type: '24h' });
+      if (remind1h > now) reminders.push({ time: remind1h, type: '1h' });
+
+      if (reminders.length > 0) {
+        const values = reminders.map((_, i) => `($1, $2, $${i*2+3}, $${i*2+4})`).join(', ');
+        const params = [this.tenantId, appointment.id];
+        reminders.forEach(r => { params.push(r.time, r.type); });
+        await pool.query(`INSERT INTO reminders (tenant_id, appointment_id, remind_at, type) VALUES ${values}`, params);
+      }
 
       // Send confirmation
       const statusText = this.tenant.settings?.auto_confirm ? 'Confirmed' : 'Pending Confirmation';
@@ -1153,16 +1159,23 @@ class BookingEngine {
 
     // Create reminders
     const appointmentDateTime = new Date(`${state.appointmentDate}T${time}`);
+    const now = new Date();
+
     const remind24h = new Date(appointmentDateTime);
     remind24h.setHours(remind24h.getHours() - 24);
     const remind1h = new Date(appointmentDateTime);
     remind1h.setHours(remind1h.getHours() - 1);
 
-    await pool.query(
-      `INSERT INTO reminders (tenant_id, appointment_id, remind_at, type) 
-       VALUES ($1, $2, $3, '24h'), ($1, $2, $4, '1h')`,
-      [this.tenantId, appointment.id, remind24h, remind1h]
-    );
+    const reminders = [];
+    if (remind24h > now) reminders.push({ time: remind24h, type: '24h' });
+    if (remind1h > now) reminders.push({ time: remind1h, type: '1h' });
+
+    if (reminders.length > 0) {
+      const values = reminders.map((_, i) => `($1, $2, $${i*2+3}, $${i*2+4})`).join(', ');
+      const params = [this.tenantId, appointment.id];
+      reminders.forEach(r => { params.push(r.time, r.type); });
+      await pool.query(`INSERT INTO reminders (tenant_id, appointment_id, remind_at, type) VALUES ${values}`, params);
+    }
 
     await this.wa.sendText(this.phone,
       `🔄 *Appointment Rescheduled!*\n\n` +

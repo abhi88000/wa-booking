@@ -195,6 +195,7 @@ CREATE TABLE doctors (
   email           VARCHAR(100),
   consultation_fee DECIMAL(10, 2) DEFAULT 0,
   slot_duration    INTEGER DEFAULT 30,
+  clinic          VARCHAR(200),
   bio             TEXT,
   avatar_url      VARCHAR(500),
   is_active       BOOLEAN DEFAULT true,

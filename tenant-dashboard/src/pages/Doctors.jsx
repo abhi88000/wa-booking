@@ -33,9 +33,10 @@ export default function Doctors() {
   const [editingDoc, setEditingDoc] = useState(null);
   const [editingAvail, setEditingAvail] = useState(null);
   const [filter, setFilter] = useState('active');
-  const [form, setForm] = useState({ name: '', specialization: '', phone: '', email: '', consultationFee: 0, slotDuration: 20 });
+  const [form, setForm] = useState({ name: '', specialization: '', phone: '', email: '', consultationFee: 0, slotDuration: 20, clinic: '' });
+  const [clinics, setClinics] = useState([]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); loadClinics(); }, []);
 
   const load = async () => {
     try {
@@ -45,9 +46,16 @@ export default function Doctors() {
     finally { setLoading(false); }
   };
 
+  const loadClinics = async () => {
+    try {
+      const { data } = await api.getSettings();
+      setClinics(data?.settings?.branches || []);
+    } catch (err) { console.error(err); }
+  };
+
   const openAdd = () => {
     setEditingDoc(null);
-    setForm({ name: '', specialization: '', phone: '', email: '', consultationFee: 0, slotDuration: 20 });
+    setForm({ name: '', specialization: '', phone: '', email: '', consultationFee: 0, slotDuration: 20, clinic: '' });
     setShowAdd(true);
   };
 
@@ -57,7 +65,8 @@ export default function Doctors() {
       name: doc.name, specialization: doc.specialization || '',
       phone: doc.phone || '', email: doc.email || '',
       consultationFee: Number(doc.consultation_fee) || 0,
-      slotDuration: doc.slot_duration || 20
+      slotDuration: doc.slot_duration || 20,
+      clinic: doc.clinic || ''
     });
     setShowAdd(true);
   };
@@ -120,6 +129,15 @@ export default function Doctors() {
                 className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" required />
               <input placeholder="Specialization" value={form.specialization} onChange={e => setForm({...form, specialization: e.target.value})}
                 className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
+              {clinics.length > 0 && (
+                <select value={form.clinic} onChange={e => setForm({...form, clinic: e.target.value})}
+                  className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400 text-gray-700">
+                  <option value="">Select Clinic (optional)</option>
+                  {clinics.map((c, i) => (
+                    <option key={i} value={c.name}>{c.name}</option>
+                  ))}
+                </select>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <input placeholder="Phone" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
                   className="border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
@@ -167,6 +185,7 @@ export default function Doctors() {
                 <div>
                   <h3 className="font-semibold text-gray-900">{doc.name}</h3>
                   <p className="text-sm text-gray-500">{doc.specialization || 'General'}</p>
+                  {doc.clinic && <p className="text-xs text-gray-400">{doc.clinic}</p>}
                 </div>
                 <button onClick={() => toggleActive(doc)}
                   className={`text-xs px-2 py-1 rounded ${doc.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>

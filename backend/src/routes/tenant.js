@@ -14,6 +14,10 @@ const { loadTenantContext } = require('../middleware/tenantContext');
 const logger = require('../utils/logger');
 const WhatsAppService = require('../services/whatsapp');
 
+// Ensure clinic column exists on doctors table (safe to run multiple times)
+pool.query(`ALTER TABLE doctors ADD COLUMN IF NOT EXISTS clinic VARCHAR(200)`)
+  .catch(err => logger.error('Failed to ensure clinic column:', err.message));
+
 // All tenant routes require auth + tenant context
 router.use(authTenant, loadTenantContext);
 
@@ -351,6 +355,7 @@ router.post('/doctors', requireRole('owner', 'admin'), async (req, res, next) =>
       email: Joi.string().email(),
       consultationFee: Joi.number().default(0),
       slotDuration: Joi.number().default(30),
+      clinic: Joi.string().allow('', null),
       availability: Joi.array().items(Joi.object({
         day: Joi.string().required(),
         startTime: Joi.string().required(),
@@ -366,9 +371,9 @@ router.post('/doctors', requireRole('owner', 'admin'), async (req, res, next) =>
       await client.query('BEGIN');
 
       const { rows } = await client.query(
-        `INSERT INTO doctors (tenant_id, name, specialization, phone, email, consultation_fee, slot_duration)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-        [req.tenantId, value.name, value.specialization, value.phone, value.email, value.consultationFee, value.slotDuration]
+        `INSERT INTO doctors (tenant_id, name, specialization, phone, email, consultation_fee, slot_duration, clinic)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        [req.tenantId, value.name, value.specialization, value.phone, value.email, value.consultationFee, value.slotDuration, value.clinic || null]
       );
 
       if (value.availability) {
@@ -396,16 +401,17 @@ router.post('/doctors', requireRole('owner', 'admin'), async (req, res, next) =>
 
 router.put('/doctors/:id', requireRole('owner', 'admin'), async (req, res, next) => {
   try {
-    const { name, specialization, phone, email, consultationFee, slotDuration, isActive } = req.body;
+    const { name, specialization, phone, email, consultationFee, slotDuration, isActive, clinic } = req.body;
     const { rows } = await pool.query(
       `UPDATE doctors SET 
         name = COALESCE($1, name), specialization = COALESCE($2, specialization),
         phone = COALESCE($3, phone), email = COALESCE($4, email),
         consultation_fee = COALESCE($5, consultation_fee), 
         slot_duration = COALESCE($6, slot_duration),
-        is_active = COALESCE($7, is_active)
-       WHERE id = $8 AND tenant_id = $9 RETURNING *`,
-      [name, specialization, phone, email, consultationFee, slotDuration, isActive, req.params.id, req.tenantId]
+        is_active = COALESCE($7, is_active),
+        clinic = COALESCE($8, clinic)
+       WHERE id = $9 AND tenant_id = $10 RETURNING *`,
+      [name, specialization, phone, email, consultationFee, slotDuration, isActive, clinic, req.params.id, req.tenantId]
     );
 
     if (rows.length === 0) return res.status(404).json({ error: 'Doctor not found' });

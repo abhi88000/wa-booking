@@ -510,7 +510,8 @@ class BookingEngine {
 
   // ── Show Available Time Slots ───────────────────────────
   async showTimeSlots(doctorId, dateStr) {
-    const date = new Date(dateStr);
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
     const dayMap = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const dayName = dayMap[date.getDay()];
 
@@ -528,11 +529,13 @@ class BookingEngine {
     );
 
     if (avail.length === 0) {
-      await this.wa.sendButtons(this.phone, 'Doctor is not available on this day. Please pick another date.', [
-        { id: 'back_to_dates', title: '📅 Pick Another Date' },
-        { id: 'cancel_booking', title: '✕ Cancel' }
-      ]);
-      return;
+      return await this.wa.sendButtons(this.phone, {
+        bodyText: 'Doctor is not available on this day. Please pick another date.',
+        buttons: [
+          { id: 'book', title: 'Pick Another Date' },
+          { id: 'cancel_booking', title: 'Cancel' }
+        ]
+      });
     }
 
     // Get existing appointments for this day

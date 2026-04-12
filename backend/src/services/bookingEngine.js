@@ -132,7 +132,7 @@ class BookingEngine {
       const sections = [{
         title: 'Our Locations',
         rows: [
-          ...clinics.map((c, i) => {
+          ...clinics.slice(0, 9).map((c, i) => {
             const label = c.address ? `${c.name} — ${c.address}` : c.name;
             return {
               id: `clinic_${i}`,
@@ -140,7 +140,7 @@ class BookingEngine {
               description: c.address ? c.address.substring(0, 72) : ''
             };
           }),
-          { id: 'cancel_booking', title: '✕ Cancel', description: 'Go back to main menu' }
+          { id: 'cancel_booking', title: 'Cancel', description: 'Go back to main menu' }
         ]
       }];
 
@@ -230,13 +230,13 @@ class BookingEngine {
     const sections = [{
       title: 'Available Doctors',
       rows: [
-        ...doctors.map(d => ({
+        ...doctors.slice(0, 9).map(d => ({
           id: `doc_${d.id}`,
           title: d.name.substring(0, 24),
           description: [d.specialization, d.consultation_fee ? `₹${d.consultation_fee}` : '']
             .filter(Boolean).join(' • ')
         })),
-        { id: 'cancel_booking', title: '✕ Cancel', description: 'Go back to main menu' }
+        { id: 'cancel_booking', title: 'Cancel', description: 'Go back to main menu' }
       ]
     }];
 
@@ -325,12 +325,12 @@ class BookingEngine {
     const sections = [{
       title: 'Services',
       rows: [
-        ...services.map(s => ({
+        ...services.slice(0, 9).map(s => ({
           id: `svc_${s.id}`,
           title: s.name.substring(0, 24),
           description: `${s.price > 0 ? `₹${s.price}` : 'Free'}`
         })),
-        { id: 'cancel_booking', title: '✕ Cancel', description: 'Go back to main menu' }
+        { id: 'cancel_booking', title: 'Cancel', description: 'Go back to main menu' }
       ]
     }];
 
@@ -446,7 +446,7 @@ class BookingEngine {
     }
 
     // Add cancel option at the end
-    dates.push({ id: 'cancel_booking', title: '✕ Cancel', description: 'Go back to main menu' });
+    dates.push({ id: 'cancel_booking', title: 'Cancel', description: 'Go back to main menu' });
 
     await this.wa.sendList(this.phone, {
       bodyText: `Select a date for your appointment with ${state.doctorName}:`,
@@ -615,7 +615,7 @@ class BookingEngine {
     await this.wa.sendList(this.phone, {
       bodyText: `Available slots for ${dateStr}:`,
       buttonText: 'View Slots',
-      sections: [{ title: 'Time Slots', rows: [...slots, { id: 'cancel_booking', title: '✕ Cancel', description: 'Go back to main menu' }] }]
+      sections: [{ title: 'Time Slots', rows: [...slots, { id: 'cancel_booking', title: 'Cancel', description: 'Go back to main menu' }] }]
     });
   }
 
@@ -777,7 +777,7 @@ class BookingEngine {
        AND a.appointment_date >= CURRENT_DATE
        AND a.status IN ('pending', 'confirmed')
        ORDER BY a.appointment_date
-       LIMIT 10`,
+       LIMIT 9`,
       [this.tenantId, this.patient.id]
     );
 
@@ -796,7 +796,7 @@ class BookingEngine {
           title: `${a.doctor_name}`.substring(0, 24),
           description: `${a.appointment_date} at ${this.formatTime(a.start_time)}`
         })),
-        { id: 'cancel_booking', title: '✕ Go Back', description: 'Return to main menu' }
+        { id: 'cancel_booking', title: 'Go Back', description: 'Return to main menu' }
       ]
     }];
 
@@ -819,7 +819,7 @@ class BookingEngine {
        AND a.appointment_date >= CURRENT_DATE
        AND a.status IN ('pending', 'confirmed')
        ORDER BY a.appointment_date
-       LIMIT 10`,
+       LIMIT 9`,
       [this.tenantId, this.patient.id]
     );
 
@@ -838,7 +838,7 @@ class BookingEngine {
           title: `${a.doctor_name}`.substring(0, 24),
           description: `${a.appointment_date} at ${this.formatTime(a.start_time)}`
         })),
-        { id: 'cancel_booking', title: '✕ Go Back', description: 'Return to main menu' }
+        { id: 'cancel_booking', title: 'Go Back', description: 'Return to main menu' }
       ]
     }];
 

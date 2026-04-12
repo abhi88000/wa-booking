@@ -53,7 +53,7 @@ export default function Appointments() {
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Appointments ({total})</h1>
         <div className="flex gap-2">
           <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none">
             <option value="">All Status</option>
             <option value="pending">Pending</option>
             <option value="confirmed">Confirmed</option>
@@ -74,7 +74,7 @@ export default function Appointments() {
       )}
 
       {/* Desktop Table */}
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden hidden sm:block">
+      <div className="bg-white rounded-lg shadow-sm border overflow-hidden hidden sm:block">
         {loading ? <div className="p-8 text-center text-gray-500">Loading...</div> : (
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-600 text-left">
@@ -144,7 +144,7 @@ export default function Appointments() {
       <div className="sm:hidden space-y-3">
         {loading ? <div className="p-8 text-center text-gray-500">Loading...</div> :
           appointments.map(a => (
-            <div key={a.id} className="bg-white rounded-xl shadow-sm border p-4">
+            <div key={a.id} className="bg-white rounded-lg shadow-sm border p-4">
               <div className="flex justify-between items-start">
                 <div>
                   <p className="font-medium text-gray-900">{a.patient_name || 'Patient'}</p>
@@ -259,8 +259,8 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4 overflow-y-auto py-8">
-      <div className="bg-white rounded-xl p-6 w-full max-w-lg my-auto">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 overflow-y-auto py-8">
+      <div className="bg-white rounded-lg p-6 w-full max-w-lg my-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Book Appointment</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
@@ -271,7 +271,7 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
             <label className="text-xs text-gray-500 block mb-1">Patient</label>
             <input placeholder="Search by name or phone..." value={patientSearch}
               onChange={e => searchPatients(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+              className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
             {patients.length > 0 && (
               <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow-lg max-h-40 overflow-y-auto">
                 {patients.map(p => (
@@ -288,20 +288,20 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
               <label className="text-xs text-gray-500 block mb-1">Or enter name</label>
               <input placeholder="Patient name" value={form.patientName}
                 onChange={e => setForm({...form, patientName: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+                className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">Phone</label>
               <input placeholder="+91..." value={form.patientPhone}
                 onChange={e => setForm({...form, patientPhone: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+                className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-500 block mb-1">Doctor *</label>
               <select value={form.doctorId} onChange={e => setForm({...form, doctorId: e.target.value})} required
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400">
+                className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400">
                 <option value="">Select Doctor</option>
                 {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
               </select>
@@ -309,7 +309,7 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
             <div>
               <label className="text-xs text-gray-500 block mb-1">Service</label>
               <select value={form.serviceId} onChange={e => setForm({...form, serviceId: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400">
+                className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400">
                 <option value="">None</option>
                 {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
@@ -319,27 +319,27 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
             <label className="text-xs text-gray-500 block mb-1">Date *</label>
             <input type="date" value={form.appointmentDate} required
               onChange={e => setForm({...form, appointmentDate: e.target.value})}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+              className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="text-xs text-gray-500 block mb-1">Start Time *</label>
               <input type="time" value={form.startTime} required
                 onChange={e => handleDurationCalc(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+                className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
             </div>
             <div>
               <label className="text-xs text-gray-500 block mb-1">End Time</label>
               <input type="time" value={form.endTime}
                 onChange={e => setForm({...form, endTime: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+                className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
             </div>
           </div>
           <div>
             <label className="text-xs text-gray-500 block mb-1">Notes</label>
             <textarea rows={2} placeholder="Optional notes..." value={form.notes}
               onChange={e => setForm({...form, notes: e.target.value})}
-              className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+              className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
           </div>
           <div className="flex gap-3 justify-end mt-4">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-500">Cancel</button>

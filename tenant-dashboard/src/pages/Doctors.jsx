@@ -98,7 +98,7 @@ export default function Doctors() {
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Doctors</h1>
         <div className="flex gap-2">
           <select value={filter} onChange={e => setFilter(e.target.value)}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none">
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none">
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
             <option value="all">All</option>
@@ -112,30 +112,30 @@ export default function Doctors() {
 
       {/* Add/Edit Modal */}
       {showAdd && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-lg font-semibold mb-4">{editingDoc ? 'Edit Doctor' : 'Add Doctor'}</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
               <input placeholder="Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" required />
+                className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" required />
               <input placeholder="Specialization" value={form.specialization} onChange={e => setForm({...form, specialization: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+                className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
               <div className="grid grid-cols-2 gap-3">
                 <input placeholder="Phone" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
-                  className="border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+                  className="border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
                 <input placeholder="Email" type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})}
-                  className="border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+                  className="border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-gray-500">Fee</label>
                   <input type="number" value={form.consultationFee} onChange={e => setForm({...form, consultationFee: parseInt(e.target.value)})}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+                    className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
                 </div>
                 <div>
                   <label className="text-xs text-gray-500">Slot Duration (min)</label>
                   <input type="number" value={form.slotDuration} onChange={e => setForm({...form, slotDuration: parseInt(e.target.value)})}
-                    className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+                    className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
                 </div>
               </div>
               <div className="flex gap-3 justify-end mt-4">
@@ -162,7 +162,7 @@ export default function Doctors() {
             <div className="text-gray-400 col-span-3 text-center py-10 text-sm">No {filter} doctors found</div>
           ) :
           doctors.filter(doc => filter === 'all' ? true : filter === 'active' ? doc.is_active : !doc.is_active).map(doc => (
-            <div key={doc.id} className={`bg-white rounded-xl shadow-sm p-5 border ${!doc.is_active ? 'opacity-50' : ''}`}>
+            <div key={doc.id} className={`bg-white rounded-lg shadow-sm p-5 border ${!doc.is_active ? 'opacity-50' : ''}`}>
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="font-semibold text-gray-900">{doc.name}</h3>
@@ -307,8 +307,8 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
   const DAY_LABELS = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center px-4 py-4 overflow-y-auto">
-      <div className="bg-white rounded-xl w-full max-w-xl my-auto">
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4 py-4 overflow-y-auto">
+      <div className="bg-white rounded-lg w-full max-w-xl my-auto">
         <div className="flex justify-between items-center p-5 border-b">
           <h2 className="text-lg font-semibold text-gray-900">{doctorName} — Schedule</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
@@ -321,14 +321,14 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Timezone</label>
               <select value={timezone} onChange={e => setTimezone(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400">
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400">
                 {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz.replace('_', ' ')}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">Slot Duration</label>
               <select value={slotDuration} onChange={e => setSlotDuration(parseInt(e.target.value))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400">
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400">
                 {[10, 15, 20, 30, 45, 60].map(v => <option key={v} value={v}>{v} min</option>)}
               </select>
             </div>
@@ -371,10 +371,10 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
                   {s.enabled ? (
                     <>
                       <input type="time" value={s.startTime} onChange={e => updateDay(i, 'startTime', e.target.value)}
-                        className="border border-gray-300 rounded px-2 py-1.5 text-sm flex-1 outline-none" />
+                        className="border border-gray-200 rounded px-2 py-1.5 text-sm flex-1 outline-none" />
                       <span className="text-gray-400 text-xs">to</span>
                       <input type="time" value={s.endTime} onChange={e => updateDay(i, 'endTime', e.target.value)}
-                        className="border border-gray-300 rounded px-2 py-1.5 text-sm flex-1 outline-none" />
+                        className="border border-gray-200 rounded px-2 py-1.5 text-sm flex-1 outline-none" />
                     </>
                   ) : (
                     <span className="text-xs text-gray-400 ml-2">Off</span>
@@ -395,14 +395,14 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
                 <div key={i} className="flex items-center gap-2">
                   <input type="time" value={b.startTime} onChange={e => {
                     const br = [...breaks]; br[i].startTime = e.target.value; setBreaks(br);
-                  }} className="border border-gray-300 rounded px-2 py-1.5 text-sm flex-1 outline-none" />
+                  }} className="border border-gray-200 rounded px-2 py-1.5 text-sm flex-1 outline-none" />
                   <span className="text-gray-400 text-xs">to</span>
                   <input type="time" value={b.endTime} onChange={e => {
                     const br = [...breaks]; br[i].endTime = e.target.value; setBreaks(br);
-                  }} className="border border-gray-300 rounded px-2 py-1.5 text-sm flex-1 outline-none" />
+                  }} className="border border-gray-200 rounded px-2 py-1.5 text-sm flex-1 outline-none" />
                   <input placeholder="Reason" value={b.reason} onChange={e => {
                     const br = [...breaks]; br[i].reason = e.target.value; setBreaks(br);
-                  }} className="border border-gray-300 rounded px-2 py-1.5 text-sm w-24 outline-none" />
+                  }} className="border border-gray-200 rounded px-2 py-1.5 text-sm w-24 outline-none" />
                   <button onClick={() => removeBreak(i)} className="text-red-400 hover:text-red-600 text-sm flex-shrink-0">x</button>
                 </div>
               ))}

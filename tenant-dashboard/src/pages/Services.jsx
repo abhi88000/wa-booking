@@ -63,27 +63,27 @@ export default function Services() {
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-lg font-semibold mb-4">{editing ? 'Edit Service' : 'Add Service'}</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Service Name</label>
                 <input placeholder="e.g. General Consultation" value={form.name}
                   onChange={e => setForm({...form, name: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" required />
+                  className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" required />
               </div>
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Description</label>
                 <textarea placeholder="Brief description..." value={form.description} rows={2}
                   onChange={e => setForm({...form, description: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+                  className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
               </div>
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Price</label>
                 <input type="number" min="0" value={form.price}
                   onChange={e => setForm({...form, price: parseInt(e.target.value) || 0})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+                  className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
               </div>
               <div className="flex gap-3 justify-end mt-4">
                 <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-sm text-gray-500">Cancel</button>
@@ -97,7 +97,7 @@ export default function Services() {
       )}
 
       {/* Services Table */}
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         {loading ? <div className="p-8 text-center text-gray-500">Loading...</div> : (
           <>
             {/* Desktop Table */}

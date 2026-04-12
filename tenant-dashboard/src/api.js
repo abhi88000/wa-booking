@@ -20,8 +20,10 @@ api.interceptors.response.use(r => r, err => {
 
 export default {
   // Auth
-  login: (email, password) => api.post('/auth/login', { email, password }),
+  login: (email, password, tenantId) => api.post('/auth/login', { email, password, tenantId }),
   signup: (data) => api.post('/auth/signup', data),
+  switchBranch: (tenantId, email) => api.post('/auth/switch-branch', { tenantId, email }),
+  addBranch: (data) => api.post('/auth/add-branch', data),
 
   // Onboarding
   getOnboardingStatus: () => api.get('/onboarding/status'),

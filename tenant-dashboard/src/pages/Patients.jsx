@@ -80,33 +80,33 @@ export default function Patients() {
 
       <form onSubmit={handleSearch} className="mb-4 flex gap-2">
         <input placeholder="Search by name or phone..." value={search} onChange={e => setSearch(e.target.value)}
-          className="flex-1 border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+          className="flex-1 border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
         <button type="submit" className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900">Search</button>
       </form>
 
       {/* Add/Edit Modal */}
       {showAdd && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-lg font-semibold mb-4">{editing ? 'Edit Patient' : 'Add Patient'}</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Name</label>
                 <input placeholder="Patient name" value={form.name}
                   onChange={e => setForm({...form, name: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" required />
+                  className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" required />
               </div>
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Phone</label>
                 <input placeholder="+91..." value={form.phone}
                   onChange={e => setForm({...form, phone: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" required />
+                  className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" required />
               </div>
               <div>
                 <label className="text-xs text-gray-500 block mb-1">Email</label>
                 <input type="email" placeholder="Optional" value={form.email}
                   onChange={e => setForm({...form, email: e.target.value})}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+                  className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
               </div>
               <div className="flex gap-3 justify-end mt-4">
                 <button type="button" onClick={() => setShowAdd(false)} className="px-4 py-2 text-sm text-gray-500">Cancel</button>
@@ -121,7 +121,7 @@ export default function Patients() {
 
       {/* Patient Detail Drawer */}
       {detail && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex justify-end" onClick={() => { setDetail(null); setDetailData(null); }}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex justify-end" onClick={() => { setDetail(null); setDetailData(null); }}>
           <div className="bg-white w-full sm:w-[420px] h-full overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-lg font-semibold">{detail.name || 'Patient'}</h2>
@@ -189,7 +189,7 @@ export default function Patients() {
       )}
 
       {/* Patient Table */}
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+      <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
         {loading ? <div className="p-8 text-center text-gray-500">Loading...</div> : (
           <>
             {/* Desktop */}

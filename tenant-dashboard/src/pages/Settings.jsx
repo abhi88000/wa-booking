@@ -58,13 +58,13 @@ export default function Settings() {
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Settings</h1>
 
       {/* Business Info */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border mb-6">
+      <div className="bg-white rounded-lg shadow-sm p-6 border mb-6">
         <h2 className="font-semibold text-gray-900 mb-4">Business Information</h2>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">Business Name</label>
             <input value={settings.business_name} onChange={e => setSettings({...settings, business_name: e.target.value})}
-              className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+              className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -87,7 +87,7 @@ export default function Settings() {
       </div>
 
       {/* Booking Settings */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border mb-6">
+      <div className="bg-white rounded-lg shadow-sm p-6 border mb-6">
         <h2 className="font-semibold text-gray-900 mb-4">Booking Settings</h2>
         <div className="space-y-4">
           <div>
@@ -120,21 +120,21 @@ export default function Settings() {
       </div>
 
       {/* Payment Settings */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border mb-6">
+      <div className="bg-white rounded-lg shadow-sm p-6 border mb-6">
         <h2 className="font-semibold text-gray-900 mb-4">Payment Settings</h2>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-1">UPI ID</label>
             <input value={s.upi_id || ''} placeholder="e.g. clinic@upi or 9876543210@paytm"
               onChange={e => setSettings({...settings, settings: {...s, upi_id: e.target.value}})}
-              className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+              className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
             <p className="text-xs text-gray-400 mt-1">Patients will be able to pay via UPI after booking. Leave blank to disable.</p>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">UPI Display Name</label>
             <input value={s.upi_display_name || ''} placeholder="e.g. Dr. Sharma Clinic"
               onChange={e => setSettings({...settings, settings: {...s, upi_display_name: e.target.value}})}
-              className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+              className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
             <p className="text-xs text-gray-400 mt-1">Name shown to the patient in their UPI app</p>
           </div>
           <div className="flex items-center gap-3">
@@ -147,7 +147,7 @@ export default function Settings() {
       </div>
 
       {/* WhatsApp Connection */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border mb-6">
+      <div className="bg-white rounded-lg shadow-sm p-6 border mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-gray-900">WhatsApp Connection</h2>
           <span className={`px-3 py-1 rounded-full text-xs font-medium
@@ -171,24 +171,24 @@ export default function Settings() {
             <div>
               <label className="block text-sm font-medium mb-1">Phone Number ID</label>
               <input value={waForm.phoneNumberId} onChange={e => setWaForm({...waForm, phoneNumberId: e.target.value})}
-                className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400"
+                className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400"
                 placeholder="e.g. 123456789012345" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Business Account ID</label>
               <input value={waForm.businessAccountId} onChange={e => setWaForm({...waForm, businessAccountId: e.target.value})}
-                className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400"
+                className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400"
                 placeholder="e.g. 123456789012345" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Access Token</label>
               <input type="password" value={waForm.accessToken} onChange={e => setWaForm({...waForm, accessToken: e.target.value})}
-                className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400" />
+                className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">WhatsApp Phone Number</label>
               <input value={waForm.displayPhone} onChange={e => setWaForm({...waForm, displayPhone: e.target.value})}
-                className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-slate-400"
+                className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400"
                 placeholder="e.g. +919876543210" />
             </div>
             <div className="flex gap-3">
@@ -204,7 +204,7 @@ export default function Settings() {
       </div>
 
       {/* Features */}
-      <div className="bg-white rounded-xl shadow-sm p-6 border mb-6">
+      <div className="bg-white rounded-lg shadow-sm p-6 border mb-6">
         <h2 className="font-semibold text-gray-900 mb-4">Your Features</h2>
         <div className="grid grid-cols-2 gap-2">
           {Object.entries(settings.features || {}).map(([key, enabled]) => (

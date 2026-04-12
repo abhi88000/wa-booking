@@ -163,23 +163,22 @@ router.patch('/appointments/:id/status', async (req, res, next) => {
         const time = formatTime12(appt.start_time);
         const date = formatDateDD(appt.appointment_date);
         // Try template first (works outside 24h window), fall back to sendText
-        try {
-          await wa.sendTemplate(appt.patient_phone, 'appointment_cancelled', 'en', [
-            {
-              type: 'body',
-              parameters: [
-                { type: 'text', text: appt.patient_name || 'there' },
-                { type: 'text', text: appt.doctor_name || 'the doctor' },
-                { type: 'text', text: date },
-                { type: 'text', text: time },
-                { type: 'text', text: req.tenant.business_name },
-                { type: 'text', text: comment || 'No reason provided' }
-              ]
-            }
-          ]);
-        } catch (tmplErr) {
-          // Template not approved yet or failed — fall back to plain text
-          logger.warn('Cancel template failed, falling back to sendText:', tmplErr.message);
+        const tmplResult = await wa.sendTemplate(appt.patient_phone, 'appointment_cancelled', 'en', [
+          {
+            type: 'body',
+            parameters: [
+              { type: 'text', text: appt.patient_name || 'there' },
+              { type: 'text', text: appt.doctor_name || 'the doctor' },
+              { type: 'text', text: date },
+              { type: 'text', text: time },
+              { type: 'text', text: req.tenant.business_name },
+              { type: 'text', text: comment || 'No reason provided' }
+            ]
+          }
+        ]);
+        // Template returned null = failed silently, fall back to plain text
+        if (!tmplResult) {
+          logger.warn('Cancel template failed, falling back to sendText');
           let msg = `Your appointment with ${appt.doctor_name || 'the doctor'} on ${date} at ${time} has been cancelled by ${req.tenant.business_name}.`;
           if (comment) msg += `\n\nReason: ${comment}`;
           msg += `\n\nReply "book" to schedule a new appointment.`;
@@ -339,22 +338,22 @@ router.patch('/appointments/:id/reschedule', requireRole('owner', 'admin', 'staf
         const newTime = formatTime12(startTime);
         const newDate = formatDateDD(appointmentDate);
         // Try template first (works outside 24h window), fall back to sendText
-        try {
-          await wa.sendTemplate(appt[0].patient_phone, 'appointment_rescheduled', 'en', [
-            {
-              type: 'body',
-              parameters: [
-                { type: 'text', text: appt[0].patient_name || 'there' },
-                { type: 'text', text: appt[0].doctor_name || 'the doctor' },
-                { type: 'text', text: req.tenant.business_name },
-                { type: 'text', text: oldDate },
-                { type: 'text', text: oldTime },
-                { type: 'text', text: newDate },
-                { type: 'text', text: newTime }
-              ]
-            }
-          ]);
-          // Store reschedule info so we can handle Accept/Decline replies
+        const tmplResult = await wa.sendTemplate(appt[0].patient_phone, 'appointment_rescheduled', 'en', [
+          {
+            type: 'body',
+            parameters: [
+              { type: 'text', text: appt[0].patient_name || 'there' },
+              { type: 'text', text: appt[0].doctor_name || 'the doctor' },
+              { type: 'text', text: req.tenant.business_name },
+              { type: 'text', text: oldDate },
+              { type: 'text', text: oldTime },
+              { type: 'text', text: newDate },
+              { type: 'text', text: newTime }
+            ]
+          }
+        ]);
+        if (tmplResult) {
+          // Template sent — set patient state to handle Accept/Decline
           await pool.query(
             `UPDATE patients SET wa_conversation_state = $1 WHERE phone = $2 AND tenant_id = $3`,
             [JSON.stringify({
@@ -364,9 +363,9 @@ router.patch('/appointments/:id/reschedule', requireRole('owner', 'admin', 'staf
               newTime: startTime
             }), appt[0].patient_phone, req.tenantId]
           );
-        } catch (tmplErr) {
-          // Template not approved yet or failed — fall back to plain text
-          logger.warn('Reschedule template failed, falling back to sendText:', tmplErr.message);
+        } else {
+          // Template failed — fall back to plain text
+          logger.warn('Reschedule template failed, falling back to sendText');
           let msg = `Your appointment with ${appt[0].doctor_name || 'the doctor'} has been rescheduled to ${newDate} at ${newTime} by ${req.tenant.business_name}.`;
           if (comment) msg += `\n\nNote: ${comment}`;
           await wa.sendText(appt[0].patient_phone, msg);

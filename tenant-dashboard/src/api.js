@@ -38,6 +38,7 @@ export default {
   createAppointment: (data) => api.post('/tenant/appointments', data),
   updateAppointmentStatus: (id, status, comment) => api.patch(`/tenant/appointments/${id}/status`, { status, comment }),
   rescheduleAppointment: (id, data) => api.patch(`/tenant/appointments/${id}/reschedule`, data),
+  createFollowUp: (id, data) => api.post(`/tenant/appointments/${id}/followup`, data),
 
   // Doctors
   getDoctors: () => api.get('/tenant/doctors'),

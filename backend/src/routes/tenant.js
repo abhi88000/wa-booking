@@ -275,7 +275,34 @@ router.post('/appointments', requireRole('owner', 'admin', 'staff'), checkAppoin
       );
 
       await client.query('COMMIT');
-      res.status(201).json(rows[0]);
+
+      const newAppt = rows[0];
+
+      // Notify doctor about new booking via WhatsApp
+      if (req.tenant?.wa_status === 'connected') {
+        try {
+          const { rows: docRow } = await pool.query(
+            `SELECT phone, name FROM doctors WHERE id = $1 AND tenant_id = $2`,
+            [value.doctorId, req.tenantId]
+          );
+          const doctorPhone = docRow[0]?.phone;
+          if (doctorPhone) {
+            const wa = new WhatsAppService(req.tenant);
+            const pName = value.patientName || 'Walk-in';
+            await wa.sendText(doctorPhone,
+              `📋 *New Appointment Booked*\n\n` +
+              `Patient: ${pName}\n` +
+              `📅 ${formatDateDD(value.appointmentDate)}\n` +
+              `🕐 ${formatTime12(value.startTime)}\n\n` +
+              `Booked via dashboard by ${req.user?.name || 'staff'}.`
+            );
+          }
+        } catch (waErr) {
+          logger.warn('Failed to notify doctor on manual booking:', waErr.message);
+        }
+      }
+
+      res.status(201).json(newAppt);
     } catch (txErr) {
       await client.query('ROLLBACK');
       throw txErr;
@@ -393,6 +420,94 @@ router.patch('/appointments/:id/reschedule', requireRole('owner', 'admin', 'staf
     }
 
     res.json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── FOLLOW-UP APPOINTMENT ─────────────────────────────────
+
+router.post('/appointments/:id/followup', requireRole('owner', 'admin', 'staff'), checkAppointmentLimit, async (req, res, next) => {
+  try {
+    const { appointmentDate, startTime, endTime, notes } = req.body;
+    if (!appointmentDate || !startTime || !endTime) {
+      return res.status(400).json({ error: 'Date, startTime, endTime required' });
+    }
+
+    // Get original appointment details
+    const { rows: appt } = await pool.query(
+      `SELECT a.*, d.name as doctor_name, p.phone as patient_phone, p.name as patient_name,
+              s.name as service_name
+       FROM appointments a
+       LEFT JOIN doctors d ON d.id = a.doctor_id
+       LEFT JOIN patients p ON p.id = a.patient_id
+       LEFT JOIN services s ON s.id = a.service_id
+       WHERE a.id = $1 AND a.tenant_id = $2`,
+      [req.params.id, req.tenantId]
+    );
+    if (appt.length === 0) return res.status(404).json({ error: 'Appointment not found' });
+
+    const orig = appt[0];
+
+    // Check for double-booking
+    const { rows: conflict } = await pool.query(
+      `SELECT id FROM appointments 
+       WHERE doctor_id = $1 AND tenant_id = $2 AND appointment_date = $3
+       AND status NOT IN ('cancelled', 'rescheduled')
+       AND start_time < $5 AND end_time > $4`,
+      [orig.doctor_id, req.tenantId, appointmentDate, startTime, endTime]
+    );
+    if (conflict.length > 0) {
+      return res.status(409).json({ error: 'Time slot already booked' });
+    }
+
+    // Create follow-up appointment linked to original
+    const { rows } = await pool.query(
+      `INSERT INTO appointments (tenant_id, patient_id, doctor_id, service_id,
+       appointment_date, start_time, end_time, status, notes, rescheduled_from)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'confirmed', $8, $9) RETURNING *`,
+      [req.tenantId, orig.patient_id, orig.doctor_id, orig.service_id,
+       appointmentDate, startTime, endTime, notes || `Follow-up from ${orig.appointment_date}`, req.params.id]
+    );
+
+    const newAppt = rows[0];
+
+    // Create reminders for the follow-up
+    const appointmentDateTime = new Date(`${appointmentDate}T${startTime}`);
+    const now = new Date();
+    const remind24h = new Date(appointmentDateTime); remind24h.setHours(remind24h.getHours() - 24);
+    const remind1h = new Date(appointmentDateTime); remind1h.setHours(remind1h.getHours() - 1);
+    const reminders = [];
+    if (remind24h > now) reminders.push({ time: remind24h, type: '24h' });
+    if (remind1h > now) reminders.push({ time: remind1h, type: '1h' });
+    if (reminders.length > 0) {
+      const vals = reminders.map((_, i) => `($1, $2, $${i*2+3}, $${i*2+4})`).join(', ');
+      const params = [req.tenantId, newAppt.id];
+      reminders.forEach(r => { params.push(r.time, r.type); });
+      await pool.query(`INSERT INTO reminders (tenant_id, appointment_id, remind_at, type) VALUES ${vals}`, params);
+    }
+
+    // Send WhatsApp notification to patient
+    if (orig.patient_phone && req.tenant?.wa_status === 'connected') {
+      try {
+        const wa = new WhatsAppService(req.tenant);
+        const date = formatDateDD(appointmentDate);
+        const time = formatTime12(startTime);
+        await wa.sendText(orig.patient_phone,
+          `📋 *Follow-up Appointment Scheduled*\n\n` +
+          `Hi ${orig.patient_name || 'there'}, your doctor has scheduled a follow-up visit:\n\n` +
+          `👨‍⚕️ ${orig.doctor_name || 'Doctor'}\n` +
+          `📅 ${date}\n` +
+          `🕐 ${time}\n\n` +
+          `If you need to reschedule, reply "reschedule".\n` +
+          `— ${req.tenant.business_name}`
+        );
+      } catch (waErr) {
+        logger.warn('Failed to send follow-up notification:', waErr.message);
+      }
+    }
+
+    res.status(201).json(newAppt);
   } catch (err) {
     next(err);
   }

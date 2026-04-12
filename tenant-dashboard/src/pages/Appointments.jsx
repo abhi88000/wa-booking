@@ -13,6 +13,7 @@ export default function Appointments() {
   const [services, setServices] = useState([]);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
+  const [followUpTarget, setFollowUpTarget] = useState(null);
   const { clinic } = useClinic();
 
   useEffect(() => { load(); loadMeta(); }, []);
@@ -80,6 +81,12 @@ export default function Appointments() {
             No Show
           </button>
         </>
+      )}
+      {a.status === 'completed' && (
+        <button onClick={() => setFollowUpTarget(a)}
+          className="text-xs px-2 py-1 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100">
+          Follow Up
+        </button>
       )}
     </div>
   );
@@ -172,7 +179,7 @@ export default function Appointments() {
                 <p>{a.doctor_name} {a.service_name ? `- ${a.service_name}` : ''}</p>
                 <p>{a.appointment_date?.substring(0, 10)} at {a.start_time?.substring(0, 5)}</p>
               </div>
-              {['pending', 'confirmed'].includes(a.status) && (
+              {['pending', 'confirmed', 'completed'].includes(a.status) && (
                 <div className="mt-3">
                   <ActionButtons a={a} />
                 </div>
@@ -208,6 +215,13 @@ export default function Appointments() {
         <RescheduleModal appointment={rescheduleTarget} doctors={doctors}
           onClose={() => setRescheduleTarget(null)}
           onDone={() => { setRescheduleTarget(null); load(); }} />
+      )}
+
+      {/* Follow-Up Modal */}
+      {followUpTarget && (
+        <FollowUpModal appointment={followUpTarget}
+          onClose={() => setFollowUpTarget(null)}
+          onDone={() => { setFollowUpTarget(null); load(); }} />
       )}
     </div>
   );
@@ -581,6 +595,126 @@ function RescheduleModal({ appointment, doctors, onClose, onDone }) {
             <button type="submit" disabled={saving || !selectedSlot}
               className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900 disabled:opacity-50">
               {saving ? 'Rescheduling...' : 'Reschedule'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function FollowUpModal({ appointment, onClose, onDone }) {
+  const [date, setDate] = useState('');
+  const [slots, setSlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [noSlotMsg, setNoSlotMsg] = useState('');
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const fetchSlots = async (dateVal) => {
+    setDate(dateVal);
+    setSelectedSlot(null);
+    setSlots([]);
+    setNoSlotMsg('');
+    if (!dateVal) return;
+    setLoadingSlots(true);
+    try {
+      const res = await api.getDoctorSlots(appointment.doctor_id, dateVal);
+      const data = res.data;
+      if (data.slots.length === 0) {
+        setNoSlotMsg(data.message || 'No available slots on this date');
+      } else {
+        setSlots(data.slots);
+      }
+    } catch (err) {
+      setNoSlotMsg('Failed to load slots');
+    } finally { setLoadingSlots(false); }
+  };
+
+  const fmt12 = (t) => {
+    if (!t) return '';
+    const [h, m] = t.split(':').map(Number);
+    const p = h >= 12 ? 'PM' : 'AM';
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+    return `${h12}:${String(m).padStart(2, '0')} ${p}`;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!date || !selectedSlot) { setError('Pick a date and time slot'); return; }
+    setSaving(true); setError('');
+    try {
+      await api.createFollowUp(appointment.id, {
+        appointmentDate: date,
+        startTime: selectedSlot.startTime,
+        endTime: selectedSlot.endTime,
+        notes: notes || undefined
+      });
+      onDone();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to schedule follow-up');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <h2 className="text-base font-semibold text-gray-900 mb-1">Schedule Follow-Up</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          {appointment.patient_name || 'Patient'} — {appointment.doctor_name}
+          <span className="text-gray-400"> (completed {appointment.appointment_date?.substring(0, 10)})</span>
+        </p>
+        {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-3 text-sm">{error}</div>}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Follow-Up Date</label>
+            <input type="date" value={date} min={today} required
+              onChange={e => fetchSlots(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
+          </div>
+
+          {loadingSlots && <p className="text-sm text-gray-400">Loading slots...</p>}
+
+          {noSlotMsg && <p className="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg">{noSlotMsg}</p>}
+
+          {slots.length > 0 && (
+            <div>
+              <label className="text-xs text-gray-500 block mb-2">Available Slots</label>
+              <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto">
+                {slots.map(s => (
+                  <button type="button" key={s.startTime}
+                    onClick={() => setSelectedSlot(s)}
+                    className={`px-2 py-2 rounded-lg text-xs font-medium border transition-all
+                      ${selectedSlot?.startTime === s.startTime
+                        ? 'bg-slate-800 text-white border-slate-800'
+                        : 'bg-white text-gray-700 border-gray-200 hover:border-slate-400'}`}>
+                    {fmt12(s.startTime)}
+                  </button>
+                ))}
+              </div>
+              {selectedSlot && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Selected: {fmt12(selectedSlot.startTime)} – {fmt12(selectedSlot.endTime)}
+                </p>
+              )}
+            </div>
+          )}
+
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Notes (optional)</label>
+            <textarea rows={2} placeholder="e.g. Check healing progress..."
+              value={notes} onChange={e => setNotes(e.target.value)}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
+          </div>
+          <div className="flex gap-3 justify-end pt-1">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-500">Back</button>
+            <button type="submit" disabled={saving || !selectedSlot}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50">
+              {saving ? 'Scheduling...' : 'Schedule Follow-Up'}
             </button>
           </div>
         </form>

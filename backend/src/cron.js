@@ -116,6 +116,26 @@ function startCleanupJob() {
 }
 
 // ════════════════════════════════════════════════════════════
+// JOB 5: Daily Summary for Doctors (every 60s, fires at ~8 AM)
+// ════════════════════════════════════════════════════════════
+let dailySummarySentToday = null; // Track which date we already sent for
+
+function startDailySummaryJob() {
+  setInterval(() => runJob('daily-summary', async () => {
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const hour = now.getHours();
+
+    // Send once per day, after 8 AM
+    if (hour >= 8 && dailySummarySentToday !== todayStr) {
+      dailySummarySentToday = todayStr;
+      const count = await reminderService.sendDailySummaries();
+      return count > 0 ? `sent to ${count} doctors` : 'no doctors with appointments';
+    }
+  }), 60 * 1000);
+}
+
+// ════════════════════════════════════════════════════════════
 // START ALL JOBS
 // ════════════════════════════════════════════════════════════
 
@@ -142,12 +162,14 @@ async function startCron() {
   startStuckConversationJob();
   startWATokenCheckJob();
   startCleanupJob();
+  startDailySummaryJob();
 
   logger.info('All cron jobs scheduled:');
   logger.info('  • Reminders:          every 60s');
   logger.info('  • Stuck conversations: every 15min');
   logger.info('  • WA token validation: every 1h');
   logger.info('  • Data cleanup:        every 24h');
+  logger.info('  • Daily summary:       once at 8 AM');
 }
 
 startCron();

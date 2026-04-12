@@ -145,6 +145,85 @@ class ReminderService {
     const d = new Date(dateVal);
     return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
   }
+
+  /**
+   * Send daily summary to each doctor with today's appointments
+   * Called once each morning by the cron worker
+   */
+  async sendDailySummaries() {
+    try {
+      // Get all active doctors with phone numbers, across all connected tenants
+      const { rows: doctors } = await pool.query(
+        `SELECT d.id, d.name, d.phone, d.tenant_id,
+                t.business_name, t.wa_phone_number_id, t.wa_access_token
+         FROM doctors d
+         JOIN tenants t ON t.id = d.tenant_id
+         WHERE d.is_active = true AND d.phone IS NOT NULL AND d.phone != ''
+           AND t.is_active = true AND t.wa_status = 'connected'
+           AND t.wa_access_token IS NOT NULL`
+      );
+
+      let sent = 0;
+
+      for (const doc of doctors) {
+        try {
+          // Get today's appointments for this doctor
+          const { rows: appts } = await pool.query(
+            `SELECT a.start_time, a.end_time, a.status,
+                    p.name as patient_name, s.name as service_name
+             FROM appointments a
+             LEFT JOIN patients p ON p.id = a.patient_id
+             LEFT JOIN services s ON s.id = a.service_id
+             WHERE a.doctor_id = $1 AND a.tenant_id = $2
+               AND a.appointment_date = CURRENT_DATE
+               AND a.status IN ('pending', 'confirmed')
+             ORDER BY a.start_time`,
+            [doc.id, doc.tenant_id]
+          );
+
+          if (appts.length === 0) continue; // No appointments, skip
+
+          const tenant = {
+            id: doc.tenant_id,
+            wa_phone_number_id: doc.wa_phone_number_id,
+            wa_access_token: doc.wa_access_token,
+            business_name: doc.business_name
+          };
+
+          const wa = new WhatsAppService(tenant);
+
+          let msg = `📋 *Today's Schedule — ${doc.name}*\n`;
+          msg += `📅 ${this.formatDate(new Date())}\n`;
+          msg += `━━━━━━━━━━━━━━━━━━\n`;
+
+          appts.forEach((a, i) => {
+            const time = this.formatTime(a.start_time);
+            const status = a.status === 'confirmed' ? '✅' : '⏳';
+            msg += `${status} ${time} — ${a.patient_name || 'Patient'}`;
+            if (a.service_name) msg += ` (${a.service_name})`;
+            msg += '\n';
+          });
+
+          msg += `━━━━━━━━━━━━━━━━━━\n`;
+          msg += `Total: ${appts.length} appointment${appts.length > 1 ? 's' : ''}\n`;
+          msg += `— ${doc.business_name}`;
+
+          await wa.sendText(doc.phone, msg);
+          sent++;
+
+          // Rate limit to avoid Meta throttling
+          await new Promise(r => setTimeout(r, 1000));
+        } catch (docErr) {
+          logger.warn(`Daily summary failed for doctor ${doc.name} (${doc.id}):`, docErr.message);
+        }
+      }
+
+      return sent;
+    } catch (err) {
+      logger.error('sendDailySummaries error:', err);
+      throw err;
+    }
+  }
 }
 
 module.exports = new ReminderService();

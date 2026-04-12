@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
+import { useClinic } from '../ClinicContext';
 
 // ── SVG Icons ─────────────────────────────────────────────
 const icons = {
@@ -115,13 +116,15 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [expandedCard, setExpandedCard] = useState(null);
   const [clock, setClock] = useState(getCurrentTime());
+  const { clinic } = useClinic();
 
   useEffect(() => {
-    api.getDashboard()
+    setLoading(true);
+    api.getDashboard(clinic)
       .then(({ data }) => setData(data))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, []);
+  }, [clinic]);
 
   useEffect(() => {
     const t = setInterval(() => setClock(getCurrentTime()), 30000);

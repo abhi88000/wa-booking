@@ -26,16 +26,23 @@ router.use(authTenant, loadTenantContext);
 router.get('/dashboard', async (req, res, next) => {
   try {
     const tid = req.tenantId;
+    const { clinic } = req.query;
+    const clinicFilter = clinic && clinic !== 'all' ? clinic : null;
 
     const [stats, recent, todayAppts] = await Promise.all([
-      pool.query(`
-        SELECT 
-          (SELECT COUNT(*) FROM appointments WHERE tenant_id = $1 AND status = 'confirmed' AND appointment_date >= CURRENT_DATE) as upcoming,
-          (SELECT COUNT(*) FROM appointments WHERE tenant_id = $1 AND appointment_date = CURRENT_DATE AND status NOT IN ('cancelled', 'rescheduled')) as today,
-          (SELECT COUNT(*) FROM patients WHERE tenant_id = $1) as total_patients,
-          (SELECT COUNT(*) FROM doctors WHERE tenant_id = $1 AND is_active = true) as active_doctors,
-          (SELECT COUNT(*) FROM appointments WHERE tenant_id = $1 AND EXTRACT(MONTH FROM created_at) = EXTRACT(MONTH FROM NOW())) as month_appointments
-      `, [tid]),
+      // Stats — individual counts with optional clinic filter via doctor join
+      (async () => {
+        const p = clinicFilter ? [tid, clinicFilter] : [tid];
+        const cf = clinicFilter ? 'AND d.clinic = $2' : '';
+        const dJoin = clinicFilter ? 'JOIN doctors d ON d.id = a.doctor_id' : '';
+        const upcoming = await pool.query(`SELECT COUNT(*) FROM appointments a ${dJoin} WHERE a.tenant_id = $1 AND a.status = 'confirmed' AND a.appointment_date >= CURRENT_DATE ${cf}`, p);
+        const today = await pool.query(`SELECT COUNT(*) FROM appointments a ${dJoin} WHERE a.tenant_id = $1 AND a.appointment_date = CURRENT_DATE AND a.status NOT IN ('cancelled', 'rescheduled') ${cf}`, p);
+        const patients = await pool.query(`SELECT COUNT(*) FROM patients WHERE tenant_id = $1`, [tid]);
+        const dcf = clinicFilter ? 'AND clinic = $2' : '';
+        const docs = await pool.query(`SELECT COUNT(*) FROM doctors WHERE tenant_id = $1 AND is_active = true ${dcf}`, clinicFilter ? [tid, clinicFilter] : [tid]);
+        const month = await pool.query(`SELECT COUNT(*) FROM appointments a ${dJoin} WHERE a.tenant_id = $1 AND EXTRACT(MONTH FROM a.created_at) = EXTRACT(MONTH FROM NOW()) ${cf}`, p);
+        return { rows: [{ upcoming: upcoming.rows[0].count, today: today.rows[0].count, total_patients: patients.rows[0].count, active_doctors: docs.rows[0].count, month_appointments: month.rows[0].count }] };
+      })(),
       pool.query(`
         SELECT a.id, a.appointment_date, a.start_time, a.status, 
                d.name as doctor_name, p.name as patient_name, p.phone as patient_phone
@@ -43,16 +50,18 @@ router.get('/dashboard', async (req, res, next) => {
         LEFT JOIN doctors d ON d.id = a.doctor_id
         LEFT JOIN patients p ON p.id = a.patient_id
         WHERE a.tenant_id = $1 AND a.appointment_date >= CURRENT_DATE
+        ${clinicFilter ? 'AND d.clinic = $2' : ''}
         ORDER BY a.appointment_date, a.start_time LIMIT 10
-      `, [tid]),
+      `, clinicFilter ? [tid, clinicFilter] : [tid]),
       pool.query(`
         SELECT a.*, d.name as doctor_name, p.name as patient_name
         FROM appointments a
         LEFT JOIN doctors d ON d.id = a.doctor_id
         LEFT JOIN patients p ON p.id = a.patient_id
         WHERE a.tenant_id = $1 AND a.appointment_date = CURRENT_DATE
+        ${clinicFilter ? 'AND d.clinic = $2' : ''}
         ORDER BY a.start_time
-      `, [tid])
+      `, clinicFilter ? [tid, clinicFilter] : [tid])
     ]);
 
     res.json({
@@ -75,7 +84,7 @@ router.get('/dashboard', async (req, res, next) => {
 
 router.get('/appointments', async (req, res, next) => {
   try {
-    const { status, date, doctor_id, page = 1, limit = 20 } = req.query;
+    const { status, date, doctor_id, clinic, page = 1, limit = 20 } = req.query;
     const offset = (page - 1) * limit;
     let where = 'WHERE a.tenant_id = $1';
     const params = [req.tenantId];
@@ -84,9 +93,13 @@ router.get('/appointments', async (req, res, next) => {
     if (status) { where += ` AND a.status = $${idx++}`; params.push(status); }
     if (date) { where += ` AND a.appointment_date = $${idx++}`; params.push(date); }
     if (doctor_id) { where += ` AND a.doctor_id = $${idx++}`; params.push(doctor_id); }
+    if (clinic && clinic !== 'all') { where += ` AND d.clinic = $${idx++}`; params.push(clinic); }
+
+    // Need JOIN on doctors when filtering by clinic
+    const needsDoctorJoin = clinic && clinic !== 'all';
 
     const [countResult, dataResult] = await Promise.all([
-      pool.query(`SELECT COUNT(*) FROM appointments a ${where}`, params),
+      pool.query(`SELECT COUNT(*) FROM appointments a ${needsDoctorJoin ? 'JOIN doctors d ON d.id = a.doctor_id' : ''} ${where}`, params),
       pool.query(`
         SELECT a.*, d.name as doctor_name, p.name as patient_name, p.phone as patient_phone,
                s.name as service_name

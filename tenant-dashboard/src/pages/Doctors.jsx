@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
+import { useClinic } from '../ClinicContext';
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 const DAY_MAP = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -35,6 +36,7 @@ export default function Doctors() {
   const [filter, setFilter] = useState('active');
   const [form, setForm] = useState({ name: '', specialization: '', phone: '', email: '', consultationFee: 0, slotDuration: 20, clinic: '' });
   const [clinics, setClinics] = useState([]);
+  const { clinic: selectedClinic } = useClinic();
 
   useEffect(() => { load(); loadClinics(); }, []);
 
@@ -105,7 +107,7 @@ export default function Doctors() {
     <div>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Doctors</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <select value={filter} onChange={e => setFilter(e.target.value)}
             className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none">
             <option value="active">Active</option>
@@ -177,10 +179,16 @@ export default function Doctors() {
       {/* Doctor Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {loading ? <div className="text-gray-500 col-span-3 text-center py-10">Loading...</div> :
-          doctors.filter(doc => filter === 'all' ? true : filter === 'active' ? doc.is_active : !doc.is_active).length === 0 ? (
+          doctors
+            .filter(doc => filter === 'all' ? true : filter === 'active' ? doc.is_active : !doc.is_active)
+            .filter(doc => selectedClinic === 'all' ? true : doc.clinic === selectedClinic)
+            .length === 0 ? (
             <div className="text-gray-400 col-span-3 text-center py-10 text-sm">No {filter} doctors found</div>
           ) :
-          doctors.filter(doc => filter === 'all' ? true : filter === 'active' ? doc.is_active : !doc.is_active).map(doc => (
+          doctors
+            .filter(doc => filter === 'all' ? true : filter === 'active' ? doc.is_active : !doc.is_active)
+            .filter(doc => selectedClinic === 'all' ? true : doc.clinic === selectedClinic)
+            .map(doc => (
             <div key={doc.id} className={`bg-white rounded-lg shadow-sm p-5 border ${!doc.is_active ? 'opacity-50' : ''}`}>
               <div className="flex justify-between items-start">
                 <div>

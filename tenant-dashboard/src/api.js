@@ -30,7 +30,7 @@ export default {
   completeOnboarding: () => api.post('/onboarding/complete'),
 
   // Dashboard
-  getDashboard: () => api.get('/tenant/dashboard'),
+  getDashboard: (clinic) => api.get('/tenant/dashboard', { params: clinic && clinic !== 'all' ? { clinic } : {} }),
 
   // Appointments
   getAppointments: (params) => api.get('/tenant/appointments', { params }),

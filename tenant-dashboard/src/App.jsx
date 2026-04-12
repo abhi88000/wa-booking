@@ -9,6 +9,7 @@ import Doctors from './pages/Doctors';
 import Services from './pages/Services';
 import Patients from './pages/Patients';
 import Settings from './pages/Settings';
+import { ClinicProvider, useClinic } from './ClinicContext';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('tenant_token'));
@@ -38,6 +39,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <ClinicProvider>
       <div className="flex h-screen">
         <Sidebar onLogout={handleLogout} />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-50 ml-0 sm:ml-64 pt-18 sm:pt-6">
@@ -53,6 +55,7 @@ function App() {
           </Routes>
         </main>
       </div>
+      </ClinicProvider>
     </BrowserRouter>
   );
 }
@@ -61,6 +64,7 @@ function Sidebar({ onLogout }) {
   const location = useLocation();
   const tenantInfo = JSON.parse(localStorage.getItem('tenant_info') || '{}');
   const [open, setOpen] = useState(false);
+  const { clinic, clinics, setClinic, clinicLabel } = useClinic();
   
   const links = [
     { to: '/', label: 'Dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
@@ -96,6 +100,15 @@ function Sidebar({ onLogout }) {
             {tenantInfo.businessName || 'My Business'}
           </h1>
           <p className="text-gray-400 text-[11px] mt-0.5">WhatsApp Booking</p>
+          {clinics.length > 1 && (
+            <select value={clinic} onChange={e => setClinic(e.target.value)}
+              className="mt-2 w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 outline-none focus:border-slate-400 text-gray-600 bg-slate-50">
+              <option value="all">All Clinics</option>
+              {clinics.map((c, i) => (
+                <option key={i} value={clinicLabel(c)}>{clinicLabel(c)}</option>
+              ))}
+            </select>
+          )}
         </div>
 
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">

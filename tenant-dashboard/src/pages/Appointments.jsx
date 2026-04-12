@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
+import { useClinic } from '../ClinicContext';
 
 export default function Appointments() {
   const [appointments, setAppointments] = useState([]);
@@ -12,14 +13,15 @@ export default function Appointments() {
   const [services, setServices] = useState([]);
   const [cancelTarget, setCancelTarget] = useState(null);
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
+  const { clinic } = useClinic();
 
   useEffect(() => { load(); loadMeta(); }, []);
-  useEffect(() => { load(); }, [page, statusFilter]);
+  useEffect(() => { load(); loadMeta(); }, [page, statusFilter, clinic]);
 
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await api.getAppointments({ page, status: statusFilter || undefined, limit: 20 });
+      const { data } = await api.getAppointments({ page, status: statusFilter || undefined, limit: 20, clinic: clinic !== 'all' ? clinic : undefined });
       setAppointments(data.appointments);
       setTotal(data.total);
     } catch (err) { console.error(err); }
@@ -29,7 +31,9 @@ export default function Appointments() {
   const loadMeta = async () => {
     try {
       const [d, s] = await Promise.all([api.getDoctors(), api.getServices()]);
-      setDoctors(d.data.filter(doc => doc.is_active));
+      let activeDocs = d.data.filter(doc => doc.is_active);
+      if (clinic !== 'all') activeDocs = activeDocs.filter(doc => doc.clinic === clinic);
+      setDoctors(activeDocs);
       setServices(s.data.filter(svc => svc.is_active !== false));
     } catch (err) { console.error(err); }
   };

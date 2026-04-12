@@ -38,7 +38,7 @@ export default {
   getAppointments: (params) => api.get('/tenant/appointments', { params }),
   getAppointment: (id) => api.get(`/tenant/appointments/${id}`),
   createAppointment: (data) => api.post('/tenant/appointments', data),
-  updateAppointmentStatus: (id, status) => api.patch(`/tenant/appointments/${id}/status`, { status }),
+  updateAppointmentStatus: (id, status, comment) => api.patch(`/tenant/appointments/${id}/status`, { status, comment }),
   rescheduleAppointment: (id, data) => api.patch(`/tenant/appointments/${id}/reschedule`, data),
 
   // Doctors

@@ -10,6 +10,8 @@ export default function Appointments() {
   const [showCreate, setShowCreate] = useState(false);
   const [doctors, setDoctors] = useState([]);
   const [services, setServices] = useState([]);
+  const [cancelTarget, setCancelTarget] = useState(null);
+  const [rescheduleTarget, setRescheduleTarget] = useState(null);
 
   useEffect(() => { load(); loadMeta(); }, []);
   useEffect(() => { load(); }, [page, statusFilter]);
@@ -46,6 +48,37 @@ export default function Appointments() {
     no_show: 'bg-gray-200 text-gray-600',
     rescheduled: 'bg-purple-100 text-purple-700',
   };
+
+  const ActionButtons = ({ a }) => (
+    <div className="flex gap-1 flex-wrap">
+      {a.status === 'pending' && (
+        <button onClick={() => updateStatus(a.id, 'confirmed')}
+          className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded hover:bg-green-100">
+          Confirm
+        </button>
+      )}
+      {['pending', 'confirmed'].includes(a.status) && (
+        <>
+          <button onClick={() => updateStatus(a.id, 'completed')}
+            className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100">
+            Complete
+          </button>
+          <button onClick={() => setRescheduleTarget(a)}
+            className="text-xs px-2 py-1 bg-purple-50 text-purple-600 rounded hover:bg-purple-100">
+            Reschedule
+          </button>
+          <button onClick={() => setCancelTarget(a)}
+            className="text-xs px-2 py-1 bg-red-50 text-red-600 rounded hover:bg-red-100">
+            Cancel
+          </button>
+          <button onClick={() => updateStatus(a.id, 'no_show')}
+            className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200">
+            No Show
+          </button>
+        </>
+      )}
+    </div>
+  );
 
   return (
     <div>
@@ -105,30 +138,7 @@ export default function Appointments() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex gap-1 flex-wrap">
-                      {a.status === 'pending' && (
-                        <button onClick={() => updateStatus(a.id, 'confirmed')}
-                          className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded hover:bg-green-100">
-                          Confirm
-                        </button>
-                      )}
-                      {['pending', 'confirmed'].includes(a.status) && (
-                        <>
-                          <button onClick={() => updateStatus(a.id, 'completed')}
-                            className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100">
-                            Complete
-                          </button>
-                          <button onClick={() => updateStatus(a.id, 'no_show')}
-                            className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200">
-                            No Show
-                          </button>
-                          <button onClick={() => updateStatus(a.id, 'cancelled')}
-                            className="text-xs px-2 py-1 bg-red-50 text-red-600 rounded hover:bg-red-100">
-                            Cancel
-                          </button>
-                        </>
-                      )}
-                    </div>
+                    <ActionButtons a={a} />
                   </td>
                 </tr>
               ))}
@@ -159,17 +169,8 @@ export default function Appointments() {
                 <p>{a.appointment_date?.substring(0, 10)} at {a.start_time?.substring(0, 5)}</p>
               </div>
               {['pending', 'confirmed'].includes(a.status) && (
-                <div className="flex gap-2 mt-3 flex-wrap">
-                  {a.status === 'pending' && (
-                    <button onClick={() => updateStatus(a.id, 'confirmed')}
-                      className="text-xs px-3 py-1.5 bg-green-50 text-green-600 rounded hover:bg-green-100">Confirm</button>
-                  )}
-                  <button onClick={() => updateStatus(a.id, 'completed')}
-                    className="text-xs px-3 py-1.5 bg-blue-50 text-blue-600 rounded hover:bg-blue-100">Complete</button>
-                  <button onClick={() => updateStatus(a.id, 'no_show')}
-                    className="text-xs px-3 py-1.5 bg-gray-100 text-gray-600 rounded hover:bg-gray-200">No Show</button>
-                  <button onClick={() => updateStatus(a.id, 'cancelled')}
-                    className="text-xs px-3 py-1.5 bg-red-50 text-red-600 rounded hover:bg-red-100">Cancel</button>
+                <div className="mt-3">
+                  <ActionButtons a={a} />
                 </div>
               )}
             </div>
@@ -189,6 +190,20 @@ export default function Appointments() {
           <button disabled={appointments.length < 20} onClick={() => setPage(p => p + 1)}
             className="px-4 py-2 text-sm border rounded-lg disabled:opacity-30 hover:bg-gray-50">Next</button>
         </div>
+      )}
+
+      {/* Cancel Modal */}
+      {cancelTarget && (
+        <CancelModal appointment={cancelTarget}
+          onClose={() => setCancelTarget(null)}
+          onDone={() => { setCancelTarget(null); load(); }} />
+      )}
+
+      {/* Reschedule Modal */}
+      {rescheduleTarget && (
+        <RescheduleModal appointment={rescheduleTarget} doctors={doctors}
+          onClose={() => setRescheduleTarget(null)}
+          onDone={() => { setRescheduleTarget(null); load(); }} />
       )}
     </div>
   );
@@ -346,6 +361,137 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
             <button type="submit" disabled={saving}
               className="bg-slate-800 text-white px-6 py-2 rounded-lg text-sm hover:bg-slate-900 disabled:opacity-50">
               {saving ? 'Booking...' : 'Book Appointment'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function CancelModal({ appointment, onClose, onDone }) {
+  const [comment, setComment] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleCancel = async () => {
+    setSaving(true); setError('');
+    try {
+      await api.updateAppointmentStatus(appointment.id, 'cancelled', comment || undefined);
+      onDone();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to cancel');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <h2 className="text-base font-semibold text-gray-900 mb-1">Cancel Appointment</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          {appointment.patient_name || 'Patient'} — {appointment.doctor_name} on {appointment.appointment_date?.substring(0, 10)} at {appointment.start_time?.substring(0, 5)}
+        </p>
+        {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-3 text-sm">{error}</div>}
+        <div className="mb-4">
+          <label className="text-xs text-gray-500 block mb-1">Reason / Comments (sent to patient via WhatsApp)</label>
+          <textarea rows={3} placeholder="e.g. Doctor is unavailable due to emergency..."
+            value={comment} onChange={e => setComment(e.target.value)}
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
+        </div>
+        <div className="flex gap-3 justify-end">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500">Back</button>
+          <button onClick={handleCancel} disabled={saving}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-700 disabled:opacity-50">
+            {saving ? 'Cancelling...' : 'Cancel Appointment'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RescheduleModal({ appointment, doctors, onClose, onDone }) {
+  const [form, setForm] = useState({
+    appointmentDate: '',
+    startTime: '',
+    endTime: '',
+    comment: ''
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleDurationCalc = (startTime) => {
+    if (!startTime) return;
+    const doc = doctors.find(d => d.id === appointment.doctor_id);
+    const dur = doc?.slot_duration || 20;
+    const [h, m] = startTime.split(':').map(Number);
+    const totalMin = h * 60 + m + dur;
+    const endH = String(Math.floor(totalMin / 60)).padStart(2, '0');
+    const endM = String(totalMin % 60).padStart(2, '0');
+    setForm(f => ({ ...f, startTime, endTime: `${endH}:${endM}` }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.appointmentDate || !form.startTime || !form.endTime) {
+      setError('Date and time are required');
+      return;
+    }
+    setSaving(true); setError('');
+    try {
+      await api.rescheduleAppointment(appointment.id, {
+        appointmentDate: form.appointmentDate,
+        startTime: form.startTime,
+        endTime: form.endTime,
+        comment: form.comment || undefined
+      });
+      onDone();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to reschedule');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <h2 className="text-base font-semibold text-gray-900 mb-1">Reschedule Appointment</h2>
+        <p className="text-sm text-gray-500 mb-4">
+          {appointment.patient_name || 'Patient'} — {appointment.doctor_name} 
+          <span className="text-gray-400"> (currently {appointment.appointment_date?.substring(0, 10)} at {appointment.start_time?.substring(0, 5)})</span>
+        </p>
+        {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-3 text-sm">{error}</div>}
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">New Date</label>
+            <input type="date" value={form.appointmentDate} required
+              onChange={e => setForm({...form, appointmentDate: e.target.value})}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Start Time</label>
+              <input type="time" value={form.startTime} required
+                onChange={e => handleDurationCalc(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">End Time</label>
+              <input type="time" value={form.endTime}
+                onChange={e => setForm({...form, endTime: e.target.value})}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Note to patient (sent via WhatsApp)</label>
+            <textarea rows={2} placeholder="e.g. Doctor's schedule changed..."
+              value={form.comment} onChange={e => setForm({...form, comment: e.target.value})}
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400" />
+          </div>
+          <div className="flex gap-3 justify-end pt-1">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-500">Back</button>
+            <button type="submit" disabled={saving}
+              className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900 disabled:opacity-50">
+              {saving ? 'Rescheduling...' : 'Reschedule'}
             </button>
           </div>
         </form>

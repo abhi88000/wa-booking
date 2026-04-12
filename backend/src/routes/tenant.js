@@ -12,6 +12,7 @@ const pool = require('../db/pool');
 const { authTenant, requireRole } = require('../middleware/auth');
 const { loadTenantContext } = require('../middleware/tenantContext');
 const logger = require('../utils/logger');
+const WhatsAppService = require('../services/whatsapp');
 
 // All tenant routes require auth + tenant context
 router.use(authTenant, loadTenantContext);
@@ -108,20 +109,49 @@ router.get('/appointments', async (req, res, next) => {
 
 router.patch('/appointments/:id/status', async (req, res, next) => {
   try {
-    const { status } = req.body;
+    const { status, comment } = req.body;
     const validStatuses = ['confirmed', 'completed', 'cancelled', 'no_show'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: `Invalid status. Use: ${validStatuses.join(', ')}` });
     }
 
+    // Get full appointment details before updating
+    const { rows: apptRows } = await pool.query(
+      `SELECT a.*, d.name as doctor_name, p.phone as patient_phone, p.name as patient_name,
+              s.name as service_name
+       FROM appointments a
+       LEFT JOIN doctors d ON d.id = a.doctor_id
+       LEFT JOIN patients p ON p.id = a.patient_id
+       LEFT JOIN services s ON s.id = a.service_id
+       WHERE a.id = $1 AND a.tenant_id = $2`,
+      [req.params.id, req.tenantId]
+    );
+    if (apptRows.length === 0) {
+      return res.status(404).json({ error: 'Appointment not found' });
+    }
+
+    const appt = apptRows[0];
+
+    // Update status + optional comment
     const { rows } = await pool.query(
-      `UPDATE appointments SET status = $1, updated_at = NOW() 
+      `UPDATE appointments SET status = $1, notes = COALESCE($4, notes), updated_at = NOW() 
        WHERE id = $2 AND tenant_id = $3 RETURNING *`,
-      [status, req.params.id, req.tenantId]
+      [status, req.params.id, req.tenantId, comment || null]
     );
 
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Appointment not found' });
+    // Send WhatsApp notification to patient on cancel
+    if (status === 'cancelled' && appt.patient_phone && req.tenant?.wa_status === 'connected') {
+      try {
+        const wa = new WhatsAppService(req.tenant);
+        const time = formatTime12(appt.start_time);
+        const date = appt.appointment_date?.toString().substring(0, 10);
+        let msg = `Your appointment with ${appt.doctor_name || 'the doctor'} on ${date} at ${time} has been cancelled by ${req.tenant.business_name}.`;
+        if (comment) msg += `\n\nReason: ${comment}`;
+        msg += `\n\nReply "book" to schedule a new appointment.`;
+        await wa.sendText(appt.patient_phone, msg);
+      } catch (waErr) {
+        logger.warn('Failed to send cancel notification:', waErr.message);
+      }
     }
 
     res.json(rows[0]);
@@ -230,13 +260,17 @@ router.get('/appointments/:id', async (req, res, next) => {
 
 router.patch('/appointments/:id/reschedule', requireRole('owner', 'admin', 'staff'), async (req, res, next) => {
   try {
-    const { appointmentDate, startTime, endTime } = req.body;
+    const { appointmentDate, startTime, endTime, comment } = req.body;
     if (!appointmentDate || !startTime || !endTime) {
       return res.status(400).json({ error: 'Date, startTime, endTime required' });
     }
 
     const { rows: appt } = await pool.query(
-      `SELECT * FROM appointments WHERE id = $1 AND tenant_id = $2`,
+      `SELECT a.*, d.name as doctor_name, p.phone as patient_phone, p.name as patient_name
+       FROM appointments a
+       LEFT JOIN doctors d ON d.id = a.doctor_id
+       LEFT JOIN patients p ON p.id = a.patient_id
+       WHERE a.id = $1 AND a.tenant_id = $2`,
       [req.params.id, req.tenantId]
     );
     if (appt.length === 0) return res.status(404).json({ error: 'Not found' });
@@ -254,10 +288,25 @@ router.patch('/appointments/:id/reschedule', requireRole('owner', 'admin', 'staf
     }
 
     const { rows } = await pool.query(
-      `UPDATE appointments SET appointment_date = $1, start_time = $2, end_time = $3, status = 'confirmed', updated_at = NOW()
+      `UPDATE appointments SET appointment_date = $1, start_time = $2, end_time = $3, 
+       status = 'confirmed', notes = COALESCE($6, notes), updated_at = NOW()
        WHERE id = $4 AND tenant_id = $5 RETURNING *`,
-      [appointmentDate, startTime, endTime, req.params.id, req.tenantId]
+      [appointmentDate, startTime, endTime, req.params.id, req.tenantId, comment || null]
     );
+
+    // Send WhatsApp notification to patient
+    if (appt[0].patient_phone && req.tenant?.wa_status === 'connected') {
+      try {
+        const wa = new WhatsAppService(req.tenant);
+        const newTime = formatTime12(startTime);
+        let msg = `Your appointment with ${appt[0].doctor_name || 'the doctor'} has been rescheduled to ${appointmentDate} at ${newTime} by ${req.tenant.business_name}.`;
+        if (comment) msg += `\n\nNote: ${comment}`;
+        await wa.sendText(appt[0].patient_phone, msg);
+      } catch (waErr) {
+        logger.warn('Failed to send reschedule notification:', waErr.message);
+      }
+    }
+
     res.json(rows[0]);
   } catch (err) {
     next(err);
@@ -867,5 +916,14 @@ router.delete('/team/:id', requireRole('owner'), async (req, res, next) => {
     next(err);
   }
 });
+
+// ── Helper ────────────────────────────────────────────────
+function formatTime12(timeStr) {
+  if (!timeStr) return '';
+  const [h, m] = timeStr.toString().split(':').map(Number);
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+  return `${hour12}:${(m || 0).toString().padStart(2, '0')} ${period}`;
+}
 
 module.exports = router;

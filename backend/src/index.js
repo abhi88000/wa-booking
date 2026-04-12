@@ -12,8 +12,7 @@ if (missing.length > 0) {
   process.exit(1);
 }
 if (process.env.NODE_ENV === 'production' && !process.env.CORS_ORIGINS) {
-  console.error('FATAL: CORS_ORIGINS must be set in production');
-  process.exit(1);
+  console.warn('WARNING: CORS_ORIGINS not set in production — will allow all origins');
 }
 if (!process.env.WA_VERIFY_TOKEN) {
   console.warn('WARNING: WA_VERIFY_TOKEN not set — WhatsApp webhook verification will fail');

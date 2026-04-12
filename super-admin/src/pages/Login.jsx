@@ -22,32 +22,32 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <div className="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">FutureZMinds</h1>
-          <p className="text-gray-500 mt-1">Platform Administration</p>
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 px-4">
+      <div className="bg-white rounded-lg shadow-lg p-6 sm:p-8 w-full max-w-sm">
+        <div className="text-center mb-6">
+          <h1 className="text-lg font-semibold text-gray-900">FutureZMinds</h1>
+          <p className="text-gray-400 text-xs mt-1">Platform Administration</p>
         </div>
 
         {error && (
           <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">{error}</div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-xs text-gray-500 mb-1">Email</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-              className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-slate-400 outline-none"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
               placeholder="admin@futurezminds.in" required />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label className="block text-xs text-gray-500 mb-1">Password</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              className="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-slate-400 outline-none"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-gray-400"
               required />
           </div>
           <button type="submit" disabled={loading}
-            className="w-full bg-slate-800 text-white py-3 rounded-lg font-medium hover:bg-slate-900 disabled:opacity-50 transition">
+            className="w-full bg-gray-900 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-gray-800 disabled:opacity-50 transition">
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>

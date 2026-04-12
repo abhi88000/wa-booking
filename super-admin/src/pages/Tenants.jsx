@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
 
@@ -45,15 +45,15 @@ export default function Tenants() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Tenants ({total})</h1>
+        <h1 className="text-lg font-semibold text-gray-900">Tenants ({total})</h1>
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center border border-gray-100">
+      <div className="bg-white rounded-lg shadow-none p-4 mb-6 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center border border-gray-100">
         <form onSubmit={handleSearch} className="flex-1 flex gap-2">
           <input type="text" placeholder="Search by name or email..." value={search}
             onChange={e => setSearch(e.target.value)}
-            className="flex-1 border rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-slate-400 outline-none" />
+            className="flex-1 border rounded-lg px-4 py-2 text-sm focus:border-gray-400 outline-none" />
           <button type="submit" className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900">
             Search
           </button>
@@ -67,7 +67,7 @@ export default function Tenants() {
       </div>
 
       {/* Desktop Table */}
-      <div className="hidden sm:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="hidden sm:block bg-white rounded-lg shadow-none border border-gray-100 overflow-hidden">
         {loading ? (
           <div className="p-8 text-center text-gray-500">Loading...</div>
         ) : (
@@ -134,7 +134,7 @@ export default function Tenants() {
         {loading ? (
           <div className="p-8 text-center text-gray-500">Loading...</div>
         ) : tenants.map(t => (
-          <div key={t.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+          <div key={t.id} className="bg-white rounded-lg shadow-none border border-gray-100 p-4">
             <div className="flex justify-between items-start">
               <div>
                 <Link to={`/tenants/${t.id}`} className="text-slate-700 font-medium hover:underline">

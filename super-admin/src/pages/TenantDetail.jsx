@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import api from '../api';
 
@@ -10,7 +10,7 @@ export default function TenantDetail() {
   const [resetMsg, setResetMsg] = useState('');
   const [savingFeatures, setSavingFeatures] = useState(false);
 
-  // Module definitions — the 4 core WhatsApp solutions
+  // Module definitions � the 4 core WhatsApp solutions
   const MODULES = [
     { key: 'booking', label: 'Appointment Booking', desc: 'Menu-driven doctor/service/date/time booking' },
     { key: 'payment_collection', label: 'Payments & Invoicing', desc: 'Send payment links, collect payments via WhatsApp' },
@@ -71,8 +71,8 @@ export default function TenantDetail() {
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
-        <Link to="/tenants" className="text-gray-400 hover:text-gray-600">← Back</Link>
-        <h1 className="text-2xl font-bold text-gray-900">{tenant.business_name}</h1>
+        <Link to="/tenants" className="text-gray-400 hover:text-gray-600">? Back</Link>
+        <h1 className="text-lg font-semibold text-gray-900">{tenant.business_name}</h1>
         <span className={`px-3 py-1 rounded-full text-xs font-medium ${tenant.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
           {tenant.is_active ? 'Active' : 'Inactive'}
         </span>
@@ -80,13 +80,13 @@ export default function TenantDetail() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Business Info */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div className="bg-white rounded-lg shadow-none p-6 border border-gray-100">
           <h2 className="font-semibold text-gray-900 mb-4">Business Info</h2>
           <dl className="space-y-3 text-sm">
             <div><dt className="text-gray-500">Type</dt><dd className="font-medium capitalize">{tenant.business_type}</dd></div>
             <div><dt className="text-gray-500">Email</dt><dd className="font-medium">{tenant.email}</dd></div>
-            <div><dt className="text-gray-500">Phone</dt><dd className="font-medium">{tenant.phone || '—'}</dd></div>
-            <div><dt className="text-gray-500">City</dt><dd className="font-medium">{tenant.city || '—'}</dd></div>
+            <div><dt className="text-gray-500">Phone</dt><dd className="font-medium">{tenant.phone || '�'}</dd></div>
+            <div><dt className="text-gray-500">City</dt><dd className="font-medium">{tenant.city || '�'}</dd></div>
             <div><dt className="text-gray-500">Slug</dt><dd className="font-medium">{tenant.slug}</dd></div>
             <div><dt className="text-gray-500">Timezone</dt><dd className="font-medium">{tenant.timezone}</dd></div>
             <div><dt className="text-gray-500">Joined</dt><dd className="font-medium">{new Date(tenant.created_at).toLocaleString()}</dd></div>
@@ -94,7 +94,7 @@ export default function TenantDetail() {
         </div>
 
         {/* WhatsApp Config */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div className="bg-white rounded-lg shadow-none p-6 border border-gray-100">
           <h2 className="font-semibold text-gray-900 mb-4">WhatsApp</h2>
           <dl className="space-y-3 text-sm">
             <div>
@@ -104,16 +104,16 @@ export default function TenantDetail() {
                 {tenant.wa_status}
               </span></dd>
             </div>
-            <div><dt className="text-gray-500">Phone Number</dt><dd className="font-medium">{tenant.wa_phone_number || '—'}</dd></div>
-            <div><dt className="text-gray-500">Phone Number ID</dt><dd className="font-medium text-xs">{tenant.wa_phone_number_id || '—'}</dd></div>
-            <div><dt className="text-gray-500">WABA ID</dt><dd className="font-medium text-xs">{tenant.wa_business_account_id || '—'}</dd></div>
-            <div><dt className="text-gray-500">Access Token</dt><dd className="font-medium">{tenant.wa_access_token || '—'}</dd></div>
+            <div><dt className="text-gray-500">Phone Number</dt><dd className="font-medium">{tenant.wa_phone_number || '�'}</dd></div>
+            <div><dt className="text-gray-500">Phone Number ID</dt><dd className="font-medium text-xs">{tenant.wa_phone_number_id || '�'}</dd></div>
+            <div><dt className="text-gray-500">WABA ID</dt><dd className="font-medium text-xs">{tenant.wa_business_account_id || '�'}</dd></div>
+            <div><dt className="text-gray-500">Access Token</dt><dd className="font-medium">{tenant.wa_access_token || '�'}</dd></div>
             <div><dt className="text-gray-500">Onboarding</dt><dd className="font-medium capitalize">{tenant.onboarding_status}</dd></div>
           </dl>
         </div>
 
         {/* Usage Stats */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div className="bg-white rounded-lg shadow-none p-6 border border-gray-100">
           <h2 className="font-semibold text-gray-900 mb-4">Usage</h2>
           <div className="space-y-4">
             <div className="flex justify-between items-center">
@@ -141,7 +141,7 @@ export default function TenantDetail() {
       </div>
 
       {/* Actions */}
-      <div className="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+      <div className="mt-6 bg-white rounded-lg shadow-none p-6 border border-gray-100">
         <h2 className="font-semibold text-gray-900 mb-4">Actions</h2>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <button onClick={handleToggle}
@@ -154,13 +154,13 @@ export default function TenantDetail() {
       </div>
 
       {/* Features */}
-      <div className="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+      <div className="mt-6 bg-white rounded-lg shadow-none p-6 border border-gray-100">
         <h2 className="font-semibold text-gray-900 mb-4">Reset User Password</h2>
         {resetMsg && <p className="text-sm mb-3 text-slate-700">{resetMsg}</p>}
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)}
             placeholder="Enter new password (min 8 chars)"
-            className="border rounded-lg px-4 py-2 text-sm w-full sm:w-72 outline-none focus:ring-2 focus:ring-slate-400" />
+            className="border rounded-lg px-4 py-2 text-sm w-full sm:w-72 outline-none focus:border-gray-400" />
           <button onClick={handleResetPassword}
             className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900">
             Reset Password
@@ -169,7 +169,7 @@ export default function TenantDetail() {
       </div>
 
       {/* WhatsApp Modules */}
-      <div className="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+      <div className="mt-6 bg-white rounded-lg shadow-none p-6 border border-gray-100">
         <h2 className="font-semibold text-gray-900 mb-1">WhatsApp Modules</h2>
         <p className="text-xs text-gray-400 mb-4">Toggle which solutions this tenant can use</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -192,7 +192,7 @@ export default function TenantDetail() {
       </div>
 
       {/* Extra Features */}
-      <div className="mt-6 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+      <div className="mt-6 bg-white rounded-lg shadow-none p-6 border border-gray-100">
         <h2 className="font-semibold text-gray-900 mb-4">Additional Features</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {EXTRA_FEATURES.map(feat => {

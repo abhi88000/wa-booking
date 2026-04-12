@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../api';
 
@@ -18,11 +18,11 @@ export default function Analytics() {
 
   return (
     <div>
-      <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-6">Platform Analytics</h1>
+      <h1 className="text-lg font-semibold text-gray-900 mb-5">Platform Analytics</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Signups */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
           <h2 className="font-semibold text-gray-900 mb-4">New Signups (Last 30 Days)</h2>
           <ResponsiveContainer width="100%" height={250}>
             <BarChart data={data.signups}>
@@ -36,7 +36,7 @@ export default function Analytics() {
         </div>
 
         {/* Top Tenants */}
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
           <h2 className="font-semibold text-gray-900 mb-4">Top Tenants (30 Days)</h2>
           <div className="space-y-3">
             {data.topTenants && data.topTenants.length > 0 ? data.topTenants.map((t, i) => (

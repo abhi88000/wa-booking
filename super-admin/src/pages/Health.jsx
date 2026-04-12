@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
@@ -56,9 +56,9 @@ export default function Health() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">System Health</h1>
-        <button onClick={load} className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300 text-sm">
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="text-lg font-semibold text-gray-900">System Health</h1>
+        <button onClick={load} className="px-3 py-1.5 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 text-sm transition">
           Refresh
         </button>
       </div>
@@ -119,15 +119,15 @@ export default function Health() {
 
 function SummaryCard({ label, value, color }) {
   const colors = {
-    gray: 'bg-gray-100 text-gray-800',
-    green: 'bg-green-100 text-green-800',
-    yellow: 'bg-yellow-100 text-yellow-800',
-    red: 'bg-red-100 text-red-800',
+    gray: 'border-gray-200 text-gray-800',
+    green: 'border-green-200 text-green-800',
+    yellow: 'border-yellow-200 text-yellow-800',
+    red: 'border-red-200 text-red-800',
   };
   return (
-    <div className={`${colors[color]} rounded-xl p-5 text-center`}>
-      <div className="text-3xl font-bold">{value}</div>
-      <div className="text-sm mt-1 opacity-80">{label}</div>
+    <div className={`bg-white border ${colors[color]} rounded-lg p-4 text-center`}>
+      <div className="text-2xl font-bold">{value}</div>
+      <div className="text-xs text-gray-500 mt-1">{label}</div>
     </div>
   );
 }
@@ -149,10 +149,10 @@ function TenantHealthCard({ tenant, onValidateWA, onResetConversations, validati
     <div className="bg-white border rounded-lg p-4 mb-3 shadow-sm">
       <div className="flex items-start justify-between">
         <div>
-          <h3 className="font-bold text-lg cursor-pointer hover:text-slate-700" onClick={onNavigate}>
+          <h3 className="font-semibold text-sm cursor-pointer hover:text-slate-600" onClick={onNavigate}>
             {t.name}
           </h3>
-          <p className="text-gray-500 text-sm">{t.email} · {t.plan} · WA: {t.waStatus}</p>
+          <p className="text-gray-500 text-sm">{t.email} � {t.plan} � WA: {t.waStatus}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => onValidateWA(t.tenantId)}

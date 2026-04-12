@@ -17,11 +17,12 @@ class BookingEngine {
     this.phone = patient.phone;
   }
 
-  // Format a DB date to short string
+  // Format a DB date to DD Mon YYYY
   formatDate(d) {
     if (!d) return '';
-    if (typeof d === 'string') return d.substring(0, 10);
-    return d.toISOString().substring(0, 10);
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const date = new Date(d);
+    return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
   }
 
   // ── Main Message Handler ────────────────────────────────
@@ -70,6 +71,9 @@ class BookingEngine {
         case 'reschedule_awaiting_time':
           return await this.handleRescheduleTimeSelection(content, interactiveData, state);
 
+        case 'awaiting_reschedule_response':
+          return await this.handleRescheduleResponse(content, state);
+
         default:
           return await this.handleNewMessage(content, state);
       }
@@ -93,6 +97,13 @@ class BookingEngine {
     const msg = (content || '').toLowerCase().trim();
 
     // Match button IDs or simple keywords
+    if (msg === 'confirm' || msg === 'yes' || msg === 'accept') {
+      return await this.handleReminderConfirm();
+    }
+    if (msg === 'decline') {
+      // Decline from reschedule template (idle fallback) — cancel latest upcoming appointment
+      return await this.handleDeclineReschedule();
+    }
     if (msg === 'book' || msg === 'book appointment' || msg.includes('book')) {
       return await this.startBookingFlow();
     }
@@ -655,7 +666,7 @@ class BookingEngine {
       `📋 *Appointment Summary*\n\n` +
       `👨‍⚕️ Doctor: ${state.doctorName}\n` +
       `📝 Service: ${state.serviceName}\n` +
-      `📅 Date: ${state.appointmentDate}\n` +
+      `📅 Date: ${this.formatDate(state.appointmentDate)}\n` +
       `🕐 Time: ${this.formatTime(time)} - ${this.formatTime(endTime)}\n\n` +
       `Would you like to confirm this appointment?`;
 
@@ -711,7 +722,7 @@ class BookingEngine {
       await this.wa.sendText(this.phone,
         `✅ *Appointment ${statusText}!*\n\n` +
         `👨‍⚕️ ${state.doctorName}\n` +
-        `📅 ${state.appointmentDate}\n` +
+        `📅 ${this.formatDate(state.appointmentDate)}\n` +
         `🕐 ${this.formatTime(state.startTime)}\n\n` +
         `You'll receive a reminder before your appointment.\n` +
         `Type "status" anytime to check your appointments.`
@@ -732,6 +743,141 @@ class BookingEngine {
         ]
       });
     }
+  }
+
+  // ── Handle Reminder Reply (CONFIRM/CANCEL from idle) ────
+  async handleReminderConfirm() {
+    // Find the patient's next upcoming appointment
+    const { rows } = await pool.query(
+      `SELECT a.id, a.appointment_date, a.start_time, d.name as doctor_name
+       FROM appointments a
+       LEFT JOIN doctors d ON d.id = a.doctor_id
+       WHERE a.tenant_id = $1 AND a.patient_id = $2
+       AND a.appointment_date >= CURRENT_DATE
+       AND a.status IN ('pending', 'confirmed')
+       ORDER BY a.appointment_date, a.start_time
+       LIMIT 1`,
+      [this.tenantId, this.patient.id]
+    );
+
+    if (rows.length === 0) {
+      return await this.wa.sendText(this.phone, 'No upcoming appointments found.');
+    }
+
+    const a = rows[0];
+    await pool.query(
+      `UPDATE appointments SET status = 'confirmed', updated_at = NOW() WHERE id = $1`,
+      [a.id]
+    );
+
+    await this.wa.sendText(this.phone,
+      `✅ *Appointment Confirmed*\n\n` +
+      `👨‍⚕️ ${a.doctor_name}\n` +
+      `📅 ${this.formatDate(a.appointment_date)} at ${this.formatTime(a.start_time)}\n\n` +
+      `See you there!`
+    );
+  }
+
+  // ── Handle Accept/Decline for Doctor-Initiated Reschedule ──
+  async handleRescheduleResponse(content, state) {
+    const msg = (content || '').toLowerCase().trim();
+
+    if (msg === 'accept' || msg === 'yes') {
+      // Appointment is already updated to new time by the doctor — confirm status
+      const { rows } = await pool.query(
+        `SELECT a.id, a.appointment_date, a.start_time, d.name as doctor_name
+         FROM appointments a
+         LEFT JOIN doctors d ON d.id = a.doctor_id
+         WHERE a.id = $1 AND a.tenant_id = $2`,
+        [state.appointmentId, this.tenantId]
+      );
+
+      if (rows.length === 0) {
+        await this.setState({ state: 'idle' });
+        return await this.wa.sendText(this.phone, 'Appointment not found. Reply "book" to schedule a new one.');
+      }
+
+      // Mark as confirmed (patient accepted the new time)
+      await pool.query(
+        `UPDATE appointments SET status = 'confirmed', updated_at = NOW() WHERE id = $1`,
+        [rows[0].id]
+      );
+
+      await this.setState({ state: 'idle' });
+
+      const a = rows[0];
+      return await this.wa.sendText(this.phone,
+        `✅ *Reschedule Accepted*\n\n` +
+        `👨‍⚕️ ${a.doctor_name}\n` +
+        `📅 ${this.formatDate(a.appointment_date)} at ${this.formatTime(a.start_time)}\n\n` +
+        `See you there!`
+      );
+    }
+
+    if (msg === 'decline' || msg === 'no') {
+      // Cancel the rescheduled appointment
+      await pool.query(
+        `UPDATE appointments SET status = 'cancelled', updated_at = NOW() WHERE id = $1 AND tenant_id = $2`,
+        [state.appointmentId, this.tenantId]
+      );
+
+      // Delete unsent reminders
+      await pool.query(
+        `DELETE FROM reminders WHERE appointment_id = $1 AND sent = false`,
+        [state.appointmentId]
+      );
+
+      await this.setState({ state: 'idle' });
+
+      return await this.wa.sendText(this.phone,
+        `❌ *Reschedule Declined*\n\n` +
+        `Your appointment has been cancelled.\n` +
+        `Reply "book" to schedule a new appointment at a time that works for you.`
+      );
+    }
+
+    // Unrecognized response — prompt again
+    return await this.wa.sendButtons(this.phone, {
+      bodyText: 'Your appointment was rescheduled by the clinic. Do you accept the new time?',
+      buttons: [
+        { id: 'accept', title: 'Accept' },
+        { id: 'decline', title: 'Decline' }
+      ]
+    });
+  }
+
+  // ── Decline Reschedule (from idle — fallback when state wasn't set) ──
+  async handleDeclineReschedule() {
+    const { rows } = await pool.query(
+      `SELECT a.id, a.appointment_date, a.start_time, d.name as doctor_name
+       FROM appointments a
+       LEFT JOIN doctors d ON d.id = a.doctor_id
+       WHERE a.tenant_id = $1 AND a.patient_id = $2
+       AND a.appointment_date >= CURRENT_DATE
+       AND a.status IN ('pending', 'confirmed')
+       ORDER BY a.updated_at DESC
+       LIMIT 1`,
+      [this.tenantId, this.patient.id]
+    );
+
+    if (rows.length === 0) {
+      return await this.wa.sendText(this.phone, 'No upcoming appointments found.');
+    }
+
+    await pool.query(
+      `UPDATE appointments SET status = 'cancelled', updated_at = NOW() WHERE id = $1`,
+      [rows[0].id]
+    );
+    await pool.query(
+      `DELETE FROM reminders WHERE appointment_id = $1 AND sent = false`,
+      [rows[0].id]
+    );
+
+    return await this.wa.sendText(this.phone,
+      `❌ *Reschedule Declined*\n\n` +
+      `Your appointment with ${rows[0].doctor_name} on ${this.formatDate(rows[0].appointment_date)} has been cancelled.\n` +
+      `Reply "book" to schedule a new appointment at a time that works for you.`
+    );
   }
 
   // ── Show Upcoming Appointments ──────────────────────────
@@ -1021,7 +1167,7 @@ class BookingEngine {
     await this.wa.sendText(this.phone,
       `🔄 *Appointment Rescheduled!*\n\n` +
       `👨‍⚕️ ${state.doctorName}\n` +
-      `📅 ${state.appointmentDate}\n` +
+      `📅 ${this.formatDate(state.appointmentDate)}\n` +
       `🕐 ${this.formatTime(time)}\n\n` +
       `You'll receive a reminder before your appointment.`
     );

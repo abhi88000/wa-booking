@@ -161,11 +161,30 @@ router.patch('/appointments/:id/status', async (req, res, next) => {
       try {
         const wa = new WhatsAppService(req.tenant);
         const time = formatTime12(appt.start_time);
-        const date = appt.appointment_date?.toString().substring(0, 10);
-        let msg = `Your appointment with ${appt.doctor_name || 'the doctor'} on ${date} at ${time} has been cancelled by ${req.tenant.business_name}.`;
-        if (comment) msg += `\n\nReason: ${comment}`;
-        msg += `\n\nReply "book" to schedule a new appointment.`;
-        await wa.sendText(appt.patient_phone, msg);
+        const date = formatDateDD(appt.appointment_date);
+        // Try template first (works outside 24h window), fall back to sendText
+        try {
+          await wa.sendTemplate(appt.patient_phone, 'appointment_cancelled', 'en', [
+            {
+              type: 'body',
+              parameters: [
+                { type: 'text', text: appt.patient_name || 'there' },
+                { type: 'text', text: appt.doctor_name || 'the doctor' },
+                { type: 'text', text: date },
+                { type: 'text', text: time },
+                { type: 'text', text: req.tenant.business_name },
+                { type: 'text', text: comment || 'No reason provided' }
+              ]
+            }
+          ]);
+        } catch (tmplErr) {
+          // Template not approved yet or failed — fall back to plain text
+          logger.warn('Cancel template failed, falling back to sendText:', tmplErr.message);
+          let msg = `Your appointment with ${appt.doctor_name || 'the doctor'} on ${date} at ${time} has been cancelled by ${req.tenant.business_name}.`;
+          if (comment) msg += `\n\nReason: ${comment}`;
+          msg += `\n\nReply "book" to schedule a new appointment.`;
+          await wa.sendText(appt.patient_phone, msg);
+        }
       } catch (waErr) {
         logger.warn('Failed to send cancel notification:', waErr.message);
       }
@@ -315,10 +334,43 @@ router.patch('/appointments/:id/reschedule', requireRole('owner', 'admin', 'staf
     if (appt[0].patient_phone && req.tenant?.wa_status === 'connected') {
       try {
         const wa = new WhatsAppService(req.tenant);
+        const oldTime = formatTime12(appt[0].start_time);
+        const oldDate = formatDateDD(appt[0].appointment_date);
         const newTime = formatTime12(startTime);
-        let msg = `Your appointment with ${appt[0].doctor_name || 'the doctor'} has been rescheduled to ${appointmentDate} at ${newTime} by ${req.tenant.business_name}.`;
-        if (comment) msg += `\n\nNote: ${comment}`;
-        await wa.sendText(appt[0].patient_phone, msg);
+        const newDate = formatDateDD(appointmentDate);
+        // Try template first (works outside 24h window), fall back to sendText
+        try {
+          await wa.sendTemplate(appt[0].patient_phone, 'appointment_rescheduled', 'en', [
+            {
+              type: 'body',
+              parameters: [
+                { type: 'text', text: appt[0].patient_name || 'there' },
+                { type: 'text', text: appt[0].doctor_name || 'the doctor' },
+                { type: 'text', text: req.tenant.business_name },
+                { type: 'text', text: oldDate },
+                { type: 'text', text: oldTime },
+                { type: 'text', text: newDate },
+                { type: 'text', text: newTime }
+              ]
+            }
+          ]);
+          // Store reschedule info so we can handle Accept/Decline replies
+          await pool.query(
+            `UPDATE patients SET wa_conversation_state = $1 WHERE phone = $2 AND tenant_id = $3`,
+            [JSON.stringify({
+              state: 'awaiting_reschedule_response',
+              appointmentId: req.params.id,
+              newDate: appointmentDate,
+              newTime: startTime
+            }), appt[0].patient_phone, req.tenantId]
+          );
+        } catch (tmplErr) {
+          // Template not approved yet or failed — fall back to plain text
+          logger.warn('Reschedule template failed, falling back to sendText:', tmplErr.message);
+          let msg = `Your appointment with ${appt[0].doctor_name || 'the doctor'} has been rescheduled to ${newDate} at ${newTime} by ${req.tenant.business_name}.`;
+          if (comment) msg += `\n\nNote: ${comment}`;
+          await wa.sendText(appt[0].patient_phone, msg);
+        }
       } catch (waErr) {
         logger.warn('Failed to send reschedule notification:', waErr.message);
       }
@@ -936,13 +988,20 @@ router.delete('/team/:id', requireRole('owner'), async (req, res, next) => {
   }
 });
 
-// ── Helper ────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────
 function formatTime12(timeStr) {
   if (!timeStr) return '';
   const [h, m] = timeStr.toString().split(':').map(Number);
   const period = h >= 12 ? 'PM' : 'AM';
   const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
   return `${hour12}:${(m || 0).toString().padStart(2, '0')} ${period}`;
+}
+
+function formatDateDD(dateVal) {
+  if (!dateVal) return '';
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const d = new Date(dateVal);
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
 module.exports = router;

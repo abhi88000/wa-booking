@@ -58,13 +58,10 @@ class ReminderService {
    * Templates are required because reminders are sent outside
    * the 24-hour messaging window (Meta policy).
    *
-   * You must create these templates in Meta Business Manager:
-   *   - appointment_reminder  (for 24h reminders)
-   *   - appointment_soon      (for 1h reminders)
-   *   - appointment_followup  (for follow-up)
-   *
-   * Each template should use {{1}}, {{2}}, {{3}} etc as placeholders.
-   * See TEMPLATE_CONFIG below for the expected parameter order.
+   * Approved templates (with named parameters):
+   *   - appointment_reminder  (24h reminder)
+   *   - appointment_cancelled (doctor cancels)
+   *   - appointment_rescheduled (doctor reschedules)
    */
   async sendReminder(reminder) {
     const tenant = {
@@ -78,35 +75,34 @@ class ReminderService {
     const tenantSettings = reminder.tenant_settings || {};
     const lang = tenantSettings.wa_template_language || 'en';
 
-    // Template config: maps reminder type → template name + parameters
-    // These must match the templates you create in Meta Business Manager
+    // Template config: maps reminder type → template name + named parameters
+    // These use named params matching the approved Meta templates
     const TEMPLATE_CONFIG = {
       '24h': {
         name: tenantSettings.template_appointment_reminder || 'appointment_reminder',
-        // Expected template body: "Hi {{1}}, reminder for your appointment tomorrow with {{2}} at {{3}}, {{4}}."
         params: [
-          reminder.patient_name || 'there',
-          reminder.doctor_name || 'your doctor',
-          this.formatTime(reminder.start_time),
-          reminder.business_name
+          { type: 'text', text: reminder.patient_name || 'there' },
+          { type: 'text', text: reminder.doctor_name || 'your doctor' },
+          { type: 'text', text: this.formatDate(reminder.appointment_date) },
+          { type: 'text', text: this.formatTime(reminder.start_time) },
+          { type: 'text', text: reminder.business_name }
         ]
       },
       '1h': {
-        name: tenantSettings.template_appointment_soon || 'appointment_soon',
-        // Expected template body: "Hi {{1}}, your appointment with {{2}} is in 1 hour at {{3}}. See you at {{4}}!"
+        name: tenantSettings.template_appointment_reminder || 'appointment_reminder',
         params: [
-          reminder.patient_name || 'there',
-          reminder.doctor_name || 'your doctor',
-          this.formatTime(reminder.start_time),
-          reminder.business_name
+          { type: 'text', text: reminder.patient_name || 'there' },
+          { type: 'text', text: reminder.doctor_name || 'your doctor' },
+          { type: 'text', text: this.formatDate(reminder.appointment_date) },
+          { type: 'text', text: this.formatTime(reminder.start_time) },
+          { type: 'text', text: reminder.business_name }
         ]
       },
       'followup': {
         name: tenantSettings.template_appointment_followup || 'appointment_followup',
-        // Expected template body: "Hi {{1}}, thank you for visiting {{2}}! Reply 'book' to schedule again."
         params: [
-          reminder.patient_name || 'there',
-          reminder.business_name
+          { type: 'text', text: reminder.patient_name || 'there' },
+          { type: 'text', text: reminder.business_name }
         ]
       }
     };
@@ -118,13 +114,10 @@ class ReminderService {
       return;
     }
 
-    // Build template components (body parameters)
+    // Build template components with named body parameters
     const components = [{
       type: 'body',
-      parameters: templateConfig.params.map(val => ({
-        type: 'text',
-        text: String(val)
-      }))
+      parameters: templateConfig.params
     }];
 
     await wa.sendTemplate(reminder.patient_phone, templateConfig.name, lang, components);
@@ -144,6 +137,13 @@ class ReminderService {
     const period = h >= 12 ? 'PM' : 'AM';
     const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
     return `${hour12}:${(m || 0).toString().padStart(2, '0')} ${period}`;
+  }
+
+  formatDate(dateVal) {
+    if (!dateVal) return '';
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const d = new Date(dateVal);
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
   }
 }
 

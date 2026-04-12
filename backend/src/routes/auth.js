@@ -214,38 +214,56 @@ router.post('/add-branch', async (req, res, next) => {
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) return res.status(401).json({ error: 'Authentication required' });
 
-    const decoded = jwt.verify(token, JWT_SECRET);
-    if (decoded.type !== 'tenant_user') return res.status(403).json({ error: 'Invalid token' });
+    let decoded;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch (jwtErr) {
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+    if (decoded.type !== 'tenant_user') return res.status(403).json({ error: 'Invalid token type' });
 
     const schema = Joi.object({
       businessName: Joi.string().min(2).max(200).required(),
       businessType: Joi.string().valid('clinic', 'salon', 'spa', 'consulting', 'dental', 'veterinary', 'physiotherapy', 'other').default('clinic'),
-      phone: Joi.string().min(10).max(20).allow('', null),
+      phone: Joi.string().max(20).allow('', null),
       city: Joi.string().max(100).allow('', null),
     });
 
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
 
+    // Get user's existing details from current tenant
+    const { rows: existingUser } = await pool.query(
+      'SELECT password_hash, name, email FROM tenant_users WHERE id = $1',
+      [decoded.id]
+    );
+    if (existingUser.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get current tenant for copying timezone/country defaults
+    const { rows: currentTenant } = await pool.query(
+      'SELECT timezone, country FROM tenants WHERE id = $1', [decoded.tenantId]
+    );
+
     let slug = slugify(value.businessName, { lower: true, strict: true });
+    if (!slug) slug = `branch-${Date.now().toString(36)}`;
     const { rows: slugCheck } = await pool.query('SELECT id FROM tenants WHERE slug = $1', [slug]);
     if (slugCheck.length > 0) slug = `${slug}-${Date.now().toString(36)}`;
 
-    // Create new tenant
+    const tz = currentTenant.length > 0 ? currentTenant[0].timezone : 'Asia/Kolkata';
+    const country = currentTenant.length > 0 ? currentTenant[0].country : 'IN';
+
+    // Create new tenant (branch) — each branch gets its own WA number, doctors, settings
     const { rows: tenant } = await pool.query(
-      `INSERT INTO tenants (business_name, business_type, slug, email, phone, city)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [value.businessName, value.businessType, slug, decoded.email, value.phone || null, value.city || null]
+      `INSERT INTO tenants (business_name, business_type, slug, email, phone, city, timezone, country)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [value.businessName, value.businessType, slug, decoded.email, value.phone || null, value.city || null, tz, country]
     );
 
     const newTenantId = tenant[0].id;
 
-    // Get user's password hash from existing tenant
-    const { rows: existingUser } = await pool.query(
-      'SELECT password_hash, name FROM tenant_users WHERE id = $1', [decoded.id]
-    );
-
-    // Create user in new tenant
+    // Create same user in new tenant (same name, email, password — only tenant_id differs)
     await pool.query(
       `INSERT INTO tenant_users (tenant_id, email, password_hash, name, role)
        VALUES ($1, $2, $3, $4, 'owner')`,
@@ -267,6 +285,7 @@ router.post('/add-branch', async (req, res, next) => {
       tenants: allTenants.map(t => ({ id: t.id, businessName: t.business_name, features: t.features || {} }))
     });
   } catch (err) {
+    logger.error('Add branch error:', err);
     next(err);
   }
 });

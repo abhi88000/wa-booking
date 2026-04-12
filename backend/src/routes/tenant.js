@@ -653,7 +653,7 @@ router.get('/patients', async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT p.*, 
         (SELECT COUNT(*) FROM appointments WHERE patient_id = p.id AND tenant_id = $1) as total_appointments,
-        (SELECT TO_CHAR(MAX(appointment_date), 'YYYY-MM-DD') FROM appointments WHERE patient_id = p.id AND tenant_id = $1 AND appointment_date <= CURRENT_DATE AND status NOT IN ('cancelled', 'rescheduled')) as last_visit
+        (SELECT TO_CHAR(MAX(appointment_date), 'DD Mon YYYY') FROM appointments WHERE patient_id = p.id AND tenant_id = $1 AND appointment_date <= CURRENT_DATE AND status NOT IN ('cancelled', 'rescheduled')) as last_visit
        FROM patients p ${where}
        ORDER BY p.created_at DESC LIMIT $${idx++} OFFSET $${idx++}`,
       [...params, limit, offset]
@@ -707,7 +707,7 @@ router.get('/patients/:id', async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT p.*,
         (SELECT COUNT(*) FROM appointments WHERE patient_id = p.id AND tenant_id = $2) as total_appointments,
-        (SELECT TO_CHAR(MAX(appointment_date), 'YYYY-MM-DD') FROM appointments WHERE patient_id = p.id AND tenant_id = $2 AND appointment_date <= CURRENT_DATE AND status NOT IN ('cancelled', 'rescheduled')) as last_visit
+        (SELECT TO_CHAR(MAX(appointment_date), 'DD Mon YYYY') FROM appointments WHERE patient_id = p.id AND tenant_id = $2 AND appointment_date <= CURRENT_DATE AND status NOT IN ('cancelled', 'rescheduled')) as last_visit
        FROM patients p WHERE p.id = $1 AND p.tenant_id = $2`,
       [req.params.id, req.tenantId]
     );
@@ -715,7 +715,7 @@ router.get('/patients/:id', async (req, res, next) => {
 
     // Get appointment history
     const { rows: appts } = await pool.query(
-      `SELECT a.id, TO_CHAR(a.appointment_date, 'YYYY-MM-DD') as appointment_date, a.start_time, a.end_time, a.status, d.name as doctor_name, s.name as service_name
+      `SELECT a.id, TO_CHAR(a.appointment_date, 'DD Mon YYYY') as appointment_date, a.start_time, a.end_time, a.status, d.name as doctor_name, s.name as service_name
        FROM appointments a
        LEFT JOIN doctors d ON d.id = a.doctor_id
        LEFT JOIN services s ON s.id = a.service_id

@@ -5,7 +5,7 @@
 require('dotenv').config();
 
 // ── Startup Validation ─────────────────────────────────────
-const REQUIRED_ENV = ['JWT_SECRET', 'WA_VERIFY_TOKEN'];
+const REQUIRED_ENV = ['JWT_SECRET'];
 const missing = REQUIRED_ENV.filter(k => !process.env[k]);
 if (missing.length > 0) {
   console.error(`FATAL: Missing required environment variables: ${missing.join(', ')}`);
@@ -14,6 +14,9 @@ if (missing.length > 0) {
 if (process.env.NODE_ENV === 'production' && !process.env.CORS_ORIGINS) {
   console.error('FATAL: CORS_ORIGINS must be set in production');
   process.exit(1);
+}
+if (!process.env.WA_VERIFY_TOKEN) {
+  console.warn('WARNING: WA_VERIFY_TOKEN not set — WhatsApp webhook verification will fail');
 }
 
 const express = require('express');

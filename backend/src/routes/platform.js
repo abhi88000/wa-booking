@@ -291,6 +291,21 @@ router.post('/tenants/:id/reset-password', async (req, res, next) => {
 
 // ── INVITE CODES ──────────────────────────────────────────
 
+// Ensure invite_codes table exists (safe to run multiple times)
+pool.query(`
+  CREATE TABLE IF NOT EXISTS invite_codes (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    code VARCHAR(30) NOT NULL UNIQUE,
+    created_by UUID REFERENCES platform_admins(id),
+    used_by_tenant_id UUID REFERENCES tenants(id),
+    used_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ,
+    is_active BOOLEAN DEFAULT true,
+    note VARCHAR(200),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )
+`).catch(err => logger.error('Failed to ensure invite_codes table:', err.message));
+
 // Generate a new invite code
 router.post('/invite-codes', async (req, res, next) => {
   try {

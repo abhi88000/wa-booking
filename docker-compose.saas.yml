@@ -12,8 +12,8 @@ services:
     restart: always
     environment:
       POSTGRES_DB: wa_booking_saas
-      POSTGRES_USER: ${DB_USER:?DB_USER is required}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./db/init-saas.sql:/docker-entrypoint-initdb.d/01-init.sql
@@ -56,12 +56,12 @@ services:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: wa_booking_saas
-      DB_USER: ${DB_USER:?DB_USER is required}
-      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
       DB_POOL_MAX: 20
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
-      WA_VERIFY_TOKEN: ${WA_VERIFY_TOKEN:?WA_VERIFY_TOKEN is required}
+      WA_VERIFY_TOKEN: ${WA_VERIFY_TOKEN:-}
       APP_URL: ${APP_URL:-http://localhost:4000}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001}
 
@@ -80,8 +80,8 @@ services:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: wa_booking_saas
-      DB_USER: ${DB_USER:?DB_USER is required}
-      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       APP_URL: ${APP_URL:-http://localhost:4000}

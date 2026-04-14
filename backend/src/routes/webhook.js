@@ -15,6 +15,8 @@ const logger = require('../utils/logger');
 const WhatsAppService = require('../services/whatsapp');
 const MessageRouter = require('../services/messageRouter');
 
+const WH = { category: 'webhook' }; // tag for webhook-specific log file
+
 // ── In-memory circuit breaker (resets on restart) ─────────
 // Prevents hammering a tenant whose WA token is broken
 const circuitBreakers = new Map(); // tenantId -> { failures, lastFailure, state }
@@ -45,7 +47,7 @@ function recordFailure(tenantId) {
   cb.lastFailure = Date.now();
   if (cb.failures >= CIRCUIT_THRESHOLD) {
     cb.state = 'open';
-    logger.error(`Circuit OPEN for tenant ${tenantId} after ${cb.failures} failures (5min cooldown)`);
+    logger.error(`Circuit OPEN for tenant ${tenantId} after ${cb.failures} failures (5min cooldown)`, WH);
   }
   circuitBreakers.set(tenantId, cb);
 }
@@ -59,16 +61,16 @@ router.get('/whatsapp', (req, res) => {
 
   const VERIFY_TOKEN = process.env.WA_VERIFY_TOKEN;
   if (!VERIFY_TOKEN) {
-    logger.error('WA_VERIFY_TOKEN not set — webhook verification will fail');
+    logger.error('WA_VERIFY_TOKEN not set — webhook verification will fail', WH);
     return res.sendStatus(500);
   }
 
   if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-    logger.info('WhatsApp webhook verified successfully');
+    logger.info('WhatsApp webhook verified successfully', WH);
     return res.status(200).send(challenge);
   }
   
-  logger.warn('WhatsApp webhook verification failed', { mode, token });
+  logger.warn('WhatsApp webhook verification failed', { mode, token, ...WH });
   return res.status(403).send('Forbidden');
 });
 
@@ -101,18 +103,18 @@ router.post('/whatsapp', async (req, res) => {
         try {
           tenant = await resolveTenant(phoneNumberId);
         } catch (lookupErr) {
-          logger.error(`Tenant lookup crashed for ${phoneNumberId}:`, lookupErr);
+          logger.error(`Tenant lookup crashed for ${phoneNumberId}:`, lookupErr, WH);
           continue;
         }
 
         if (!tenant) {
-          logger.warn(`No tenant found for phone_number_id: ${phoneNumberId}`);
+          logger.warn(`No tenant found for phone_number_id: ${phoneNumberId}`, WH);
           continue;
         }
 
         // ── CIRCUIT BREAKER CHECK ──
         if (!checkCircuit(tenant.id)) {
-          logger.warn(`Circuit OPEN: skipping messages for tenant ${tenant.business_name} (${tenant.id})`);
+          logger.warn(`Circuit OPEN: skipping messages for tenant ${tenant.business_name} (${tenant.id})`, WH);
           continue;
         }
 
@@ -130,7 +132,8 @@ router.post('/whatsapp', async (req, res) => {
               tenantId: tenant.id,
               from: msg.from,
               error: msgErr.message,
-              stack: msgErr.stack
+              stack: msgErr.stack,
+              ...WH
             });
 
             // Dead-letter: log to audit_log for investigation
@@ -153,7 +156,7 @@ router.post('/whatsapp', async (req, res) => {
   } catch (err) {
     // This outer catch should NEVER fire because each tenant is isolated above.
     // If it does, it's a structural bug — log loudly.
-    logger.error('CRITICAL: Unhandled webhook error (this should not happen):', err);
+    logger.error('CRITICAL: Unhandled webhook error (this should not happen):', err, WH);
   }
 });
 
@@ -168,7 +171,7 @@ async function resolveTenant(phoneNumberId) {
     );
     return rows[0] || null;
   } catch (err) {
-    logger.error('resolveTenant error:', err);
+    logger.error('resolveTenant error:', err, WH);
     return null;
   }
 }
@@ -188,14 +191,15 @@ async function processMessage(tenant, msg, contact, phoneNumberId) {
       [waMessageId]
     );
     if (existing.length > 0) {
-      logger.info(`Duplicate message skipped: ${waMessageId}`);
+      logger.info(`Duplicate message skipped: ${waMessageId}`, WH);
       return;
     }
   }
 
   logger.info(`Message from ${senderPhone} for tenant ${tenant.business_name}`, {
     tenantId: tenant.id,
-    type: messageType
+    type: messageType,
+    ...WH
   });
 
   // Extract message content based on type
@@ -220,7 +224,7 @@ async function processMessage(tenant, msg, contact, phoneNumberId) {
       break;
     default:
       // Skip non-actionable message types (reactions, images, stickers, etc.)
-      logger.info(`Ignoring ${messageType} message from ${senderPhone} — not actionable`);
+      logger.info(`Ignoring ${messageType} message from ${senderPhone} — not actionable`, WH);
       return;
   }
 
@@ -264,7 +268,7 @@ async function getOrCreatePatient(tenantId, phone, name) {
     [tenantId, phone, name]
   );
 
-  logger.info(`New patient created for tenant ${tenantId}: ${phone}`);
+  logger.info(`New patient created for tenant ${tenantId}: ${phone}`, WH);
   return created[0];
 }
 
@@ -277,7 +281,7 @@ async function logMessage(tenantId, patientId, phone, direction, type, content, 
       [tenantId, patientId, phone, direction, type, content, waMessageId]
     );
   } catch (err) {
-    logger.error('logMessage error:', err);
+    logger.error('logMessage error:', err, WH);
   }
 }
 

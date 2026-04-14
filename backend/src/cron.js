@@ -16,6 +16,8 @@ const reminderService = require('./services/reminders');
 const tenantHealth = require('./services/tenantHealth');
 const pool = require('./db/pool');
 
+const CRON = { category: 'cron' }; // tag for cron-specific log file
+
 let isShuttingDown = false;
 
 // ── Graceful Shutdown ─────────────────────────────────────
@@ -38,10 +40,10 @@ async function runJob(name, fn) {
     const result = await fn();
     const elapsed = Date.now() - start;
     if (result !== undefined) {
-      logger.info(`Cron [${name}] completed in ${elapsed}ms`, { result });
+      logger.info(`Cron [${name}] completed in ${elapsed}ms`, { result, ...CRON });
     }
   } catch (err) {
-    logger.error(`Cron [${name}] FAILED:`, { error: err.message, stack: err.stack });
+    logger.error(`Cron [${name}] FAILED:`, { error: err.message, stack: err.stack, ...CRON });
     // Job failure is isolated — never crashes the process
   }
 }
@@ -84,7 +86,8 @@ function startWATokenCheckJob() {
       if (!result.valid) {
         broken++;
         logger.error(`WA token broken for ${t.business_name} (${t.id}): ${result.error}`, {
-          tenantId: t.id
+          tenantId: t.id,
+          ...CRON
         });
       }
       // Rate limit our own API calls to Meta
@@ -147,11 +150,17 @@ async function startCron() {
   // Verify DB connection
   try {
     const { rows } = await pool.query('SELECT NOW() as now, COUNT(*) as tenants FROM tenants');
-    logger.info(`Database connected. ${rows[0].tenants} tenants in system.`);
+    logger.info(`Database connected. ${rows[0].tenants} tenants in system.`, CRON);
   } catch (err) {
-    logger.error('Database connection failed:', err.message);
+    logger.error('Database connection failed:', err.message, CRON);
     process.exit(1);
   }
+
+  // Safe schema migration — add retry tracking to reminders
+  try {
+    await pool.query(`ALTER TABLE reminders ADD COLUMN IF NOT EXISTS retry_count INT DEFAULT 0`);
+    await pool.query(`ALTER TABLE reminders ADD COLUMN IF NOT EXISTS last_error TEXT`);
+  } catch (e) { /* columns already exist */ }
 
   // Initial runs
   await runJob('reminders (initial)', () => reminderService.processPendingReminders());

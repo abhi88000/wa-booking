@@ -13,6 +13,8 @@ class ReminderService {
    * Process all pending reminders across all tenants
    */
   async processPendingReminders() {
+    const CAT = { category: 'reminders' };
+    const MAX_RETRIES = 3;
     try {
       // Fetch all due reminders with tenant + appointment data
       const { rows: reminders } = await pool.query(
@@ -29,6 +31,7 @@ class ReminderService {
          JOIN tenants t ON t.id = r.tenant_id
          WHERE r.sent = false 
            AND r.remind_at <= NOW()
+           AND COALESCE(r.retry_count, 0) < ${MAX_RETRIES}
            AND a.status IN ('pending', 'confirmed')
            AND t.is_active = true
            AND t.wa_status = 'connected'
@@ -36,19 +39,30 @@ class ReminderService {
          LIMIT 100`
       );
 
-      logger.info(`Processing ${reminders.length} pending reminders`);
+      if (reminders.length > 0) {
+        logger.info(`Processing ${reminders.length} pending reminders`, CAT);
+      }
 
       for (const reminder of reminders) {
         try {
           await this.sendReminder(reminder);
         } catch (err) {
-          logger.error(`Failed to send reminder ${reminder.id}:`, err.message);
+          const retries = (reminder.retry_count || 0) + 1;
+          await pool.query(
+            'UPDATE reminders SET retry_count = $1, last_error = $2 WHERE id = $3',
+            [retries, err.message, reminder.id]
+          );
+          if (retries >= MAX_RETRIES) {
+            logger.error(`Reminder ${reminder.id} permanently failed after ${MAX_RETRIES} attempts: ${err.message}`, CAT);
+          } else {
+            logger.warn(`Reminder ${reminder.id} failed (attempt ${retries}/${MAX_RETRIES}): ${err.message}`, CAT);
+          }
         }
       }
 
       return reminders.length;
     } catch (err) {
-      logger.error('processPendingReminders error:', err);
+      logger.error('processPendingReminders error:', err, CAT);
       throw err;
     }
   }
@@ -128,7 +142,7 @@ class ReminderService {
       [reminder.id]
     );
 
-    logger.info(`Reminder sent via template: ${reminder.id} (${reminder.type} → ${templateConfig.name}) to ${reminder.patient_phone}`);
+    logger.info(`Reminder sent via template: ${reminder.id} (${reminder.type} → ${templateConfig.name}) to ${reminder.patient_phone}`, { category: 'reminders' });
   }
 
   formatTime(timeStr) {

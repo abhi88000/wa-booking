@@ -327,6 +327,8 @@ CREATE TABLE reminders (
   type            VARCHAR(20) DEFAULT '24h',
   sent            BOOLEAN DEFAULT false,
   sent_at         TIMESTAMPTZ,
+  retry_count     INT DEFAULT 0,
+  last_error      TEXT,
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 

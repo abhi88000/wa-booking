@@ -55,6 +55,21 @@ if (process.env.NODE_ENV === 'production') {
     maxFiles: 5,
     tailable: true
   }));
+
+  // Category-specific logs — separate file per concern
+  ['reminders', 'cron', 'webhook', 'whatsapp'].forEach(cat => {
+    logger.add(new winston.transports.File({
+      filename: `logs/${cat}.log`,
+      maxsize: 10 * 1024 * 1024,
+      maxFiles: 5,
+      tailable: true,
+      format: winston.format.combine(
+        winston.format((info) => info.category === cat ? info : false)(),
+        winston.format.timestamp(),
+        tenantFormat
+      )
+    }));
+  });
 }
 
 module.exports = logger;

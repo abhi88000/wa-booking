@@ -12,6 +12,7 @@ const axios = require('axios');
 const logger = require('../utils/logger');
 const pool = require('../db/pool');
 
+const WA = { category: 'whatsapp' }; // tag for whatsapp-specific log file
 const WA_API_BASE = 'https://graph.facebook.com/v21.0';
 
 // Retry config
@@ -94,7 +95,7 @@ class WhatsAppService {
       });
     } catch (err) {
       // Non-critical, don't throw
-      logger.warn('markRead failed:', err.message);
+      logger.warn('markRead failed:', err.message, WA);
     }
   }
 
@@ -103,7 +104,7 @@ class WhatsAppService {
     try {
       // Pre-flight check: do we even have credentials?
       if (!this.accessToken || !this.phoneNumberId) {
-        logger.error(`${this.tenantLabel} WA send failed: no credentials configured`);
+        logger.error(`${this.tenantLabel} WA send failed: no credentials configured`, WA);
         return null; // Silently fail — don't crash the booking flow
       }
 
@@ -123,7 +124,7 @@ class WhatsAppService {
       });
 
       const waMessageId = response.data?.messages?.[0]?.id;
-      logger.info(`${this.tenantLabel} WA sent to ${to}`, { type: messagePayload.type, waMessageId });
+      logger.info(`${this.tenantLabel} WA sent to ${to}`, { type: messagePayload.type, waMessageId, ...WA });
       return waMessageId;
 
     } catch (err) {
@@ -134,7 +135,7 @@ class WhatsAppService {
 
       // ── Token expired or invalid (401 / code 190) ──
       if (status === 401 || errorCode === 190) {
-        logger.error(`${this.tenantLabel} WA TOKEN INVALID — marking as disconnected`);
+        logger.error(`${this.tenantLabel} WA TOKEN INVALID — marking as disconnected`, WA);
         try {
           await pool.query(
             `UPDATE tenants SET wa_status = 'disconnected', updated_at = NOW() WHERE id = $1`,
@@ -152,18 +153,18 @@ class WhatsAppService {
       // ── Rate limited (429) ──
       if (status === 429) {
         const retryAfter = parseInt(err.response?.headers?.['retry-after'] || '5');
-        logger.warn(`${this.tenantLabel} WA rate limited, waiting ${retryAfter}s`);
+        logger.warn(`${this.tenantLabel} WA rate limited, waiting ${retryAfter}s`, WA);
         if (retryCount < MAX_RETRIES) {
           await this._sleep(retryAfter * 1000);
           return this._send(to, messagePayload, retryCount + 1);
         }
-        logger.error(`${this.tenantLabel} WA rate limit: max retries exhausted`);
+        logger.error(`${this.tenantLabel} WA rate limit: max retries exhausted`, WA);
         return null;
       }
 
       // ── Network / timeout errors (retry-worthy) ──
       if (!err.response && retryCount < MAX_RETRIES) {
-        logger.warn(`${this.tenantLabel} WA network error, retrying (${retryCount + 1}/${MAX_RETRIES})...`);
+        logger.warn(`${this.tenantLabel} WA network error, retrying (${retryCount + 1}/${MAX_RETRIES})...`, WA);
         await this._sleep(RETRY_DELAY_MS * (retryCount + 1));
         return this._send(to, messagePayload, retryCount + 1);
       }
@@ -171,7 +172,8 @@ class WhatsAppService {
       // ── Other errors: log but don't crash ──
       logger.error(`${this.tenantLabel} WA send error to ${to}:`, {
         status, errorCode, errorMsg,
-        retryCount
+        retryCount,
+        ...WA
       });
 
       // Log to audit for investigation

@@ -9,6 +9,9 @@ import Doctors from './pages/Doctors';
 import Services from './pages/Services';
 import Patients from './pages/Patients';
 import Settings from './pages/Settings';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
+import DataDeletion from './pages/DataDeletion';
 import { ClinicProvider, useClinic } from './ClinicContext';
 
 function App() {
@@ -30,6 +33,9 @@ function App() {
     return (
       <BrowserRouter>
         <Routes>
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/data-deletion" element={<DataDeletion />} />
           <Route path="/signup" element={<Signup onLogin={handleLogin} />} />
           <Route path="*" element={<Login onLogin={handleLogin} />} />
         </Routes>
@@ -51,6 +57,9 @@ function App() {
             <Route path="/services" element={<Services />} />
             <Route path="/patients" element={<Patients />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/data-deletion" element={<DataDeletion />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
         </main>

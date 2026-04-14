@@ -802,12 +802,15 @@ class BookingEngine {
 
         // Send confirmation
         const statusText = this.tenant.settings?.auto_confirm ? 'Confirmed' : 'Pending Confirmation';
+        const locationLine = this.tenant.settings?.google_maps_url
+          ? `\n📍 Location: ${this.tenant.settings.google_maps_url}\n` : '';
         await this.wa.sendText(this.phone,
           `✅ *Appointment ${statusText}!*\n\n` +
           `👨‍⚕️ ${state.doctorName}\n` +
           `📅 ${this.formatDate(state.appointmentDate)}\n` +
-          `🕐 ${this.formatTime(state.startTime)}\n\n` +
-          `You'll receive a reminder before your appointment.\n` +
+          `🕐 ${this.formatTime(state.startTime)}\n` +
+          locationLine +
+          `\nYou'll receive a reminder before your appointment.\n` +
           `Type "status" anytime to check your appointments.`
         );
 

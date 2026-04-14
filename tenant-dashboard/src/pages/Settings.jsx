@@ -86,6 +86,12 @@ export default function Settings() {
             <textarea value={settings.address || ''} onChange={e => setSettings({...settings, address: e.target.value})}
               className="w-full border rounded-lg px-4 py-2 text-sm outline-none" rows={2} />
           </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Google Maps Link</label>
+            <input value={s.google_maps_url || ''} placeholder="https://maps.google.com/..." onChange={e => setSettings({...settings, settings: {...s, google_maps_url: e.target.value}})}
+              className="w-full border rounded-lg px-4 py-2 text-sm outline-none" />
+            <p className="text-xs text-gray-400 mt-1">Optional. Will be shared with patients in booking confirmations.</p>
+          </div>
         </div>
       </div>
 

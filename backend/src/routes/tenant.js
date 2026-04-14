@@ -165,11 +165,14 @@ router.patch('/appointments/:id/status', async (req, res, next) => {
         const wa = new WhatsAppService(req.tenant);
         const time = formatTime12(appt.start_time);
         const date = formatDateDD(appt.appointment_date);
+        const locationLine = req.tenant.settings?.google_maps_url
+          ? `\n📍 Location: ${req.tenant.settings.google_maps_url}\n` : '';
         await wa.sendText(appt.patient_phone,
           `✅ *Appointment Confirmed*\n\n` +
           `👨‍⚕️ ${appt.doctor_name || 'Doctor'}\n` +
-          `📅 ${date} at ${time}\n\n` +
-          `Your appointment has been confirmed by ${req.tenant.business_name}. See you there!`
+          `📅 ${date} at ${time}\n` +
+          locationLine +
+          `\nYour appointment has been confirmed by ${req.tenant.business_name}. See you there!`
         );
       } catch (waErr) {
         logger.warn('Failed to send confirm notification:', waErr.message);
@@ -314,13 +317,16 @@ router.post('/appointments', requireRole('owner', 'admin', 'staff'), checkAppoin
               [value.doctorId, req.tenantId]
             );
             const docName = docRow2[0]?.name || 'Doctor';
+            const locationLine = req.tenant.settings?.google_maps_url
+              ? `\n📍 Location: ${req.tenant.settings.google_maps_url}\n` : '';
             await wa.sendText(patientPhone,
               `✅ *Appointment Confirmed*\n\n` +
               `Hi ${value.patientName || 'there'}, your appointment has been booked:\n\n` +
               `👨‍⚕️ ${docName}\n` +
               `📅 ${formatDateDD(value.appointmentDate)}\n` +
-              `🕐 ${formatTime12(value.startTime)}\n\n` +
-              `You'll receive a reminder before your appointment.\n` +
+              `🕐 ${formatTime12(value.startTime)}\n` +
+              locationLine +
+              `\nYou'll receive a reminder before your appointment.\n` +
               `— ${req.tenant.business_name}`
             );
           } catch (waErr) {

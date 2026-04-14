@@ -240,7 +240,6 @@ export default function Doctors() {
 }
 
 function AvailabilityEditor({ doctorId, doctorName, onClose }) {
-  const next10 = getNext10Dates();
   const [schedule, setSchedule] = useState(
     DAYS.map(day => ({ day, enabled: false, startTime: '10:00', endTime: '16:00' }))
   );
@@ -248,6 +247,7 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
   const [blockedDates, setBlockedDates] = useState([]);
   const [slotDuration, setSlotDuration] = useState(20);
   const [timezone, setTimezone] = useState('Asia/Kolkata');
+  const [repeating, setRepeating] = useState(true);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -309,6 +309,24 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
   const save = async () => {
     setSaving(true);
     try {
+      // When non-repeating, auto-block all matching weekdays beyond this week
+      let allBlockedDates = [...blockedDates];
+      if (!repeating) {
+        const today = new Date();
+        const endOfWeek = new Date(today);
+        endOfWeek.setDate(today.getDate() + (7 - today.getDay())); // next Sunday
+        const enabledDays = schedule.filter(s => s.enabled).map(s => s.day);
+        // Block matching days for next 4 weeks (after this week)
+        for (let i = 1; i <= 28; i++) {
+          const d = new Date(endOfWeek);
+          d.setDate(endOfWeek.getDate() + i);
+          const dayName = DAY_MAP[d.getDay()];
+          if (enabledDays.includes(dayName)) {
+            const ds = d.toISOString().split('T')[0];
+            if (!allBlockedDates.includes(ds)) allBlockedDates.push(ds);
+          }
+        }
+      }
       await api.updateDoctorAvailability(doctorId, {
         slotDuration,
         timezone,
@@ -319,8 +337,8 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
           ...breaks.filter(b => b.startTime && b.endTime).map(b => ({
             startTime: b.startTime, endTime: b.endTime, reason: b.reason
           })),
-          ...blockedDates.map(d => ({
-            breakDate: d, isFullDay: true, reason: 'Day off'
+          ...allBlockedDates.map(d => ({
+            breakDate: d, isFullDay: true, reason: repeating ? 'Day off' : 'Non-repeating schedule'
           }))
         ]
       });
@@ -388,7 +406,21 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
 
           {/* Weekly Base Schedule */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Weekly Base Schedule</label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-sm font-medium text-gray-700">Weekly Schedule</label>
+              <button type="button" onClick={() => setRepeating(!repeating)}
+                className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition ${
+                  repeating ? 'bg-green-50 border-green-200 text-green-700' : 'bg-orange-50 border-orange-200 text-orange-700'
+                }`}>
+                <span className={`w-2 h-2 rounded-full ${repeating ? 'bg-green-500' : 'bg-orange-500'}`}></span>
+                {repeating ? 'Repeats every week' : 'This week only'}
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mb-2">
+              {repeating
+                ? 'This schedule repeats every week. Block specific dates below for holidays.'
+                : 'Schedule applies only to this week. You\'ll need to set it again next week.'}
+            </p>
             <div className="space-y-2">
               {schedule.map((s, i) => (
                 <div key={s.day} className="flex items-center gap-2">
@@ -437,12 +469,16 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
             </div>
           </div>
 
-          {/* Next 10 Days — Date View */}
+          {/* Upcoming Days — Date View */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Next 10 Days</label>
-            <p className="text-xs text-gray-400 mb-3">Green = available (from weekly schedule). Click a date to block/unblock it.</p>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Upcoming Days</label>
+            <p className="text-xs text-gray-400 mb-3">
+              {repeating
+                ? 'Tap a date to block it (holiday, leave). Blocked dates turn red.'
+                : 'Only this week\'s dates are active. Future weeks are auto-blocked.'}
+            </p>
             <div className="grid grid-cols-2 gap-2">
-              {next10.map(d => {
+              {getNext10Dates().map(d => {
                 const available = isDateAvailable(d);
                 const blocked = blockedDates.includes(d.dateStr);
                 const daySchedule = schedule.find(s => s.day === d.dayName);
@@ -490,7 +526,7 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
                   if (bs >= start && be <= end) breakMins += (be - bs);
                 });
                 const totalSlots = Math.floor((end - start - breakMins) / slotDuration);
-                const availDays = next10.filter(d => isDateAvailable(d)).length;
+                const availDays = getNext10Dates().filter(d => isDateAvailable(d)).length;
                 return `~${totalSlots} slots/day, ${enabled.length} days/week, ${availDays} of next 10 days open (${timezone})`;
               })()}
             </p>

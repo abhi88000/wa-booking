@@ -474,34 +474,31 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
             <label className="block text-sm font-medium text-gray-700 mb-1">Upcoming Days</label>
             <p className="text-xs text-gray-400 mb-3">
               {repeating
-                ? 'Tap a date to block it (holiday, leave). Blocked dates turn red.'
+                ? 'Tap a date to turn it on or off.'
                 : 'Only this week\'s dates are active. Future weeks are auto-blocked.'}
             </p>
             <div className="grid grid-cols-2 gap-2">
               {getNext10Dates().map(d => {
                 const available = isDateAvailable(d);
-                const blocked = blockedDates.includes(d.dateStr);
                 const daySchedule = schedule.find(s => s.day === d.dayName);
                 return (
                   <button key={d.dateStr} type="button" onClick={() => toggleBlockDate(d.dateStr)}
                     className={`p-3 rounded-lg border text-left transition ${
-                      blocked
-                        ? 'bg-red-50 border-red-200 text-red-600'
-                        : available
-                          ? 'bg-green-50 border-green-200 text-green-700'
-                          : 'bg-gray-50 border-gray-200 text-gray-400'
+                      available
+                        ? 'bg-green-50 border-green-200 text-green-700'
+                        : 'bg-gray-50 border-gray-200 text-gray-400'
                     }`}>
                     <div className="flex justify-between items-center">
                       <span className="text-sm font-medium">{d.label}</span>
-                      {blocked && <span className="text-[10px] bg-red-100 px-1.5 py-0.5 rounded">Blocked</span>}
+                      {available && <span className="text-[10px] bg-green-100 text-green-600 px-1.5 py-0.5 rounded">On</span>}
                     </div>
-                    {available && !blocked && daySchedule?.enabled && (
+                    {available && daySchedule?.enabled && (
                       <p className="text-xs mt-0.5 opacity-75">
                         {daySchedule.startTime} — {daySchedule.endTime}
                       </p>
                     )}
-                    {!available && !blocked && (
-                      <p className="text-xs mt-0.5">No schedule</p>
+                    {!available && (
+                      <p className="text-xs mt-0.5">Off</p>
                     )}
                   </button>
                 );

@@ -31,6 +31,17 @@ class BookingEngine {
       const state = this.patient.wa_conversation_state || { state: 'new' };
       const currentState = state.state || 'new';
 
+      // Handle "Start Over" and "Cancel" buttons from any state
+      const msg = (content || '').toLowerCase().trim();
+      if (msg === 'book' && currentState !== 'new' && currentState !== 'idle') {
+        await this.setState({ state: 'idle' });
+        return await this.startBookingFlow();
+      }
+      if (msg === 'cancel_booking' && currentState !== 'new' && currentState !== 'idle') {
+        await this.setState({ state: 'idle' });
+        return await this.wa.sendText(this.phone, 'Booking cancelled. Send "hi" to start over.');
+      }
+
       logger.info(`Booking engine: state=${currentState}, content=${content}`, {
         tenantId: this.tenantId, phone: this.phone
       });

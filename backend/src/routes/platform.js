@@ -6,6 +6,8 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db/pool');
+const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const { authPlatform } = require('../middleware/auth');
 const logger = require('../utils/logger');
 
@@ -25,7 +27,7 @@ router.get('/dashboard', async (req, res, next) => {
         (SELECT COUNT(DISTINCT tenant_id) FROM appointments WHERE created_at >= NOW() - INTERVAL '24 hours') as active_tenants_24h
     `);
 
-    res.json(stats.rows ? stats.rows[0] : stats[0]);
+    res.json(stats[0]);
   } catch (err) {
     next(err);
   }
@@ -51,10 +53,14 @@ router.get('/tenants', async (req, res, next) => {
       `SELECT t.id, t.business_name, t.slug, t.email, t.phone, t.city, 
               t.business_type, t.wa_status, t.onboarding_status, t.is_active,
               t.created_at,
+              s.plan, s.status as sub_status,
               (SELECT COUNT(*) FROM appointments WHERE tenant_id = t.id) as total_appointments,
               (SELECT COUNT(*) FROM patients WHERE tenant_id = t.id) as total_patients,
-              (SELECT COUNT(*) FROM doctors WHERE tenant_id = t.id) as total_doctors
+              (SELECT COUNT(*) FROM doctors WHERE tenant_id = t.id) as total_doctors,
+              (SELECT COUNT(*) FROM appointments WHERE tenant_id = t.id AND created_at >= NOW() - INTERVAL '7 days') as appointments_7d,
+              (SELECT MAX(created_at) FROM appointments WHERE tenant_id = t.id) as last_appointment_at
        FROM tenants t
+       LEFT JOIN subscriptions s ON s.tenant_id = t.id
        ${where}
        ORDER BY t.created_at DESC
        LIMIT $${idx++} OFFSET $${idx++}`,
@@ -178,6 +184,95 @@ router.patch('/tenants/:id/plan', async (req, res, next) => {
   }
 });
 
+// ── Update Tenant Limits ───────────────────────────────────
+router.patch('/tenants/:id/limits', async (req, res, next) => {
+  try {
+    const { max_doctors, max_appointments_month } = req.body;
+    if (max_doctors !== undefined && (!Number.isInteger(max_doctors) || max_doctors < 1)) {
+      return res.status(400).json({ error: 'max_doctors must be a positive integer' });
+    }
+    if (max_appointments_month !== undefined && (!Number.isInteger(max_appointments_month) || max_appointments_month < 1)) {
+      return res.status(400).json({ error: 'max_appointments_month must be a positive integer' });
+    }
+
+    const { rows } = await pool.query(
+      `UPDATE tenants SET 
+        max_doctors = COALESCE($1, max_doctors),
+        max_appointments_month = COALESCE($2, max_appointments_month),
+        updated_at = NOW()
+       WHERE id = $3 RETURNING id, business_name, max_doctors, max_appointments_month`,
+      [max_doctors || null, max_appointments_month || null, req.params.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Tenant not found' });
+
+    logger.info(`Tenant ${rows[0].id} limits updated: max_doctors=${rows[0].max_doctors}, max_appts=${rows[0].max_appointments_month}`);
+    res.json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Update Tenant WhatsApp Config ─────────────────────────
+router.patch('/tenants/:id/wa-config', async (req, res, next) => {
+  try {
+    const { wa_phone_number_id, wa_business_account_id, wa_access_token, wa_phone_number } = req.body;
+
+    const updates = [];
+    const params = [];
+    let idx = 1;
+
+    if (wa_phone_number_id !== undefined) { updates.push(`wa_phone_number_id = $${idx++}`); params.push(wa_phone_number_id); }
+    if (wa_business_account_id !== undefined) { updates.push(`wa_business_account_id = $${idx++}`); params.push(wa_business_account_id); }
+    if (wa_access_token !== undefined) { updates.push(`wa_access_token = $${idx++}`); params.push(wa_access_token); }
+    if (wa_phone_number !== undefined) { updates.push(`wa_phone_number = $${idx++}`); params.push(wa_phone_number); }
+
+    if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });
+
+    // If all 3 required fields are set, mark as connected
+    if (wa_phone_number_id && wa_business_account_id && wa_access_token) {
+      updates.push(`wa_status = 'connected'`);
+      updates.push(`onboarding_status = 'active'`);
+    }
+    updates.push('updated_at = NOW()');
+
+    const { rows } = await pool.query(
+      `UPDATE tenants SET ${updates.join(', ')} WHERE id = $${idx} RETURNING id, business_name, wa_status, wa_phone_number, onboarding_status`,
+      [...params, req.params.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Tenant not found' });
+
+    logger.info(`Tenant ${rows[0].id} WA config updated by platform admin`);
+    res.json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Delete Tenant ─────────────────────────────────────────
+router.delete('/tenants/:id', async (req, res, next) => {
+  try {
+    const { rows: tenant } = await pool.query('SELECT id, business_name FROM tenants WHERE id = $1', [req.params.id]);
+    if (tenant.length === 0) return res.status(404).json({ error: 'Tenant not found' });
+
+    const tid = req.params.id;
+    // Cascade delete in order (respecting foreign keys)
+    await pool.query('DELETE FROM reminders WHERE appointment_id IN (SELECT id FROM appointments WHERE tenant_id = $1)', [tid]);
+    await pool.query('DELETE FROM appointments WHERE tenant_id = $1', [tid]);
+    await pool.query('DELETE FROM patients WHERE tenant_id = $1', [tid]);
+    await pool.query('DELETE FROM services WHERE tenant_id = $1', [tid]);
+    await pool.query('DELETE FROM doctors WHERE tenant_id = $1', [tid]);
+    await pool.query('DELETE FROM subscriptions WHERE tenant_id = $1', [tid]);
+    await pool.query('DELETE FROM tenant_users WHERE tenant_id = $1', [tid]);
+    await pool.query('DELETE FROM audit_log WHERE tenant_id = $1', [tid]);
+    await pool.query('DELETE FROM tenants WHERE id = $1', [tid]);
+
+    logger.info(`Tenant ${tenant[0].business_name} (${tid}) DELETED by platform admin`);
+    res.json({ success: true, deleted: tenant[0].business_name });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── Platform Analytics ────────────────────────────────────
 router.get('/analytics', async (req, res, next) => {
   try {
@@ -285,8 +380,6 @@ router.post('/fix/:tenantId/reset-conversations', async (req, res, next) => {
 });
 
 // ── Reset Tenant User Password ────────────────────────────
-const bcrypt = require('bcrypt');
-const crypto = require('crypto');
 
 router.post('/tenants/:id/reset-password', async (req, res, next) => {
   try {
@@ -319,20 +412,6 @@ router.post('/tenants/:id/reset-password', async (req, res, next) => {
 
 // ── INVITE CODES ──────────────────────────────────────────
 
-// Ensure invite_codes table exists (safe to run multiple times)
-pool.query(`
-  CREATE TABLE IF NOT EXISTS invite_codes (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    code VARCHAR(30) NOT NULL UNIQUE,
-    created_by UUID REFERENCES platform_admins(id),
-    used_by_tenant_id UUID REFERENCES tenants(id),
-    used_at TIMESTAMPTZ,
-    expires_at TIMESTAMPTZ,
-    is_active BOOLEAN DEFAULT true,
-    note VARCHAR(200),
-    created_at TIMESTAMPTZ DEFAULT NOW()
-  )
-`).catch(err => logger.error('Failed to ensure invite_codes table:', err.message));
 
 // Generate a new invite code
 router.post('/invite-codes', async (req, res, next) => {

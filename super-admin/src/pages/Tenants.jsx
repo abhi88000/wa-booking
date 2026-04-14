@@ -8,6 +8,17 @@ const WA_BADGE = {
   disconnected: 'bg-gray-100 text-gray-500',
 };
 
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 30) return `${days}d ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
+
 export default function Tenants() {
   const [tenants, setTenants] = useState([]);
   const [total, setTotal] = useState(0);
@@ -77,7 +88,8 @@ export default function Tenants() {
                 <th className="px-4 py-3 font-medium">Business</th>
                 <th className="px-4 py-3 font-medium">WhatsApp</th>
                 <th className="px-4 py-3 font-medium">Appointments</th>
-                <th className="px-4 py-3 font-medium">Patients</th>
+                <th className="px-4 py-3 font-medium">Activity (7d)</th>
+                <th className="px-4 py-3 font-medium">Last Activity</th>
                 <th className="px-4 py-3 font-medium">Joined</th>
                 <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
@@ -97,7 +109,14 @@ export default function Tenants() {
                     </span>
                   </td>
                   <td className="px-4 py-3">{t.total_appointments}</td>
-                  <td className="px-4 py-3">{t.total_patients}</td>
+                  <td className="px-4 py-3">
+                    <span className={`text-sm font-medium ${parseInt(t.appointments_7d) > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                      {t.appointments_7d || 0}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 text-xs">
+                    {t.last_appointment_at ? timeAgo(t.last_appointment_at) : 'Never'}
+                  </td>
                   <td className="px-4 py-3 text-gray-500">
                     {new Date(t.created_at).toLocaleDateString()}
                   </td>
@@ -148,8 +167,8 @@ export default function Tenants() {
             </div>
             <div className="flex gap-4 mt-3 text-xs text-gray-500">
               <span>{t.total_appointments} appts</span>
-              <span>{t.total_patients} patients</span>
-              <span>Joined {new Date(t.created_at).toLocaleDateString()}</span>
+              <span>{t.appointments_7d || 0} this week</span>
+              <span>{t.last_appointment_at ? timeAgo(t.last_appointment_at) : 'No activity'}</span>
             </div>
             <button onClick={() => handleToggle(t.id)}
               className={`mt-3 text-xs px-3 py-1.5 rounded ${t.is_active 

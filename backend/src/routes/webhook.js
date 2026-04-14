@@ -219,7 +219,9 @@ async function processMessage(tenant, msg, contact, phoneNumberId) {
       content = msg.button?.text || msg.button?.payload || '';
       break;
     default:
-      content = `[${messageType} message]`;
+      // Skip non-actionable message types (reactions, images, stickers, etc.)
+      logger.info(`Ignoring ${messageType} message from ${senderPhone} — not actionable`);
+      return;
   }
 
   // Get or create patient record (scoped to this tenant)

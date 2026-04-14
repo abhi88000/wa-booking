@@ -61,9 +61,6 @@ export default {
   addPatient: (data) => api.post('/tenant/patients', data),
   updatePatient: (id, data) => api.put(`/tenant/patients/${id}`, data),
 
-  // Payments
-  getPayments: () => api.get('/tenant/payments'),
-
   // Chat
   getChat: (patientId) => api.get(`/tenant/chats/${patientId}`),
 
@@ -73,15 +70,4 @@ export default {
 
   // WhatsApp
   updateWhatsApp: (data) => api.patch('/tenant/whatsapp', data),
-
-  // Team
-  getTeam: () => api.get('/tenant/team'),
-  addTeamMember: (data) => api.post('/tenant/team', data),
-  updateTeamMember: (id, data) => api.put(`/tenant/team/${id}`, data),
-  deleteTeamMember: (id) => api.delete(`/tenant/team/${id}`),
-
-  // Billing
-  getPlans: () => api.get('/billing/plans'),
-  getSubscription: () => api.get('/billing/subscription'),
-  getInvoices: () => api.get('/billing/invoices'),
 };

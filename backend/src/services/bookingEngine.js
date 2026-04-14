@@ -136,6 +136,9 @@ class BookingEngine {
     }
 
     // Any other message → show main menu with buttons
+    logger.info(`Sending welcome greeting to ${this.phone} — triggered by: "${content}"`, {
+      tenantId: this.tenantId, tenant: this.tenant.business_name
+    });
     const settings = this.tenant.settings || {};
     const welcome = settings.welcome_message ||
       `Welcome to ${this.tenant.business_name}! 👋\n\nHow can I help you today?`;

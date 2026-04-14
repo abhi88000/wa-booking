@@ -3,7 +3,6 @@
 // ============================================================
 
 const jwt = require('jsonwebtoken');
-const pool = require('../db/pool');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {

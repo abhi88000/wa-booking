@@ -16,8 +16,6 @@ logs/
 
 # Docker volumes
 pgdata/
-redisdata/
-n8ndata/
 
 # OS files
 .DS_Store

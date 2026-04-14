@@ -33,6 +33,9 @@ export default {
   toggleTenant: (id) => api.patch(`/platform/tenants/${id}/toggle`),
   updateFeatures: (id, features) => api.patch(`/platform/tenants/${id}/features`, { features }),
   updatePlan: (id, data) => api.patch(`/platform/tenants/${id}/plan`, data),
+  updateLimits: (id, data) => api.patch(`/platform/tenants/${id}/limits`, data),
+  updateWAConfig: (id, data) => api.patch(`/platform/tenants/${id}/wa-config`, data),
+  deleteTenant: (id) => api.delete(`/platform/tenants/${id}`),
   resetPassword: (id, newPassword) => api.post(`/platform/tenants/${id}/reset-password`, { newPassword }),
   
   // Analytics

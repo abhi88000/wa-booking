@@ -191,18 +191,6 @@ class WhatsAppService {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  // ── Log Outbound Message ───────────────────────────────
-  async logOutbound(patientId, phone, content, waMessageId) {
-    try {
-      await pool.query(
-        `INSERT INTO chat_messages (tenant_id, patient_id, phone, direction, message_type, content, wa_message_id)
-         VALUES ($1, $2, $3, 'outbound', 'text', $4, $5)`,
-        [this.tenant.id, patientId, phone, content, waMessageId]
-      );
-    } catch (err) {
-      logger.error('logOutbound error:', err);
-    }
-  }
 }
 
 module.exports = WhatsAppService;

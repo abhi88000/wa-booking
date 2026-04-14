@@ -98,7 +98,7 @@ app.use('/api/v1/platform', require('./routes/platform'));
 // Tenant Admin APIs (each business's admin panel)
 app.use('/api/v1/tenant', require('./routes/tenant'));
 
-// ── Backward-compatible aliases (remove after frontend migration) ──
+// Short aliases — frontends use /api/ prefix via Nginx proxy
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/onboarding', require('./routes/onboarding'));
 app.use('/api/platform', require('./routes/platform'));

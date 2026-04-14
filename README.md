@@ -1,71 +1,102 @@
-# WA Booking — WhatsApp Appointment Booking Platform
+# WA Booking — WhatsApp Appointment Booking SaaS
 
-A multi-tenant appointment booking system that lets clinics and businesses accept bookings through WhatsApp. Built with Node.js, React, PostgreSQL, and Docker.
+Multi-tenant appointment booking platform powered by WhatsApp. Clinics sign up, connect their WhatsApp number, add doctors and services, and patients book appointments through interactive WhatsApp menus. No AI — entirely menu-driven using WhatsApp buttons and lists.
 
-Each business (tenant) signs up, connects their WhatsApp number, adds their doctors and availability, and patients can book appointments directly through WhatsApp using interactive buttons and menus. No AI involved — the conversation flow is entirely menu-driven.
+**Live at**: `booking.futurezminds.in` (tenant) · `hub.futurezminds.in` (admin) · `api.futurezminds.in` (API)
 
 
 ## How It Works
 
-1. A clinic owner signs up at `book.yourdomain.com` and goes through a 3-step onboarding (connect WhatsApp, add doctors, set availability)
-2. Patients message the clinic's WhatsApp number
-3. The bot walks them through selecting a doctor, picking a date, choosing a time slot, and confirming
-4. The appointment shows up in the clinic's dashboard in real-time
-5. Automated reminders go out 24h and 1h before the appointment
+1. Clinic owner signs up at the tenant dashboard with an invite code
+2. Onboarding: connect WhatsApp number → add doctors → set availability
+3. Patients message the clinic's WhatsApp number
+4. Bot guides them: select doctor → pick service → choose date → pick time → confirm
+5. Appointment appears in the clinic dashboard instantly
+6. Automated reminders go out 24h and 1h before the appointment via WhatsApp templates
 
 
 ## Stack
 
 | Layer | Tech |
 |---|---|
-| Backend | Node.js, Express, PostgreSQL 16, Redis 7 |
-| Frontend (Tenant) | React, Vite, Tailwind CSS |
-| Frontend (Admin) | React, Vite, Tailwind CSS, Recharts |
+| Backend | Node.js 20, Express, PostgreSQL 16 |
+| Tenant Dashboard | React 18, Vite, Tailwind CSS |
+| Super Admin Panel | React 18, Vite, Tailwind CSS, Recharts |
 | WhatsApp | Meta Cloud API v21.0 |
-| Auth | JWT (separate tokens for tenants and platform) |
-| Infra | Docker Compose, Nginx, Let's Encrypt |
+| Auth | JWT (separate tokens for tenants and platform admins) |
+| Infra | Docker Compose, Nginx, Let's Encrypt, AWS EC2 |
 
 
-## Project Layout
+## Project Structure
 
 ```
-├── docker-compose.saas.yml     # Production compose (6 services)
-├── .env.example                # Environment template
+├── docker-compose.saas.yml        # Production compose (5 services)
+├── .env.example                   # Environment variable template
 ├── db/
-│   └── init-saas.sql           # Schema (18 tables, indexes)
+│   └── init-saas.sql              # Full schema: tables, indexes, enums, RLS
+│
 ├── backend/
 │   └── src/
-│       ├── index.js            # Express server
-│       ├── cron.js             # Reminder + health jobs
+│       ├── index.js               # Express server entry point
+│       ├── cron.js                 # Scheduled jobs (reminders, health checks)
+│       ├── manage.js              # CLI: create admin, check stats
+│       ├── db/pool.js             # PostgreSQL connection pool
+│       ├── middleware/
+│       │   ├── auth.js            # JWT auth (platform + tenant)
+│       │   ├── tenantContext.js   # Load tenant profile, enforce limits
+│       │   └── errorHandler.js    # Centralized error handling
 │       ├── routes/
-│       │   ├── auth.js         # Signup, login
-│       │   ├── tenant.js       # Dashboard, doctors, appointments, patients, services, settings
-│       │   ├── platform.js     # Super admin endpoints
-│       │   └── webhook.js      # WhatsApp message intake
-│       └── services/
-│           ├── bookingEngine.js  # Conversation state machine
-│           ├── whatsapp.js       # WhatsApp Cloud API client
-│           └── reminders.js      # Appointment reminder sender
-├── tenant-dashboard/           # Clinic owner's web panel (port 3000)
-│   └── src/pages/
-│       ├── Dashboard.jsx       # Stats, today's schedule
-│       ├── Appointments.jsx    # List, create, status updates
-│       ├── Doctors.jsx         # Add/edit doctors, availability editor
-│       ├── Services.jsx        # Service catalog CRUD
-│       ├── Patients.jsx        # Patient list with detail drawer
-│       └── Settings.jsx        # Business info, WhatsApp status
-├── super-admin/                # Platform admin panel (port 3001)
-│   └── src/pages/
-│       ├── Dashboard.jsx       # Tenant count, active stats
-│       ├── Tenants.jsx         # Tenant list with activate/deactivate
-│       ├── TenantDetail.jsx    # Deep view, password reset
-│       ├── Analytics.jsx       # Signup trends, top tenants
-│       └── Health.jsx          # System health monitoring
+│       │   ├── auth.js            # Signup + login (tenant + platform)
+│       │   ├── onboarding.js      # WhatsApp connect + business setup
+│       │   ├── tenant.js          # Tenant dashboard API (doctors, appointments, etc.)
+│       │   ├── platform.js        # Super admin API (tenant management)
+│       │   └── webhook.js         # WhatsApp webhook (multi-tenant message intake)
+│       ├── services/
+│       │   ├── bookingEngine.js   # WhatsApp conversation state machine
+│       │   ├── messageRouter.js   # Routes messages to the booking engine
+│       │   ├── whatsapp.js        # WhatsApp Cloud API client (retry, rate limit)
+│       │   ├── reminders.js       # Appointment reminder sender
+│       │   └── tenantHealth.js    # Health monitoring, stuck conversation reset
+│       └── utils/
+│           ├── logger.js          # Winston logger with file rotation
+│           └── errors.js          # Typed error classes (AppError, NotFoundError, etc.)
+│
+├── tenant-dashboard/              # Clinic owner's web panel
+│   └── src/
+│       ├── App.jsx                # Router + authenticated layout
+│       ├── api.js                 # Axios API client
+│       └── pages/
+│           ├── Dashboard.jsx      # Stats, today's schedule
+│           ├── Appointments.jsx   # List, create, status updates, follow-ups
+│           ├── Doctors.jsx        # Doctor CRUD + availability editor
+│           ├── Services.jsx       # Service catalog CRUD
+│           ├── Patients.jsx       # Patient list with search
+│           ├── Settings.jsx       # Business info, WhatsApp, Google Maps
+│           ├── Login.jsx          # Tenant login
+│           ├── Signup.jsx         # Tenant signup (invite code required)
+│           ├── Onboarding.jsx     # 3-step setup wizard
+│           ├── Privacy.jsx        # Privacy policy (Meta compliance)
+│           ├── Terms.jsx          # Terms of service (Meta compliance)
+│           └── DataDeletion.jsx   # Data deletion instructions (Meta compliance)
+│
+├── super-admin/                   # Platform admin panel
+│   └── src/
+│       ├── App.jsx                # Router + sidebar layout
+│       ├── api.js                 # Axios API client
+│       └── pages/
+│           ├── Dashboard.jsx      # Tenant count, active stats
+│           ├── Tenants.jsx        # Tenant list with activity indicators
+│           ├── TenantDetail.jsx   # Deep view: WA config, usage, delete
+│           ├── Analytics.jsx      # Signup trends, top tenants
+│           ├── Health.jsx         # System health monitoring
+│           ├── InviteCodes.jsx    # Generate/manage invite codes
+│           └── Login.jsx          # Platform admin login
+│
 └── docs/
-    ├── deployment.md           # Full production setup guide
-    ├── architecture.md         # Multi-tenancy, schema, auth
-    ├── whatsapp-setup.md       # Meta Developer Console walkthrough
-    └── api-reference.md        # Endpoint documentation
+    ├── architecture.md            # Multi-tenancy design, schema overview
+    ├── deployment.md              # EC2 + Nginx + SSL setup guide
+    ├── whatsapp-setup.md          # Meta Developer Console walkthrough
+    └── api-reference.md           # API endpoint documentation
 ```
 
 
@@ -74,8 +105,8 @@ Each business (tenant) signs up, connects their WhatsApp number, adds their doct
 ### Requirements
 
 - Docker and Docker Compose
-- A domain with DNS configured
-- Meta Developer account (for WhatsApp API)
+- A domain with DNS configured (3 subdomains: api, booking, hub)
+- Meta Developer account with WhatsApp Cloud API access
 
 ### 1. Configure environment
 
@@ -83,12 +114,12 @@ Each business (tenant) signs up, connects their WhatsApp number, adds their doct
 cp .env.example .env
 ```
 
-Edit `.env` with your values:
+Required variables:
 ```
-JWT_SECRET=<any random 40+ character string>
-WA_VERIFY_TOKEN=<any string — same goes in Meta Console>
-DB_USER=postgres
-DB_PASSWORD=<generate a strong password>
+JWT_SECRET=<random 40+ character string>
+WA_VERIFY_TOKEN=<any string — same goes in Meta Developer Console>
+DB_PASSWORD=<strong password>
+CORS_ORIGINS=https://booking.yourdomain.com,https://hub.yourdomain.com
 ```
 
 ### 2. Start services
@@ -97,13 +128,13 @@ DB_PASSWORD=<generate a strong password>
 docker compose -f docker-compose.saas.yml up -d
 ```
 
-This starts PostgreSQL, Redis, the backend API, cron worker, tenant dashboard, and super admin panel.
-
-| Service | Port | URL |
+| Service | Port | Description |
 |---|---|---|
-| Tenant Dashboard | 3000 | http://localhost:3000 |
-| Super Admin | 3001 | http://localhost:3001 |
-| Backend API | 4000 | http://localhost:4000 |
+| PostgreSQL | 5432 | Database |
+| Backend API | 4000 | REST API |
+| Cron Worker | — | Reminders, health checks |
+| Tenant Dashboard | 3000 | Clinic admin panel |
+| Super Admin | 3001 | Platform admin panel |
 
 ### 3. Create platform admin
 
@@ -111,73 +142,65 @@ This starts PostgreSQL, Redis, the backend API, cron worker, tenant dashboard, a
 docker compose -f docker-compose.saas.yml exec backend node src/manage.js create-admin
 ```
 
-Or via SQL:
-```sql
-INSERT INTO platform_admins (email, password_hash, name, role)
-VALUES ('admin@yourdomain.com', crypt('yourpassword', gen_salt('bf', 10)), 'Admin', 'super_admin');
-```
-
 ### 4. Set up WhatsApp webhook
 
-See [docs/whatsapp-setup.md](docs/whatsapp-setup.md) for the full walkthrough. The short version:
+See [docs/whatsapp-setup.md](docs/whatsapp-setup.md) for the full walkthrough.
 
-- Webhook URL: `https://yourdomain.com/api/webhook`
-- Verify Token: same as `WA_VERIFY_TOKEN` in your `.env`
-- Subscribe to the `messages` field
+- **Webhook URL**: `https://api.yourdomain.com/webhook/whatsapp`
+- **Verify Token**: same as `WA_VERIFY_TOKEN` in `.env`
+- **Subscribe to**: `messages` field
 
 
-## Production Deployment
+## Deployment
 
-The system is currently deployed on AWS EC2 with:
+Deployed on AWS EC2 with Nginx reverse proxy + Let's Encrypt SSL.
 
-- Nginx reverse proxy with SSL (Let's Encrypt)
-- `book.yourdomain.com` — Tenant dashboard
-- `hub.yourdomain.com` — Super admin panel
-- `api.yourdomain.com` — Backend API
-
-To deploy updates:
 ```bash
+# Deploy updates
 cd /home/ubuntu/wa-booking
 git pull origin main
 docker compose -f docker-compose.saas.yml up -d --build backend cron-worker tenant-dashboard super-admin
 ```
 
+See [docs/deployment.md](docs/deployment.md) for full Nginx config, SSL setup, and domain configuration.
 
-## Booking Flow (WhatsApp)
+
+## WhatsApp Booking Flow
 
 ```
 Patient sends "Hi"
-  -> Bot replies with welcome message + menu buttons
-  -> [Book Appointment] [My Appointments] [Help]
+  → Welcome message + 3 buttons: [Book] [My Appointments] [Cancel/Reschedule]
 
 Patient taps "Book Appointment"
-  -> Shows list of active doctors
+  → List of active doctors (with clinic filter if multi-branch)
 
 Patient picks a doctor
-  -> Shows available services
+  → Available services for that doctor
 
 Patient picks a service
-  -> Shows next 10 available dates (respects doctor schedule + blocked days)
+  → Next 10 available dates (respects schedule + blocked days)
 
 Patient picks a date
-  -> Shows open time slots (respects breaks + existing bookings)
+  → Open time slots (respects breaks + existing bookings)
 
 Patient picks a time
-  -> Confirmation summary with [Confirm] [Cancel] buttons
+  → Confirmation summary with [Confirm] [Cancel] buttons
 
 Patient confirms
-  -> Appointment created, confirmation message sent
-  -> Reminders scheduled for 24h and 1h before
+  → Appointment created + confirmation message with Google Maps link
+  → Reminders scheduled (24h + 1h before)
+  → Doctor notified via WhatsApp
 ```
 
 
 ## Key Design Decisions
 
-- **No AI**: The booking flow uses WhatsApp interactive buttons and list messages. Reliable, fast, no API costs.
-- **Multi-tenant shared schema**: All tenants share one database. Every table has a `tenant_id` column. Simpler to operate than schema-per-tenant.
-- **Timezone-aware**: Each tenant has a timezone setting. The booking engine generates dates in the tenant's local time.
-- **Break-aware slot generation**: Doctors can set daily breaks (e.g., lunch) and block specific dates. The slot generator skips these automatically.
-- **Invite-code signup**: New tenants need an invite code to register. Prevents spam signups during early stage.
+- **No AI** — Uses WhatsApp interactive buttons/lists. Reliable, fast, zero API cost per conversation.
+- **Multi-tenant shared schema** — All tenants share one database. Every table has `tenant_id`. Simpler to operate than schema-per-tenant.
+- **Timezone-aware** — Each tenant sets their timezone. The booking engine generates dates/slots in the tenant's local time.
+- **Break-aware slots** — Doctors can set daily breaks and block specific dates. Slot generator skips these automatically.
+- **Invite-code signup** — New tenants need an invite code. Controls growth during early stage.
+- **Fault-isolated webhook** — One tenant's WhatsApp failure never affects another tenant. Circuit breaker pattern with automatic token invalidation detection.
 
 
 ## License

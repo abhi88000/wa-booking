@@ -14,10 +14,6 @@ const { loadTenantContext, checkAppointmentLimit } = require('../middleware/tena
 const logger = require('../utils/logger');
 const WhatsAppService = require('../services/whatsapp');
 
-// Ensure clinic column exists on doctors table (safe to run multiple times)
-pool.query(`ALTER TABLE doctors ADD COLUMN IF NOT EXISTS clinic VARCHAR(200)`)
-  .catch(err => logger.error('Failed to ensure clinic column:', err.message));
-
 // All tenant routes require auth + tenant context
 router.use(authTenant, loadTenantContext);
 

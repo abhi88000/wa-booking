@@ -1,34 +1,30 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../api';
 
 export default function TenantDetail() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [tenant, setTenant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [newPassword, setNewPassword] = useState('');
   const [resetMsg, setResetMsg] = useState('');
-  const [savingFeatures, setSavingFeatures] = useState(false);
-
-  // Module definitions - the 4 core WhatsApp solutions
-  const MODULES = [
-    { key: 'booking', label: 'Appointment Booking', desc: 'Menu-driven doctor/service/date/time booking' },
-    { key: 'payment_collection', label: 'Payments & Invoicing', desc: 'Send payment links, collect payments via WhatsApp' },
-    { key: 'ai_chatbot', label: 'AI Chatbot', desc: 'GPT-powered assistant for FAQs and queries' },
-    { key: 'broadcast', label: 'Broadcast & Marketing', desc: 'Bulk template messages, promos, announcements' },
-  ];
-
-  // Extra feature flags
-  const EXTRA_FEATURES = [
-    { key: 'multi_doctor', label: 'Multi Doctor' },
-    { key: 'reminders', label: 'Reminders' },
-    { key: 'analytics', label: 'Analytics' },
-    { key: 'custom_branding', label: 'Custom Branding' },
-  ];
+  const [waConfig, setWaConfig] = useState({ wa_phone_number: '', wa_phone_number_id: '', wa_business_account_id: '', wa_access_token: '' });
+  const [savingWA, setSavingWA] = useState(false);
+  const [waMsg, setWaMsg] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     api.getTenant(id)
-      .then(({ data }) => setTenant(data))
+      .then(({ data }) => {
+        setTenant(data);
+        setWaConfig({
+          wa_phone_number: data.wa_phone_number || '',
+          wa_phone_number_id: data.wa_phone_number_id || '',
+          wa_business_account_id: data.wa_business_account_id || '',
+          wa_access_token: ''
+        });
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [id]);
@@ -53,16 +49,41 @@ export default function TenantDetail() {
     }
   };
 
-  const handleFeatureToggle = async (key) => {
-    const current = tenant.features || {};
-    const updated = { [key]: !current[key] };
-    setSavingFeatures(true);
+  const handleSaveWAConfig = async () => {
+    setSavingWA(true);
+    setWaMsg('');
     try {
-      const { data } = await api.updateFeatures(id, updated);
-      setTenant({ ...tenant, features: data.features });
+      const payload = {};
+      if (waConfig.wa_phone_number) payload.wa_phone_number = waConfig.wa_phone_number;
+      if (waConfig.wa_phone_number_id) payload.wa_phone_number_id = waConfig.wa_phone_number_id;
+      if (waConfig.wa_business_account_id) payload.wa_business_account_id = waConfig.wa_business_account_id;
+      if (waConfig.wa_access_token) payload.wa_access_token = waConfig.wa_access_token;
+      if (Object.keys(payload).length === 0) { setWaMsg('No changes'); setSavingWA(false); return; }
+      await api.updateWAConfig(id, payload);
+      setWaMsg('WhatsApp config updated');
+      const { data } = await api.getTenant(id);
+      setTenant(data);
+      setWaConfig(c => ({ ...c, wa_access_token: '' }));
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to update feature');
-    } finally { setSavingFeatures(false); }
+      setWaMsg(err.response?.data?.error || 'Failed to update');
+    } finally { setSavingWA(false); }
+  };
+
+  const handleDeleteTenant = async () => {
+    const name = tenant.business_name;
+    const confirm1 = window.confirm(`Delete tenant "${name}"? This will permanently remove ALL their data.`);
+    if (!confirm1) return;
+    const confirm2 = window.prompt(`Type "${name}" to confirm deletion:`);
+    if (confirm2 !== name) { alert('Name did not match. Deletion cancelled.'); return; }
+    setDeleting(true);
+    try {
+      await api.deleteTenant(id);
+      alert(`Tenant "${name}" deleted successfully.`);
+      navigate('/tenants');
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete tenant');
+      setDeleting(false);
+    }
   };
 
   if (loading) return <div className="text-gray-500 text-center py-20">Loading...</div>;
@@ -96,7 +117,7 @@ export default function TenantDetail() {
         {/* WhatsApp Config */}
         <div className="bg-white rounded-lg shadow-none p-6 border border-gray-100">
           <h2 className="font-semibold text-gray-900 mb-4">WhatsApp</h2>
-          <dl className="space-y-3 text-sm">
+          <dl className="space-y-3 text-sm mb-4">
             <div>
               <dt className="text-gray-500">Status</dt>
               <dd><span className={`px-2 py-1 rounded-full text-xs font-medium 
@@ -104,12 +125,31 @@ export default function TenantDetail() {
                 {tenant.wa_status}
               </span></dd>
             </div>
-            <div><dt className="text-gray-500">Phone Number</dt><dd className="font-medium">{tenant.wa_phone_number || '—'}</dd></div>
-            <div><dt className="text-gray-500">Phone Number ID</dt><dd className="font-medium text-xs">{tenant.wa_phone_number_id || '—'}</dd></div>
-            <div><dt className="text-gray-500">WABA ID</dt><dd className="font-medium text-xs">{tenant.wa_business_account_id || '—'}</dd></div>
-            <div><dt className="text-gray-500">Access Token</dt><dd className="font-medium">{tenant.wa_access_token || '—'}</dd></div>
             <div><dt className="text-gray-500">Onboarding</dt><dd className="font-medium capitalize">{tenant.onboarding_status}</dd></div>
           </dl>
+
+          <hr className="my-4 border-gray-100" />
+          <h3 className="text-sm font-medium text-gray-700 mb-3">Configure Credentials</h3>
+          {waMsg && <p className="text-xs text-slate-600 mb-2">{waMsg}</p>}
+          <div className="space-y-2">
+            <input type="text" placeholder="Phone Number (e.g. +91...)" value={waConfig.wa_phone_number}
+              onChange={e => setWaConfig({ ...waConfig, wa_phone_number: e.target.value })}
+              className="w-full border rounded-lg px-3 py-1.5 text-sm outline-none focus:border-gray-400" />
+            <input type="text" placeholder="Phone Number ID" value={waConfig.wa_phone_number_id}
+              onChange={e => setWaConfig({ ...waConfig, wa_phone_number_id: e.target.value })}
+              className="w-full border rounded-lg px-3 py-1.5 text-sm outline-none focus:border-gray-400" />
+            <input type="text" placeholder="WABA ID" value={waConfig.wa_business_account_id}
+              onChange={e => setWaConfig({ ...waConfig, wa_business_account_id: e.target.value })}
+              className="w-full border rounded-lg px-3 py-1.5 text-sm outline-none focus:border-gray-400" />
+            <input type="password" placeholder="Access Token (leave empty to keep current)"
+              value={waConfig.wa_access_token}
+              onChange={e => setWaConfig({ ...waConfig, wa_access_token: e.target.value })}
+              className="w-full border rounded-lg px-3 py-1.5 text-sm outline-none focus:border-gray-400" />
+            <button onClick={handleSaveWAConfig} disabled={savingWA}
+              className="bg-slate-800 text-white px-4 py-1.5 rounded-lg text-sm hover:bg-slate-900 disabled:opacity-50">
+              {savingWA ? 'Saving...' : 'Save WA Config'}
+            </button>
+          </div>
         </div>
 
         {/* Usage Stats */}
@@ -128,56 +168,7 @@ export default function TenantDetail() {
               <span className="text-sm text-gray-500">Active Doctors</span>
               <span className="text-xl font-bold">{tenant.active_doctors}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">Max Doctors</span>
-              <span className="text-sm">{tenant.max_doctors}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500">Max Appts/Month</span>
-              <span className="text-sm">{tenant.max_appointments_month}</span>
-            </div>
           </div>
-        </div>
-      </div>
-
-      {/* Subscription / Plan */}
-      <div className="mt-6 bg-white rounded-lg shadow-none p-6 border border-gray-100">
-        <h2 className="font-semibold text-gray-900 mb-4">Subscription</h2>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          <div>
-            <label className="text-xs text-gray-500 block mb-1">Plan</label>
-            <select value={tenant.plan || 'trial'} onChange={async (e) => {
-              try {
-                await api.updatePlan(id, { plan: e.target.value });
-                setTenant({ ...tenant, plan: e.target.value });
-              } catch (err) { alert('Failed to update plan'); }
-            }} className="border rounded-lg px-3 py-2 text-sm outline-none">
-              <option value="trial">Trial</option>
-              <option value="starter">Starter</option>
-              <option value="pro">Pro</option>
-              <option value="enterprise">Enterprise</option>
-            </select>
-          </div>
-          <div>
-            <label className="text-xs text-gray-500 block mb-1">Status</label>
-            <select value={tenant.sub_status || 'trial'} onChange={async (e) => {
-              try {
-                await api.updatePlan(id, { status: e.target.value });
-                setTenant({ ...tenant, sub_status: e.target.value });
-              } catch (err) { alert('Failed to update status'); }
-            }} className="border rounded-lg px-3 py-2 text-sm outline-none">
-              <option value="trial">Trial</option>
-              <option value="active">Active</option>
-              <option value="cancelled">Cancelled</option>
-              <option value="expired">Expired</option>
-            </select>
-          </div>
-          {tenant.trial_ends_at && tenant.sub_status === 'trial' && (
-            <div>
-              <label className="text-xs text-gray-500 block mb-1">Trial Ends</label>
-              <p className="text-sm font-medium">{new Date(tenant.trial_ends_at).toLocaleDateString()}</p>
-            </div>
-          )}
         </div>
       </div>
 
@@ -191,10 +182,14 @@ export default function TenantDetail() {
               : 'bg-green-100 text-green-700 hover:bg-green-200'}`}>
             {tenant.is_active ? 'Deactivate Tenant' : 'Activate Tenant'}
           </button>
+          <button onClick={handleDeleteTenant} disabled={deleting}
+            className="px-4 py-2 rounded-lg text-sm bg-red-600 text-white hover:bg-red-700 disabled:opacity-50">
+            {deleting ? 'Deleting...' : 'Delete Tenant'}
+          </button>
         </div>
       </div>
 
-      {/* Features */}
+      {/* Reset Password */}
       <div className="mt-6 bg-white rounded-lg shadow-none p-6 border border-gray-100">
         <h2 className="font-semibold text-gray-900 mb-4">Reset User Password</h2>
         {resetMsg && <p className="text-sm mb-3 text-slate-700">{resetMsg}</p>}
@@ -206,48 +201,6 @@ export default function TenantDetail() {
             className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900">
             Reset Password
           </button>
-        </div>
-      </div>
-
-      {/* WhatsApp Modules */}
-      <div className="mt-6 bg-white rounded-lg shadow-none p-6 border border-gray-100">
-        <h2 className="font-semibold text-gray-900 mb-1">WhatsApp Modules</h2>
-        <p className="text-xs text-gray-400 mb-4">Toggle which solutions this tenant can use</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {MODULES.map(mod => {
-            const enabled = tenant.features?.[mod.key] === true;
-            return (
-              <div key={mod.key} className={`flex items-center justify-between p-4 rounded-lg border ${enabled ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
-                <div>
-                  <p className={`text-sm font-medium ${enabled ? 'text-green-800' : 'text-gray-500'}`}>{mod.label}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{mod.desc}</p>
-                </div>
-                <button onClick={() => handleFeatureToggle(mod.key)} disabled={savingFeatures}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${enabled ? 'bg-green-500' : 'bg-gray-300'}`}>
-                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${enabled ? 'translate-x-5' : ''}`} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Extra Features */}
-      <div className="mt-6 bg-white rounded-lg shadow-none p-6 border border-gray-100">
-        <h2 className="font-semibold text-gray-900 mb-4">Additional Features</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {EXTRA_FEATURES.map(feat => {
-            const enabled = tenant.features?.[feat.key] === true;
-            return (
-              <div key={feat.key} className="flex items-center justify-between px-4 py-3 rounded-lg bg-gray-50">
-                <span className={`text-sm ${enabled ? 'text-green-700' : 'text-gray-400'}`}>{feat.label}</span>
-                <button onClick={() => handleFeatureToggle(feat.key)} disabled={savingFeatures}
-                  className={`relative w-9 h-5 rounded-full transition-colors ${enabled ? 'bg-green-500' : 'bg-gray-300'}`}>
-                  <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${enabled ? 'translate-x-4' : ''}`} />
-                </button>
-              </div>
-            );
-          })}
         </div>
       </div>
     </div>

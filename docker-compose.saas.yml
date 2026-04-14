@@ -84,5 +84,12 @@ services:
     depends_on:
       - backend
 
+  # ── Landing Page (futurezminds.in) ─────────────────────
+  website:
+    build: ./website
+    restart: always
+    ports:
+      - "3002:80"
+
 volumes:
   pgdata:

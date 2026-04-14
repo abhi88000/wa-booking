@@ -3,420 +3,387 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FutureZMinds — WhatsApp Business Solutions</title>
-  <meta name="description" content="Automate your business on WhatsApp. Appointments, reminders, marketing campaigns, and customer engagement — all through WhatsApp.">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <title>FutureZMinds — WhatsApp for your business</title>
+  <meta name="description" content="Run your business on WhatsApp. Booking, reminders, campaigns — we set it all up for you.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='80'>F</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
       --green: #25D366;
-      --dark-green: #128C7E;
-      --dark: #1a1a2e;
-      --darker: #16213e;
-      --gray: #f8f9fa;
-      --text: #2d3748;
-      --text-light: #718096;
+      --green-dark: #1da851;
+      --green-bg: #f0faf3;
+      --dark: #111827;
+      --text: #374151;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --bg: #fafafa;
     }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      color: var(--text);
-      line-height: 1.6;
-      overflow-x: hidden;
-    }
+    body { font-family: 'Inter', sans-serif; color: var(--text); line-height: 1.7; }
     a { text-decoration: none; color: inherit; }
 
     /* ── NAV ── */
     nav {
-      position: fixed; top: 0; width: 100%; z-index: 100;
-      background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);
-      border-bottom: 1px solid #eee;
-      padding: 1rem 2rem;
+      position: fixed; top: 0; width: 100%; z-index: 50;
+      background: rgba(255,255,255,0.97); backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.9rem 2rem;
       display: flex; justify-content: space-between; align-items: center;
     }
-    .logo { font-size: 1.5rem; font-weight: 800; color: var(--dark); }
-    .logo span { color: var(--green); }
-    .nav-links { display: flex; gap: 2rem; align-items: center; }
-    .nav-links a { font-weight: 500; color: var(--text-light); transition: color 0.2s; }
-    .nav-links a:hover { color: var(--green); }
+    .logo { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px; }
+    .logo em { font-style: normal; color: var(--green); }
+    .nav-right { display: flex; gap: 1.8rem; align-items: center; }
+    .nav-right a { font-size: 0.9rem; font-weight: 500; color: var(--muted); }
+    .nav-right a:hover { color: var(--dark); }
     .btn {
-      padding: 0.6rem 1.5rem; border-radius: 8px; font-weight: 600;
-      transition: all 0.2s; cursor: pointer; border: none; font-size: 1rem;
+      display: inline-block; padding: 0.55rem 1.4rem; border-radius: 6px;
+      font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none;
+      transition: background 0.2s;
     }
-    .btn-primary { background: var(--green); color: #fff; }
-    .btn-primary:hover { background: var(--dark-green); transform: translateY(-1px); }
-    .btn-outline { border: 2px solid var(--green); color: var(--green); background: transparent; }
-    .btn-outline:hover { background: var(--green); color: #fff; }
+    .btn-green { background: var(--green); color: #fff; }
+    .btn-green:hover { background: var(--green-dark); }
+    .btn-ghost { background: none; border: 1.5px solid var(--border); color: var(--text); }
+    .btn-ghost:hover { border-color: var(--green); color: var(--green); }
 
     /* ── HERO ── */
     .hero {
-      padding: 8rem 2rem 4rem;
+      padding: 9rem 2rem 5rem; max-width: 720px; margin: 0 auto;
       text-align: center;
-      background: linear-gradient(135deg, #f0fdf4 0%, #fff 50%, #ecfdf5 100%);
-      min-height: 90vh;
-      display: flex; flex-direction: column; justify-content: center; align-items: center;
     }
-    .hero-badge {
-      display: inline-block; padding: 0.4rem 1rem; border-radius: 50px;
-      background: #dcfce7; color: var(--dark-green); font-size: 0.85rem; font-weight: 600;
-      margin-bottom: 1.5rem;
+    .hero p.tag {
+      font-size: 0.8rem; text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--green-dark); font-weight: 600; margin-bottom: 1.2rem;
     }
     .hero h1 {
-      font-size: 3.5rem; font-weight: 900; line-height: 1.1;
-      max-width: 800px; margin-bottom: 1.5rem;
+      font-size: 3rem; font-weight: 800; line-height: 1.15;
+      color: var(--dark); margin-bottom: 1.2rem; letter-spacing: -1px;
     }
-    .hero h1 span { color: var(--green); }
-    .hero p {
-      font-size: 1.25rem; color: var(--text-light);
-      max-width: 600px; margin-bottom: 2rem;
+    .hero .sub {
+      font-size: 1.15rem; color: var(--muted); margin-bottom: 2.5rem;
+      max-width: 520px; margin-left: auto; margin-right: auto;
     }
-    .hero-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
-    .hero-stats {
-      display: flex; gap: 3rem; margin-top: 4rem; padding-top: 2rem;
-      border-top: 1px solid #e2e8f0;
-    }
-    .hero-stats .stat { text-align: center; }
-    .hero-stats .stat-value { font-size: 2rem; font-weight: 800; color: var(--dark); }
-    .hero-stats .stat-label { font-size: 0.85rem; color: var(--text-light); }
+    .hero-btns { display: flex; gap: 0.8rem; justify-content: center; flex-wrap: wrap; }
 
-    /* ── SECTION COMMON ── */
-    section { padding: 5rem 2rem; }
-    .container { max-width: 1100px; margin: 0 auto; }
-    .section-title {
-      text-align: center; font-size: 2.2rem; font-weight: 800; margin-bottom: 0.5rem;
+    /* ── TRUST BAR ── */
+    .trust {
+      padding: 2.5rem 2rem; text-align: center;
+      border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
     }
-    .section-subtitle {
-      text-align: center; color: var(--text-light); font-size: 1.1rem;
-      max-width: 600px; margin: 0 auto 3rem;
+    .trust p { font-size: 0.85rem; color: var(--muted); margin-bottom: 1rem; }
+    .trust-items { display: flex; justify-content: center; gap: 3rem; flex-wrap: wrap; }
+    .trust-item { font-size: 0.95rem; color: var(--text); font-weight: 600; }
+    .trust-item span { display: block; font-size: 0.78rem; font-weight: 400; color: var(--muted); }
+
+    /* ── PROBLEM/SOLUTION ── */
+    .problem {
+      padding: 5rem 2rem; max-width: 800px; margin: 0 auto;
+    }
+    .problem h2 {
+      font-size: 1.8rem; font-weight: 700; color: var(--dark);
+      margin-bottom: 1.5rem; line-height: 1.3;
+    }
+    .problem p { color: var(--muted); margin-bottom: 1rem; font-size: 1.05rem; }
+    .problem .highlight {
+      background: var(--green-bg); border-left: 3px solid var(--green);
+      padding: 1.2rem 1.5rem; border-radius: 0 8px 8px 0;
+      margin: 2rem 0; color: var(--text); font-size: 1rem;
     }
 
     /* ── FEATURES ── */
-    .features-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;
+    .features { padding: 4rem 2rem; background: var(--bg); }
+    .features .container { max-width: 960px; margin: 0 auto; }
+    .features h2 {
+      font-size: 1.6rem; font-weight: 700; color: var(--dark);
+      margin-bottom: 0.5rem; text-align: center;
     }
-    .feature-card {
-      padding: 2rem; border-radius: 16px;
-      background: #fff; border: 1px solid #e2e8f0;
-      transition: all 0.3s;
+    .features .sub { text-align: center; color: var(--muted); margin-bottom: 3rem; }
+    .feat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+    .feat {
+      padding: 1.8rem; background: #fff; border: 1px solid var(--border);
+      border-radius: 10px;
     }
-    .feature-card:hover { border-color: var(--green); transform: translateY(-4px); box-shadow: 0 10px 40px rgba(37,211,102,0.1); }
-    .feature-icon {
-      width: 50px; height: 50px; border-radius: 12px;
-      background: #dcfce7; display: flex; align-items: center; justify-content: center;
-      font-size: 1.5rem; margin-bottom: 1rem;
+    .feat h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--dark); }
+    .feat p { font-size: 0.9rem; color: var(--muted); line-height: 1.6; }
+    .feat-label {
+      display: inline-block; font-size: 0.7rem; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--green-dark); font-weight: 600;
+      margin-bottom: 0.6rem;
     }
-    .feature-card h3 { font-size: 1.2rem; margin-bottom: 0.5rem; }
-    .feature-card p { color: var(--text-light); font-size: 0.95rem; }
 
-    /* ── HOW IT WORKS ── */
-    .how-it-works { background: var(--gray); }
-    .steps {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;
-      position: relative;
+    /* ── HOW ── */
+    .how { padding: 5rem 2rem; max-width: 700px; margin: 0 auto; }
+    .how h2 {
+      font-size: 1.6rem; font-weight: 700; color: var(--dark);
+      margin-bottom: 2.5rem; text-align: center;
     }
-    .step { text-align: center; position: relative; }
-    .step-number {
-      width: 60px; height: 60px; border-radius: 50%;
-      background: var(--green); color: #fff; font-size: 1.5rem; font-weight: 800;
+    .how-step {
+      display: flex; gap: 1.2rem; margin-bottom: 2rem; align-items: flex-start;
+    }
+    .how-num {
+      flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%;
+      background: var(--green); color: #fff; font-weight: 700; font-size: 0.9rem;
       display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 1rem;
     }
-    .step h3 { margin-bottom: 0.5rem; }
-    .step p { color: var(--text-light); font-size: 0.95rem; }
+    .how-step h4 { font-size: 1rem; font-weight: 600; color: var(--dark); margin-bottom: 0.2rem; }
+    .how-step p { font-size: 0.9rem; color: var(--muted); }
+
+    /* ── WORKS FOR ── */
+    .works-for { padding: 4rem 2rem; background: var(--bg); }
+    .works-for .container { max-width: 800px; margin: 0 auto; text-align: center; }
+    .works-for h2 {
+      font-size: 1.6rem; font-weight: 700; color: var(--dark); margin-bottom: 0.5rem;
+    }
+    .works-for .sub { color: var(--muted); margin-bottom: 2rem; }
+    .tags { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; }
+    .tag-pill {
+      padding: 0.5rem 1.2rem; border-radius: 50px; font-size: 0.85rem;
+      background: #fff; border: 1px solid var(--border); color: var(--text);
+      font-weight: 500;
+    }
 
     /* ── PRICING ── */
-    .pricing-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;
-      max-width: 900px; margin: 0 auto;
+    .pricing { padding: 5rem 2rem; }
+    .pricing .container { max-width: 820px; margin: 0 auto; }
+    .pricing h2 {
+      font-size: 1.6rem; font-weight: 700; color: var(--dark);
+      margin-bottom: 0.4rem; text-align: center;
     }
-    .pricing-card {
-      padding: 2.5rem 2rem; border-radius: 16px; background: #fff;
-      border: 2px solid #e2e8f0; text-align: center; position: relative;
+    .pricing .sub { text-align: center; color: var(--muted); margin-bottom: 3rem; }
+    .price-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+    .price-card {
+      padding: 2rem; border: 1.5px solid var(--border); border-radius: 10px;
+      background: #fff;
     }
-    .pricing-card.popular { border-color: var(--green); }
-    .pricing-card.popular::before {
-      content: 'Most Popular'; position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
-      background: var(--green); color: #fff; padding: 0.3rem 1rem; border-radius: 50px;
-      font-size: 0.8rem; font-weight: 600;
+    .price-card.pop { border-color: var(--green); }
+    .price-card h3 { font-size: 1.1rem; font-weight: 700; color: var(--dark); margin-bottom: 0.3rem; }
+    .price-card .amt {
+      font-size: 2.2rem; font-weight: 800; color: var(--dark); margin: 0.8rem 0;
     }
-    .pricing-card h3 { font-size: 1.2rem; margin-bottom: 0.5rem; }
-    .pricing-card .price {
-      font-size: 2.5rem; font-weight: 900; color: var(--dark); margin: 1rem 0;
+    .price-card .amt span { font-size: 0.85rem; font-weight: 400; color: var(--muted); }
+    .price-card .note { font-size: 0.8rem; color: var(--muted); margin-bottom: 1.2rem; }
+    .price-card ul { list-style: none; margin-bottom: 1.5rem; }
+    .price-card li {
+      padding: 0.35rem 0; font-size: 0.88rem; color: var(--text);
     }
-    .pricing-card .price span { font-size: 1rem; font-weight: 400; color: var(--text-light); }
-    .pricing-card ul { list-style: none; text-align: left; margin: 1.5rem 0; }
-    .pricing-card li {
-      padding: 0.5rem 0; color: var(--text-light); font-size: 0.95rem;
-      border-bottom: 1px solid #f1f1f1;
-    }
-    .pricing-card li::before { content: '✓ '; color: var(--green); font-weight: 700; }
-
-    /* ── USE CASES ── */
-    .usecases { background: var(--gray); }
-    .usecase-grid {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem;
-    }
-    .usecase-card {
-      padding: 1.5rem; border-radius: 12px; background: #fff;
-      border: 1px solid #e2e8f0; text-align: center;
-      transition: all 0.2s;
-    }
-    .usecase-card:hover { border-color: var(--green); }
-    .usecase-card .icon { font-size: 2rem; margin-bottom: 0.5rem; }
-    .usecase-card h4 { font-size: 1rem; margin-bottom: 0.3rem; }
-    .usecase-card p { font-size: 0.85rem; color: var(--text-light); }
+    .price-card li::before { content: '— '; color: var(--green); }
 
     /* ── CTA ── */
-    .cta {
-      background: linear-gradient(135deg, var(--dark) 0%, var(--darker) 100%);
-      color: #fff; text-align: center; padding: 5rem 2rem;
+    .bottom-cta {
+      padding: 5rem 2rem; text-align: center;
+      background: var(--dark); color: #fff;
     }
-    .cta h2 { font-size: 2.5rem; margin-bottom: 1rem; }
-    .cta p { color: #a0aec0; font-size: 1.1rem; margin-bottom: 2rem; }
+    .bottom-cta h2 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.8rem; }
+    .bottom-cta p { color: #9ca3af; margin-bottom: 2rem; font-size: 1rem; }
 
     /* ── FOOTER ── */
     footer {
-      background: var(--dark); color: #a0aec0; padding: 3rem 2rem;
+      background: var(--dark); color: #6b7280; padding: 2rem;
+      border-top: 1px solid #1f2937;
     }
-    .footer-content {
-      max-width: 1100px; margin: 0 auto;
-      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;
+    .foot-inner {
+      max-width: 960px; margin: 0 auto;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 1rem; font-size: 0.82rem;
     }
-    .footer-links { display: flex; gap: 2rem; }
-    .footer-links a { color: #a0aec0; transition: color 0.2s; }
-    .footer-links a:hover { color: var(--green); }
+    .foot-links { display: flex; gap: 1.5rem; }
+    .foot-links a { color: #6b7280; }
+    .foot-links a:hover { color: var(--green); }
 
-    /* ── RESPONSIVE ── */
-    @media (max-width: 768px) {
-      .hero h1 { font-size: 2.2rem; }
-      .features-grid, .steps, .pricing-grid { grid-template-columns: 1fr; }
-      .usecase-grid { grid-template-columns: repeat(2, 1fr); }
-      .hero-stats { flex-direction: column; gap: 1rem; }
-      .nav-links { display: none; }
-      .footer-content { flex-direction: column; text-align: center; }
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 2rem; }
+      .feat-grid, .price-grid { grid-template-columns: 1fr; }
+      .trust-items { gap: 1.5rem; }
+      .nav-right { display: none; }
+      .foot-inner { flex-direction: column; text-align: center; }
     }
   </style>
 </head>
 <body>
 
-  <!-- NAV -->
   <nav>
-    <div class="logo">Future<span>Z</span>Minds</div>
-    <div class="nav-links">
+    <div class="logo">Future<em>Z</em>Minds</div>
+    <div class="nav-right">
       <a href="#features">Features</a>
-      <a href="#how-it-works">How It Works</a>
       <a href="#pricing">Pricing</a>
-      <a href="#usecases">Use Cases</a>
-      <a href="mailto:contact@futurezminds.in" class="btn btn-primary">Contact Us</a>
+      <a href="mailto:hello@futurezminds.in" class="btn btn-green">Talk to us</a>
     </div>
   </nav>
 
-  <!-- HERO -->
   <section class="hero">
-    <span class="hero-badge">🟢 WhatsApp Business Solutions</span>
-    <h1>Automate Your Business on <span>WhatsApp</span></h1>
-    <p>
-      Appointments, reminders, marketing campaigns, and customer engagement — 
-      all through the app your customers already use every day.
+    <p class="tag">WhatsApp Business Platform</p>
+    <h1>Your customers are on WhatsApp. Your business should be too.</h1>
+    <p class="sub">
+      We help clinics, salons, and local businesses run their bookings, 
+      reminders, and customer communication entirely through WhatsApp.
     </p>
-    <div class="hero-buttons">
-      <a href="mailto:contact@futurezminds.in" class="btn btn-primary">Get Started Free →</a>
-      <a href="#features" class="btn btn-outline">See Features</a>
-    </div>
-    <div class="hero-stats">
-      <div class="stat">
-        <div class="stat-value">2B+</div>
-        <div class="stat-label">WhatsApp Users</div>
-      </div>
-      <div class="stat">
-        <div class="stat-value">98%</div>
-        <div class="stat-label">Message Open Rate</div>
-      </div>
-      <div class="stat">
-        <div class="stat-value">24/7</div>
-        <div class="stat-label">Automated Responses</div>
-      </div>
+    <div class="hero-btns">
+      <a href="mailto:hello@futurezminds.in" class="btn btn-green">Get started — it's free</a>
+      <a href="#how" class="btn btn-ghost">See how it works</a>
     </div>
   </section>
 
-  <!-- FEATURES -->
-  <section id="features">
-    <div class="container">
-      <div class="section-title">Everything You Need</div>
-      <p class="section-subtitle">A complete WhatsApp business platform — from booking to marketing.</p>
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-icon">📅</div>
-          <h3>Smart Booking</h3>
-          <p>Let customers book appointments directly through WhatsApp. Auto-confirm, auto-remind, zero manual work.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🔔</div>
-          <h3>Automated Reminders</h3>
-          <p>24-hour and 1-hour reminders sent automatically. Reduce no-shows by up to 70%.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📢</div>
-          <h3>Marketing Campaigns</h3>
-          <p>Send promotional messages, offers, and updates to your customer base with template messages.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🤖</div>
-          <h3>AI Chatbot</h3>
-          <p>Answer FAQs, guide customers, and handle common queries automatically — 24/7.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">👨‍⚕️</div>
-          <h3>Multi-Staff Support</h3>
-          <p>Manage multiple doctors, staff, or service providers with individual schedules and availability.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">📊</div>
-          <h3>Dashboard & Analytics</h3>
-          <p>Track appointments, messages, and customer engagement from a clean web dashboard.</p>
-        </div>
-      </div>
+  <section class="trust">
+    <p>Built on official WhatsApp Business API by Meta</p>
+    <div class="trust-items">
+      <div class="trust-item">98% open rate <span>vs 20% for email</span></div>
+      <div class="trust-item">Automated 24/7 <span>No staff needed</span></div>
+      <div class="trust-item">Live in 1 day <span>We handle the setup</span></div>
     </div>
   </section>
 
-  <!-- HOW IT WORKS -->
-  <section id="how-it-works" class="how-it-works">
+  <section class="problem">
+    <h2>Most small businesses lose customers to missed calls and forgotten appointments.</h2>
+    <p>
+      Your receptionist is busy. The phone rings and nobody picks up. A patient forgets 
+      their appointment. You spend evenings manually sending reminders on WhatsApp.
+    </p>
+    <p>Sound familiar?</p>
+    <div class="highlight">
+      We turn your WhatsApp number into a smart assistant that books appointments, 
+      sends reminders, and talks to your customers — while you focus on your work.
+    </div>
+  </section>
+
+  <section class="features" id="features">
     <div class="container">
-      <div class="section-title">How It Works</div>
-      <p class="section-subtitle">Get started in 3 simple steps.</p>
-      <div class="steps">
-        <div class="step">
-          <div class="step-number">1</div>
-          <h3>Connect Your Number</h3>
-          <p>Link your business WhatsApp number to our platform. Takes 5 minutes.</p>
+      <h2>What you get</h2>
+      <p class="sub">No apps to download. No training needed. It just works on WhatsApp.</p>
+      <div class="feat-grid">
+        <div class="feat">
+          <div class="feat-label">Booking</div>
+          <h3>Patients book by messaging you</h3>
+          <p>They text your number, pick a doctor, choose a time slot, done. 
+             No app downloads, no website forms. Just WhatsApp.</p>
         </div>
-        <div class="step">
-          <div class="step-number">2</div>
-          <h3>Set Up Your Services</h3>
-          <p>Add your doctors, services, timings, and customize your booking flow.</p>
+        <div class="feat">
+          <div class="feat-label">Reminders</div>
+          <h3>Automatic appointment reminders</h3>
+          <p>24 hours before and 1 hour before — sent automatically. 
+             Reduce no-shows without lifting a finger.</p>
         </div>
-        <div class="step">
-          <div class="step-number">3</div>
-          <h3>Go Live</h3>
-          <p>Your customers message you on WhatsApp and the bot handles everything automatically.</p>
+        <div class="feat">
+          <div class="feat-label">Dashboard</div>
+          <h3>See everything in one place</h3>
+          <p>A simple web dashboard to manage appointments, view today's 
+             schedule, and track your patients. Works on phone and laptop.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-label">Campaigns</div>
+          <h3>Send offers and updates</h3>
+          <p>New service? Festival offer? Send it to all your patients 
+             on WhatsApp. Way better than SMS — they actually read it.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-label">Multi-doctor</div>
+          <h3>Works for your whole team</h3>
+          <p>Add multiple doctors or staff with their own schedule. 
+             Patients pick who they want to see.</p>
+        </div>
+        <div class="feat">
+          <div class="feat-label">Follow-ups</div>
+          <h3>Never lose a patient</h3>
+          <p>Automatic follow-up messages after visits. Ask them to 
+             come back, leave a review, or book their next appointment.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- USE CASES -->
-  <section id="usecases" class="usecases">
-    <div class="container">
-      <div class="section-title">Built For Every Business</div>
-      <p class="section-subtitle">From clinics to salons — WhatsApp automation for everyone.</p>
-      <div class="usecase-grid">
-        <div class="usecase-card">
-          <div class="icon">🏥</div>
-          <h4>Clinics & Hospitals</h4>
-          <p>Appointment booking & reminders</p>
-        </div>
-        <div class="usecase-card">
-          <div class="icon">💈</div>
-          <h4>Salons & Spas</h4>
-          <p>Service booking & offers</p>
-        </div>
-        <div class="usecase-card">
-          <div class="icon">🏨</div>
-          <h4>Hotels</h4>
-          <p>Room inquiries & FAQs</p>
-        </div>
-        <div class="usecase-card">
-          <div class="icon">🍕</div>
-          <h4>Restaurants</h4>
-          <p>Table booking & menu sharing</p>
-        </div>
-        <div class="usecase-card">
-          <div class="icon">🏋️</div>
-          <h4>Gyms & Studios</h4>
-          <p>Class booking & membership</p>
-        </div>
-        <div class="usecase-card">
-          <div class="icon">🐾</div>
-          <h4>Veterinary</h4>
-          <p>Pet appointment scheduling</p>
-        </div>
-        <div class="usecase-card">
-          <div class="icon">📚</div>
-          <h4>Coaching Centers</h4>
-          <p>Enrollment & updates</p>
-        </div>
-        <div class="usecase-card">
-          <div class="icon">🏠</div>
-          <h4>Real Estate</h4>
-          <p>Lead capture & follow-ups</p>
-        </div>
+  <section class="how" id="how">
+    <h2>How it works</h2>
+    <div class="how-step">
+      <div class="how-num">1</div>
+      <div>
+        <h4>You give us your WhatsApp number</h4>
+        <p>We connect it to our platform. Your existing number, your existing patients. Nothing changes for them.</p>
+      </div>
+    </div>
+    <div class="how-step">
+      <div class="how-num">2</div>
+      <div>
+        <h4>We set up your booking flow</h4>
+        <p>Your doctors, services, timings, holidays — we configure everything. You just review and approve.</p>
+      </div>
+    </div>
+    <div class="how-step">
+      <div class="how-num">3</div>
+      <div>
+        <h4>Patients start booking via WhatsApp</h4>
+        <p>They message your number, the bot guides them through booking. You get notified. That's it.</p>
       </div>
     </div>
   </section>
 
-  <!-- PRICING -->
-  <section id="pricing">
+  <section class="works-for">
     <div class="container">
-      <div class="section-title">Simple Pricing</div>
-      <p class="section-subtitle">Start free. Scale as you grow.</p>
-      <div class="pricing-grid">
-        <div class="pricing-card">
+      <h2>Works for</h2>
+      <p class="sub">Any business that takes appointments or talks to customers on WhatsApp.</p>
+      <div class="tags">
+        <span class="tag-pill">Dental Clinics</span>
+        <span class="tag-pill">Dermatologists</span>
+        <span class="tag-pill">Physiotherapy</span>
+        <span class="tag-pill">Veterinary</span>
+        <span class="tag-pill">Salons</span>
+        <span class="tag-pill">Spas</span>
+        <span class="tag-pill">Gyms</span>
+        <span class="tag-pill">Yoga Studios</span>
+        <span class="tag-pill">Coaching Classes</span>
+        <span class="tag-pill">Consultants</span>
+        <span class="tag-pill">Restaurants</span>
+        <span class="tag-pill">Hotels</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="pricing" id="pricing">
+    <div class="container">
+      <h2>Pricing</h2>
+      <p class="sub">Start free. Pay only when you're ready to scale.</p>
+      <div class="price-grid">
+        <div class="price-card">
           <h3>Starter</h3>
-          <div class="price">Free<span></span></div>
+          <div class="amt">Free</div>
+          <p class="note">For trying things out</p>
           <ul>
             <li>1 WhatsApp number</li>
-            <li>Up to 100 appointments/month</li>
-            <li>Basic reminders</li>
-            <li>Web dashboard</li>
+            <li>Up to 50 bookings/month</li>
+            <li>Appointment reminders</li>
+            <li>Basic dashboard</li>
           </ul>
-          <a href="mailto:contact@futurezminds.in" class="btn btn-outline" style="width:100%">Get Started</a>
+          <a href="mailto:hello@futurezminds.in" class="btn btn-ghost" style="width:100%">Get started</a>
         </div>
-        <div class="pricing-card popular">
-          <h3>Professional</h3>
-          <div class="price">₹1,999<span>/month</span></div>
+        <div class="price-card pop">
+          <h3>Growth</h3>
+          <div class="amt">&#8377;499 <span>/month</span></div>
+          <p class="note">For running your practice</p>
           <ul>
-            <li>1 WhatsApp number</li>
-            <li>Unlimited appointments</li>
-            <li>Smart reminders & follow-ups</li>
+            <li>Everything in Starter</li>
+            <li>Unlimited bookings</li>
             <li>Marketing campaigns</li>
-            <li>Analytics dashboard</li>
+            <li>Follow-up messages</li>
+            <li>Multi-doctor support</li>
+            <li>Priority support</li>
           </ul>
-          <a href="mailto:contact@futurezminds.in" class="btn btn-primary" style="width:100%">Get Started</a>
-        </div>
-        <div class="pricing-card">
-          <h3>Enterprise</h3>
-          <div class="price">Custom<span></span></div>
-          <ul>
-            <li>Multiple WhatsApp numbers</li>
-            <li>Custom integrations</li>
-            <li>API access</li>
-            <li>Dedicated support</li>
-            <li>White-label option</li>
-          </ul>
-          <a href="mailto:contact@futurezminds.in" class="btn btn-outline" style="width:100%">Contact Us</a>
+          <a href="mailto:hello@futurezminds.in" class="btn btn-green" style="width:100%">Get started</a>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- CTA -->
-  <section class="cta">
-    <h2>Ready to Automate Your Business?</h2>
-    <p>Join businesses already using WhatsApp to grow. Set up in minutes.</p>
-    <a href="mailto:contact@futurezminds.in" class="btn btn-primary" style="font-size: 1.1rem; padding: 0.8rem 2rem;">
-      Start Free Trial →
-    </a>
+  <section class="bottom-cta">
+    <h2>Let's set it up for you.</h2>
+    <p>Write to us. We'll get your WhatsApp booking system running within a day.</p>
+    <a href="mailto:hello@futurezminds.in" class="btn btn-green" style="padding: 0.7rem 2rem;">hello@futurezminds.in</a>
   </section>
 
-  <!-- FOOTER -->
   <footer>
-    <div class="footer-content">
-      <div class="logo">Future<span style="color:#25D366">Z</span>Minds</div>
-      <div class="footer-links">
+    <div class="foot-inner">
+      <div>&copy; 2026 FutureZMinds</div>
+      <div class="foot-links">
         <a href="/privacy.html">Privacy Policy</a>
         <a href="/terms.html">Terms of Service</a>
-        <a href="mailto:contact@futurezminds.in">Contact</a>
+        <a href="mailto:hello@futurezminds.in">Contact</a>
       </div>
-      <div>&copy; 2026 FutureZMinds. All rights reserved.</div>
     </div>
   </footer>
 

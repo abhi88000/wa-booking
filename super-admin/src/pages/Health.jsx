@@ -152,7 +152,7 @@ function TenantHealthCard({ tenant, onValidateWA, onResetConversations, validati
           <h3 className="font-semibold text-sm cursor-pointer hover:text-slate-600" onClick={onNavigate}>
             {t.name}
           </h3>
-          <p className="text-gray-500 text-sm">{t.email} � {t.plan} � WA: {t.waStatus}</p>
+          <p className="text-gray-500 text-sm">{t.email} &middot; {t.plan} &middot; WA: {t.waStatus}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => onValidateWA(t.tenantId)}

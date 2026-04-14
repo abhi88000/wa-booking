@@ -10,7 +10,7 @@ export default function TenantDetail() {
   const [resetMsg, setResetMsg] = useState('');
   const [savingFeatures, setSavingFeatures] = useState(false);
 
-  // Module definitions � the 4 core WhatsApp solutions
+  // Module definitions - the 4 core WhatsApp solutions
   const MODULES = [
     { key: 'booking', label: 'Appointment Booking', desc: 'Menu-driven doctor/service/date/time booking' },
     { key: 'payment_collection', label: 'Payments & Invoicing', desc: 'Send payment links, collect payments via WhatsApp' },
@@ -71,7 +71,7 @@ export default function TenantDetail() {
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
-        <Link to="/tenants" className="text-gray-400 hover:text-gray-600">? Back</Link>
+        <Link to="/tenants" className="text-gray-400 hover:text-gray-600">&larr; Back</Link>
         <h1 className="text-lg font-semibold text-gray-900">{tenant.business_name}</h1>
         <span className={`px-3 py-1 rounded-full text-xs font-medium ${tenant.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
           {tenant.is_active ? 'Active' : 'Inactive'}
@@ -85,8 +85,8 @@ export default function TenantDetail() {
           <dl className="space-y-3 text-sm">
             <div><dt className="text-gray-500">Type</dt><dd className="font-medium capitalize">{tenant.business_type}</dd></div>
             <div><dt className="text-gray-500">Email</dt><dd className="font-medium">{tenant.email}</dd></div>
-            <div><dt className="text-gray-500">Phone</dt><dd className="font-medium">{tenant.phone || '�'}</dd></div>
-            <div><dt className="text-gray-500">City</dt><dd className="font-medium">{tenant.city || '�'}</dd></div>
+            <div><dt className="text-gray-500">Phone</dt><dd className="font-medium">{tenant.phone || '—'}</dd></div>
+            <div><dt className="text-gray-500">City</dt><dd className="font-medium">{tenant.city || '—'}</dd></div>
             <div><dt className="text-gray-500">Slug</dt><dd className="font-medium">{tenant.slug}</dd></div>
             <div><dt className="text-gray-500">Timezone</dt><dd className="font-medium">{tenant.timezone}</dd></div>
             <div><dt className="text-gray-500">Joined</dt><dd className="font-medium">{new Date(tenant.created_at).toLocaleString()}</dd></div>
@@ -104,10 +104,10 @@ export default function TenantDetail() {
                 {tenant.wa_status}
               </span></dd>
             </div>
-            <div><dt className="text-gray-500">Phone Number</dt><dd className="font-medium">{tenant.wa_phone_number || '�'}</dd></div>
-            <div><dt className="text-gray-500">Phone Number ID</dt><dd className="font-medium text-xs">{tenant.wa_phone_number_id || '�'}</dd></div>
-            <div><dt className="text-gray-500">WABA ID</dt><dd className="font-medium text-xs">{tenant.wa_business_account_id || '�'}</dd></div>
-            <div><dt className="text-gray-500">Access Token</dt><dd className="font-medium">{tenant.wa_access_token || '�'}</dd></div>
+            <div><dt className="text-gray-500">Phone Number</dt><dd className="font-medium">{tenant.wa_phone_number || '—'}</dd></div>
+            <div><dt className="text-gray-500">Phone Number ID</dt><dd className="font-medium text-xs">{tenant.wa_phone_number_id || '—'}</dd></div>
+            <div><dt className="text-gray-500">WABA ID</dt><dd className="font-medium text-xs">{tenant.wa_business_account_id || '—'}</dd></div>
+            <div><dt className="text-gray-500">Access Token</dt><dd className="font-medium">{tenant.wa_access_token || '—'}</dd></div>
             <div><dt className="text-gray-500">Onboarding</dt><dd className="font-medium capitalize">{tenant.onboarding_status}</dd></div>
           </dl>
         </div>
@@ -137,6 +137,47 @@ export default function TenantDetail() {
               <span className="text-sm">{tenant.max_appointments_month}</span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Subscription / Plan */}
+      <div className="mt-6 bg-white rounded-lg shadow-none p-6 border border-gray-100">
+        <h2 className="font-semibold text-gray-900 mb-4">Subscription</h2>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Plan</label>
+            <select value={tenant.plan || 'trial'} onChange={async (e) => {
+              try {
+                await api.updatePlan(id, { plan: e.target.value });
+                setTenant({ ...tenant, plan: e.target.value });
+              } catch (err) { alert('Failed to update plan'); }
+            }} className="border rounded-lg px-3 py-2 text-sm outline-none">
+              <option value="trial">Trial</option>
+              <option value="starter">Starter</option>
+              <option value="pro">Pro</option>
+              <option value="enterprise">Enterprise</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs text-gray-500 block mb-1">Status</label>
+            <select value={tenant.sub_status || 'trial'} onChange={async (e) => {
+              try {
+                await api.updatePlan(id, { status: e.target.value });
+                setTenant({ ...tenant, sub_status: e.target.value });
+              } catch (err) { alert('Failed to update status'); }
+            }} className="border rounded-lg px-3 py-2 text-sm outline-none">
+              <option value="trial">Trial</option>
+              <option value="active">Active</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="expired">Expired</option>
+            </select>
+          </div>
+          {tenant.trial_ends_at && tenant.sub_status === 'trial' && (
+            <div>
+              <label className="text-xs text-gray-500 block mb-1">Trial Ends</label>
+              <p className="text-sm font-medium">{new Date(tenant.trial_ends_at).toLocaleDateString()}</p>
+            </div>
+          )}
         </div>
       </div>
 

@@ -82,10 +82,12 @@ router.get('/tenants/:id', async (req, res, next) => {
   try {
     const { rows } = await pool.query(
       `SELECT t.*, 
+        s.plan, s.status as sub_status, s.trial_ends_at,
         (SELECT COUNT(*) FROM appointments WHERE tenant_id = t.id) as total_appointments,
         (SELECT COUNT(*) FROM patients WHERE tenant_id = t.id) as total_patients,
         (SELECT COUNT(*) FROM doctors WHERE tenant_id = t.id AND is_active = true) as active_doctors
        FROM tenants t
+       LEFT JOIN subscriptions s ON s.tenant_id = t.id
        WHERE t.id = $1`,
       [req.params.id]
     );
@@ -144,6 +146,32 @@ router.patch('/tenants/:id/features', async (req, res, next) => {
     if (rows.length === 0) return res.status(404).json({ error: 'Tenant not found' });
 
     logger.info(`Tenant ${rows[0].id} features updated:`, sanitized);
+    res.json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Update Tenant Plan ────────────────────────────────────
+router.patch('/tenants/:id/plan', async (req, res, next) => {
+  try {
+    const { plan, status } = req.body;
+    const validPlans = ['trial', 'starter', 'pro', 'enterprise'];
+    const validStatuses = ['trial', 'active', 'cancelled', 'expired'];
+    if (plan && !validPlans.includes(plan)) return res.status(400).json({ error: 'Invalid plan' });
+    if (status && !validStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+
+    const { rows } = await pool.query(
+      `UPDATE subscriptions SET 
+        plan = COALESCE($1, plan), 
+        status = COALESCE($2, status),
+        trial_ends_at = CASE WHEN $2 = 'active' THEN NULL ELSE trial_ends_at END
+       WHERE tenant_id = $3 RETURNING *`,
+      [plan || null, status || null, req.params.id]
+    );
+    if (rows.length === 0) return res.status(404).json({ error: 'Subscription not found' });
+
+    logger.info(`Tenant ${req.params.id} plan updated: ${plan || 'unchanged'}, status: ${status || 'unchanged'}`);
     res.json(rows[0]);
   } catch (err) {
     next(err);

@@ -9,7 +9,7 @@
 //   node scripts/validate.js                          # localhost
 //   node scripts/validate.js https://api.futurezminds.in  # production
 
-require('dotenv').config();
+try { require('dotenv').config(); } catch (_) { /* dotenv optional */ }
 const http = require('http');
 const https = require('https');
 

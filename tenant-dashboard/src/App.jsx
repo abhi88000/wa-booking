@@ -95,10 +95,9 @@ function Sidebar({ onLogout }) {
       {/* Mobile header */}
       <div className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-100 flex items-center justify-between px-4 sm:hidden z-30 shadow-sm">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: 'linear-gradient(135deg, #25D366, #128C7E)' }}>
-            {(tenantInfo.businessName || 'M')[0]}
-          </div>
-          <span className="font-bold text-gray-900 text-sm truncate">{tenantInfo.businessName || 'My Business'}</span>
+          <span className="text-base font-black tracking-tight text-[#0f172a]">
+            Future<span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, #25D366, #128C7E)' }}>Z</span>Minds
+          </span>
         </div>
         <button onClick={() => setOpen(!open)} className="text-gray-700 p-1">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,15 +115,20 @@ function Sidebar({ onLogout }) {
         ${open ? 'translate-x-0' : '-translate-x-full'} sm:translate-x-0`}>
 
         <div className="p-4 border-b border-gray-100">
+          <div className="mb-3">
+            <span className="text-lg font-black tracking-tight text-[#0f172a]">
+              Future<span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, #25D366, #128C7E)' }}>Z</span>Minds
+            </span>
+          </div>
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold shadow-sm" style={{ background: 'linear-gradient(135deg, #25D366, #128C7E)' }}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-sm" style={{ background: 'linear-gradient(135deg, #25D366, #128C7E)' }}>
               {(tenantInfo.businessName || 'M')[0]}
             </div>
             <div>
-              <h1 className="text-sm font-bold text-gray-900 truncate leading-tight">
+              <h1 className="text-[13px] font-semibold text-gray-900 truncate leading-tight">
                 {tenantInfo.businessName || 'My Business'}
               </h1>
-              <p className="text-emerald-600 text-[10px] font-medium mt-0.5">WhatsApp Booking</p>
+              <p className="text-gray-400 text-[10px] mt-0.5">WhatsApp Booking</p>
             </div>
           </div>
           {clinics.length > 1 && (

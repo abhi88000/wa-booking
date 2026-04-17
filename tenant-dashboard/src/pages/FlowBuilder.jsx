@@ -37,52 +37,112 @@ function InfoTip({ text, example }) {
 }
 
 /* ── Phone Preview ── */
-function PhonePreview({ flow, previewNode, onTapButton }) {
+function PhonePreview({ flow, previewNode, onTapButton, labels }) {
   const node = flow?.[previewNode];
+  const [showBookingPreview, setShowBookingPreview] = useState(false);
   if (!node) return null;
+
+  const timeNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  const hasInteractiveButtons = (node.buttons || []).length > 0 && (node.buttons || []).length <= 3;
+  const hasList = (node.buttons || []).length > 3;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-gray-700">Live Preview — What your customer sees</h3>
-        {previewNode !== 'start' && (
-          <button onClick={() => onTapButton('start')} className="text-xs text-slate-500 hover:text-slate-700 transition">← Back to Start</button>
-        )}
-      </div>
-      <div className="mx-auto w-72 bg-[#efeae2] rounded-2xl overflow-hidden shadow-inner border border-gray-300">
-        {/* Top bar */}
-        <div className="bg-[#075e54] text-white px-4 py-2 flex items-center gap-2">
-          <div className="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center text-xs">🤖</div>
-          <span className="text-sm font-medium">Your Bot</span>
+        <div className="flex gap-2">
+          {previewNode !== 'start' && (
+            <button onClick={() => onTapButton('start')} className="text-xs text-slate-500 hover:text-slate-700 transition">← Back to Start</button>
+          )}
         </div>
-        {/* Chat area */}
-        <div className="px-3 py-4 min-h-[140px]">
-          <div className="bg-white rounded-lg px-3 py-2 text-sm text-gray-800 shadow-sm max-w-[220px] whitespace-pre-wrap">
-            {node.message || '(empty message)'}
+      </div>
+      <div className="mx-auto w-[300px] bg-[#efeae2] rounded-2xl overflow-hidden shadow-lg border border-gray-300" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'200\' height=\'200\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cdefs%3E%3Cpattern id=\'p\' width=\'40\' height=\'40\' patternUnits=\'userSpaceOnUse\'%3E%3Cpath d=\'M0 20h40M20 0v40\' stroke=\'%23d5cfca\' stroke-width=\'.3\' fill=\'none\'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width=\'200\' height=\'200\' fill=\'%23efeae2\'/%3E%3Crect width=\'200\' height=\'200\' fill=\'url(%23p)\'/%3E%3C/svg%3E")' }}>
+        {/* WhatsApp top bar */}
+        <div className="bg-[#075e54] text-white px-3 py-2 flex items-center gap-2">
+          <span className="text-white/60 text-sm">←</span>
+          <div className="w-8 h-8 bg-[#25d366]/30 rounded-full flex items-center justify-center text-sm">🤖</div>
+          <div className="flex-1">
+            <div className="text-sm font-medium leading-tight">Your Business</div>
+            <div className="text-[10px] text-white/60">online</div>
           </div>
-          {(node.buttons || []).length > 0 && (
-            <div className="mt-2 space-y-1">
-              {(node.buttons || []).map((btn, i) => (
-                <button key={i} onClick={() => {
-                  if (btn.action === 'next' && btn.next && flow[btn.next]) onTapButton(btn.next);
-                }}
-                  className="block w-full text-left bg-white rounded-lg px-3 py-1.5 text-sm text-[#075e54] font-medium shadow-sm hover:bg-gray-50 transition border border-gray-100">
-                  {btn.label || '(no label)'}
+        </div>
+
+        {/* Chat area */}
+        <div className="px-3 py-3 min-h-[160px]">
+          {/* Bot message bubble */}
+          <div className="relative bg-white rounded-lg rounded-tl-none shadow-sm max-w-[250px]">
+            <div className="px-3 py-2 text-[13px] text-gray-800 whitespace-pre-wrap leading-snug">
+              {node.message || '(empty message)'}
+              <span className="float-right text-[10px] text-gray-400 mt-1 ml-2">{timeNow}</span>
+            </div>
+
+            {/* Interactive buttons (≤3) — shown as WhatsApp-style button row below message */}
+            {hasInteractiveButtons && (
+              <div className="border-t border-gray-100">
+                {(node.buttons || []).map((btn, i) => (
+                  <button key={i} onClick={() => {
+                    if (btn.action === 'next' && btn.next && flow[btn.next]) onTapButton(btn.next);
+                    if (btn.action === 'booking_flow') setShowBookingPreview(true);
+                  }}
+                    className={`block w-full text-center py-2 text-[13px] text-[#00a5f4] font-medium hover:bg-gray-50 transition ${i < (node.buttons || []).length - 1 ? 'border-b border-gray-100' : ''}`}>
+                    {btn.label || '(no label)'}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* List menu (>3 buttons) — shown as WhatsApp list button */}
+          {hasList && (
+            <div className="mt-2 max-w-[250px]">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-100">
+                <button className="w-full text-center py-2 text-[13px] text-[#00a5f4] font-medium flex items-center justify-center gap-1">
+                  <span>☰</span> View Options ({(node.buttons || []).length} items)
                 </button>
-              ))}
+              </div>
             </div>
           )}
         </div>
+
         {/* Input bar */}
-        <div className="bg-[#f0f0f0] px-3 py-2 flex items-center gap-2">
-          <div className="flex-1 bg-white rounded-full px-3 py-1 text-xs text-gray-400">Type a message...</div>
-          <div className="w-6 h-6 bg-[#075e54] rounded-full flex items-center justify-center text-white text-[10px]">▶</div>
+        <div className="bg-[#f0f0f0] px-2 py-1.5 flex items-center gap-1.5">
+          <span className="text-gray-400 text-lg">😊</span>
+          <div className="flex-1 bg-white rounded-full px-3 py-1.5 text-xs text-gray-400">Type a message</div>
+          <div className="w-8 h-8 bg-[#075e54] rounded-full flex items-center justify-center">
+            <span className="text-white text-sm">🎤</span>
+          </div>
         </div>
       </div>
       <p className="text-center text-[11px] text-gray-400 mt-2">
-        {previewNode === 'start' ? 'This is the first screen your customer sees' : `Viewing: ${previewNode}`}
-        {(node.buttons || []).some(b => b.action === 'next' && b.next) && ' · Tap a button to preview the next screen'}
+        {previewNode === 'start' ? 'This is the first message your customer sees when they say "Hi"' : `Viewing screen: ${previewNode}`}
+        {(node.buttons || []).some(b => b.action === 'next' && b.next) && ' · Tap a button to navigate'}
       </p>
+
+      {/* Booking Flow Preview Modal */}
+      {showBookingPreview && (
+        <div className="mt-3 bg-slate-50 border border-slate-200 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-sm font-semibold text-gray-700">What happens when customer taps a booking button</h4>
+            <button onClick={() => setShowBookingPreview(false)} className="text-xs text-gray-400 hover:text-gray-600">✕ Close</button>
+          </div>
+          <div className="space-y-2">
+            {[
+              { step: 1, icon: '👤', text: `Customer picks a ${labels?.staff || 'Staff'} from available list` },
+              { step: 2, icon: '🗓️', text: 'Customer picks a date (only days with availability shown)' },
+              { step: 3, icon: '🕐', text: 'Customer picks a time slot from available slots' },
+              { step: 4, icon: '📋', text: `Bot shows ${labels?.booking || 'Booking'} summary — ${labels?.staff || 'Staff'}, date, time` },
+              { step: 5, icon: '✅', text: `Customer confirms → ${labels?.booking || 'Booking'} is saved & confirmation sent` },
+            ].map(s => (
+              <div key={s.step} className="flex items-center gap-2 text-sm">
+                <span className="w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-500">{s.step}</span>
+                <span className="text-lg">{s.icon}</span>
+                <span className="text-gray-600">{s.text}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-gray-400 mt-2">This flow is automatic — no setup needed. It uses your staff, services & working hours from Settings.</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -294,10 +354,7 @@ export default function FlowBuilder() {
       {saved && <div className="mb-4 text-sm text-green-600 bg-green-50 rounded-lg px-4 py-2">Flow saved successfully</div>}
 
       {/* Phone Preview */}
-      <PhonePreview flow={flow} previewNode={previewNode} onTapButton={setPreviewNode} />
-
-      {/* Flow Map */}
-      <FlowMap flow={flow} nodeIds={nodeIds} onJumpTo={(id) => setEditingNode(editingNode === id ? null : id)} />
+      <PhonePreview flow={flow} previewNode={previewNode} onTapButton={setPreviewNode} labels={labels} />
 
       {/* Labels */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-4">
@@ -327,6 +384,9 @@ export default function FlowBuilder() {
           placeholder="Sorry, I didn't understand. Please pick an option." />
       </div>
 
+      {/* Flow Map */}
+      <FlowMap flow={flow} nodeIds={nodeIds} onJumpTo={(id) => { setEditingNode(editingNode === id ? null : id); setPreviewNode(id); }} />
+
       {/* Screen Editor Section */}
       <div className="mb-3">
         <h3 className="text-sm font-semibold text-gray-700 mb-1">Conversation Screens</h3>
@@ -350,9 +410,12 @@ export default function FlowBuilder() {
       ))}
 
       <button onClick={addNode}
-        className="w-full mt-2 py-4 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-400 hover:border-gray-300 hover:text-gray-500 transition">
+        className="w-full mt-2 py-4 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-400 hover:border-gray-300 hover:text-gray-500 transition text-left px-5">
         <span className="block font-medium">+ Add a new conversation screen</span>
-        <span className="block text-xs mt-0.5">Create an additional screen for branching conversations (e.g. Services → sub-menu)</span>
+        <span className="block text-xs mt-1 text-gray-400 leading-relaxed">
+          Most businesses only need the Start Screen. Add extra screens only if you want a <strong>sub-menu</strong>.<br/>
+          Example: Start Screen has a "Our Services" button → it opens a new screen listing Hair, Nails, Spa → each of those starts booking.
+        </span>
       </button>
     </div>
   );
@@ -393,7 +456,7 @@ function NodeCard({ nodeId, node, stepNumber, allNodes, flow, isEditing, onEdit,
       const target = flow?.[btn.next];
       return `→ Goes to screen "${btn.next}" ("${target?.message?.substring(0, 30) || '...'}...")`;
     }
-    if (btn.action === 'booking_flow') return '→ Opens the booking process (customer picks staff, date, time)';
+    if (btn.action === 'booking_flow') return '→ Starts booking: customer picks staff → date → time → confirms (automatic)';
     if (btn.action === 'text') return '→ Bot replies with a text message';
     if (btn.action === 'ai') return '→ Hands the conversation to AI assistant';
     return btn.action;

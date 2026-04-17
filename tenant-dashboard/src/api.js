@@ -64,6 +64,16 @@ export default {
   // Chat
   getChat: (patientId) => api.get(`/tenant/chats/${patientId}`),
 
+  // Conversations / Inbox
+  getConversations: (params) => api.get('/tenant/conversations', { params }),
+  getConversationMessages: (patientId, params) => api.get(`/tenant/conversations/${patientId}/messages`, { params }),
+  sendReply: (patientId, message) => api.post(`/tenant/conversations/${patientId}/reply`, { message }),
+
+  // Flow Config
+  getFlowConfig: () => api.get('/tenant/flow-config'),
+  saveFlowConfig: (data) => api.put('/tenant/flow-config', data),
+  saveAIConfig: (data) => api.put('/tenant/ai-config', data),
+
   // Settings
   getSettings: () => api.get('/tenant/settings'),
   updateSettings: (data) => api.patch('/tenant/settings', data),

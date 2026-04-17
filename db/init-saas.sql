@@ -93,6 +93,15 @@ CREATE TABLE tenants (
   max_doctors       INTEGER DEFAULT 3,
   max_appointments_month INTEGER DEFAULT 100,
   
+  -- Flow engine (decision tree config)
+  flow_config       JSONB,              -- tenant's conversation flow tree
+  ai_config         JSONB,              -- AI chatbot configuration
+  labels            JSONB DEFAULT '{
+    "staff": "Doctor",
+    "customer": "Patient",
+    "booking": "Appointment"
+  }',
+  
   is_active         BOOLEAN DEFAULT true,
   created_at        TIMESTAMPTZ DEFAULT NOW(),
   updated_at        TIMESTAMPTZ DEFAULT NOW()

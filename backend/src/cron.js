@@ -162,6 +162,14 @@ async function startCron() {
     await pool.query(`ALTER TABLE reminders ADD COLUMN IF NOT EXISTS last_error TEXT`);
   } catch (e) { /* columns already exist */ }
 
+  // Safe schema migration — flow engine + AI config
+  try {
+    await pool.query(`ALTER TABLE tenants ADD COLUMN IF NOT EXISTS flow_config JSONB`);
+    await pool.query(`ALTER TABLE tenants ADD COLUMN IF NOT EXISTS ai_config JSONB`);
+    await pool.query(`ALTER TABLE tenants ADD COLUMN IF NOT EXISTS labels JSONB DEFAULT '{"staff": "Doctor", "customer": "Patient", "booking": "Appointment"}'`);
+    logger.info('Schema migration: flow_config, ai_config, labels columns ensured', CRON);
+  } catch (e) { /* columns already exist */ }
+
   // Initial runs
   await runJob('reminders (initial)', () => reminderService.processPendingReminders());
   await runJob('stuck-conversations (initial)', () => tenantHealth.resetStuckConversations());

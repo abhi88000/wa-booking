@@ -93,9 +93,14 @@ function Sidebar({ onLogout }) {
   return (
     <>
       {/* Mobile header */}
-      <div className="fixed top-0 left-0 right-0 h-14 bg-white border-b flex items-center justify-between px-4 sm:hidden z-30">
-        <span className="font-semibold text-gray-900 text-sm truncate">{tenantInfo.businessName || 'My Business'}</span>
-        <button onClick={() => setOpen(!open)} className="text-gray-600 p-1">
+      <div className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-100 flex items-center justify-between px-4 sm:hidden z-30 shadow-sm">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-bold" style={{ background: 'linear-gradient(135deg, #25D366, #128C7E)' }}>
+            {(tenantInfo.businessName || 'M')[0]}
+          </div>
+          <span className="font-bold text-gray-900 text-sm truncate">{tenantInfo.businessName || 'My Business'}</span>
+        </div>
+        <button onClick={() => setOpen(!open)} className="text-gray-700 p-1">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {open ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}
@@ -107,17 +112,24 @@ function Sidebar({ onLogout }) {
       {open && <div className="fixed inset-0 bg-black/30 z-30 sm:hidden" onClick={() => setOpen(false)} />}
 
       {/* Sidebar */}
-      <aside className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 flex flex-col z-40 transition-transform
+      <aside className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-100 flex flex-col z-40 transition-transform duration-300
         ${open ? 'translate-x-0' : '-translate-x-full'} sm:translate-x-0`}>
 
-        <div className="p-4 border-b">
-          <h1 className="text-sm font-semibold text-gray-900 truncate">
-            {tenantInfo.businessName || 'My Business'}
-          </h1>
-          <p className="text-gray-400 text-[11px] mt-0.5">WhatsApp Booking</p>
+        <div className="p-4 border-b border-gray-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white text-sm font-bold shadow-sm" style={{ background: 'linear-gradient(135deg, #25D366, #128C7E)' }}>
+              {(tenantInfo.businessName || 'M')[0]}
+            </div>
+            <div>
+              <h1 className="text-sm font-bold text-gray-900 truncate leading-tight">
+                {tenantInfo.businessName || 'My Business'}
+              </h1>
+              <p className="text-emerald-600 text-[10px] font-medium mt-0.5">WhatsApp Booking</p>
+            </div>
+          </div>
           {clinics.length > 1 && (
             <select value={clinic} onChange={e => setClinic(e.target.value)}
-              className="mt-2 w-full text-xs border border-gray-200 rounded-md px-2 py-1.5 outline-none focus:border-slate-400 text-gray-600 bg-slate-50">
+              className="mt-3 w-full text-xs border border-gray-200 rounded-lg px-2 py-1.5 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100 text-gray-700 bg-gray-50 transition-colors">
               <option value="all">All Clinics</option>
               {clinics.map((c, i) => (
                 <option key={i} value={clinicLabel(c)}>{clinicLabel(c)}</option>
@@ -127,22 +139,25 @@ function Sidebar({ onLogout }) {
         </div>
 
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-          {links.map(link => (
-            <Link key={link.to} to={link.to} onClick={() => setOpen(false)}
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg transition text-sm
-                ${location.pathname === link.to 
-                  ? 'bg-slate-100 text-slate-800 font-medium' 
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}>
-              <svg className="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d={link.icon} />
-              </svg>
-              {link.label}
-            </Link>
-          ))}
+          {links.map(link => {
+            const active = location.pathname === link.to;
+            return (
+              <Link key={link.to} to={link.to} onClick={() => setOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 text-sm
+                  ${active
+                    ? 'bg-emerald-50 text-emerald-700 font-semibold shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'}`}>
+                <svg className={`w-[18px] h-[18px] flex-shrink-0 transition-colors ${active ? 'text-emerald-600' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={active ? 2 : 1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d={link.icon} />
+                </svg>
+                {link.label}
+              </Link>
+            );
+          })}
         </nav>
-        <div className="p-3 border-t">
+        <div className="p-3 border-t border-gray-100">
           <button onClick={onLogout}
-            className="w-full text-left px-3 py-2 text-gray-400 hover:text-gray-600 transition text-sm">
+            className="w-full text-left px-3 py-2 text-gray-400 hover:text-red-500 transition-colors duration-200 text-sm font-medium rounded-lg hover:bg-red-50">
             Log out
           </button>
         </div>

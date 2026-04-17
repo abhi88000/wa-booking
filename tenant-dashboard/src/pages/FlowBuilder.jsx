@@ -43,9 +43,9 @@ function Preview({ flow, screen, onTap, labels }) {
   const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
   return (
-    <div className="bg-white rounded-lg border border-gray-100 animate-slideUp" style={{ animationDelay: '60ms' }}>
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm animate-slideUp" style={{ animationDelay: '60ms' }}>
       <div className="flex justify-between items-center px-4 pt-4 pb-2">
-        <h2 className="text-sm font-semibold text-gray-800">Preview</h2>
+        <h2 className="text-sm font-bold text-gray-900">Preview</h2>
         <div className="flex gap-2 items-center">
           {screen !== 'start' && (
             <button onClick={() => onTap('start')} className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">Back to start</button>
@@ -135,10 +135,10 @@ function FlowMap({ flow, nodeIds, onJump }) {
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-100 animate-slideUp" style={{ animationDelay: '120ms' }}>
+    <div className="bg-white rounded-xl border border-gray-100 shadow-sm animate-slideUp" style={{ animationDelay: '120ms' }}>
       <div className="px-4 pt-4 pb-2">
-        <h2 className="text-sm font-semibold text-gray-800">Conversation Map</h2>
-        <p className="text-xs text-gray-400 mt-0.5">How your screens connect</p>
+        <h2 className="text-sm font-bold text-gray-900">Conversation Map</h2>
+        <p className="text-xs text-gray-500 mt-0.5">How your screens connect</p>
       </div>
       <div className="px-4 pb-4 space-y-2">
         {nodeIds.map((id, idx) => {
@@ -253,7 +253,7 @@ export default function FlowBuilder() {
 
   if (loading) return (
     <div className="flex items-center justify-center py-32">
-      <div className="w-6 h-6 border-2 border-gray-200 border-t-gray-600 rounded-full animate-spin" />
+      <div className="w-6 h-6 border-2 border-emerald-100 border-t-emerald-500 rounded-full animate-spin" />
     </div>
   );
 
@@ -262,17 +262,18 @@ export default function FlowBuilder() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
         <div>
-          <h1 className="text-lg sm:text-xl font-semibold text-gray-900">Flow Builder</h1>
-          <p className="text-xs text-gray-400 mt-0.5">Configure your WhatsApp bot conversation</p>
+          <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight">Flow Builder</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Configure your WhatsApp bot conversation</p>
         </div>
         <button onClick={save} disabled={saving}
-          className="w-full sm:w-auto px-5 py-2 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-900 disabled:opacity-50 transition">
+          className="w-full sm:w-auto px-6 py-2.5 text-white text-sm font-semibold rounded-xl disabled:opacity-50 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-200 active:scale-[0.98]"
+          style={{ background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)' }}>
           {saving ? 'Saving...' : saved ? 'Saved' : 'Save Changes'}
         </button>
       </div>
 
-      {error && <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-4 py-2.5 animate-slideDown">{error}</div>}
-      {saved && <div className="mb-4 text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-4 py-2.5 animate-slideDown">Flow saved successfully</div>}
+      {error && <div className="mb-4 text-sm font-medium text-red-700 bg-red-50 border border-red-100 rounded-xl px-4 py-3 animate-slideDown">{error}</div>}
+      {saved && <div className="mb-4 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 animate-slideDown">Flow saved successfully</div>}
 
       {/* Top: Preview + Map side by side on desktop */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
@@ -282,8 +283,8 @@ export default function FlowBuilder() {
 
       {/* Labels + Fallback in a 2-col grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
-        <div className="bg-white rounded-lg border border-gray-100 p-4 animate-slideUp" style={{ animationDelay: '180ms' }}>
-          <h2 className="text-sm font-semibold text-gray-800 mb-3">Business Labels</h2>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 animate-slideUp" style={{ animationDelay: '180ms' }}>
+          <h2 className="text-sm font-bold text-gray-900 mb-3">Business Labels</h2>
           <div className="space-y-3">
             {Object.entries(LABEL_HELP).map(([key, h]) => (
               <div key={key}>
@@ -297,9 +298,9 @@ export default function FlowBuilder() {
             ))}
           </div>
         </div>
-        <div className="bg-white rounded-lg border border-gray-100 p-4 animate-slideUp" style={{ animationDelay: '240ms' }}>
-          <h2 className="text-sm font-semibold text-gray-800 mb-1">Fallback Message</h2>
-          <p className="text-xs text-gray-400 mb-3">Sent when customer types something instead of tapping a button</p>
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 animate-slideUp" style={{ animationDelay: '240ms' }}>
+          <h2 className="text-sm font-bold text-gray-900 mb-1">Fallback Message</h2>
+          <p className="text-xs text-gray-500 mb-3">Sent when customer types something instead of tapping a button</p>
           <textarea value={fallback} onChange={e => setFlow(p => ({ ...p, fallback: e.target.value }))} rows={3}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100 transition resize-none" />
         </div>
@@ -307,8 +308,8 @@ export default function FlowBuilder() {
 
       {/* Screens */}
       <div className="mb-3 animate-slideUp" style={{ animationDelay: '300ms' }}>
-        <h2 className="text-sm font-semibold text-gray-800">Screens</h2>
-        <p className="text-xs text-gray-400 mt-0.5">Each screen is a message your customer sees. Click to edit.</p>
+        <h2 className="text-sm font-bold text-gray-900">Screens</h2>
+        <p className="text-xs text-gray-500 mt-0.5">Each screen is a message your customer sees. Click to edit.</p>
       </div>
 
       {nodeIds.map((nodeId, idx) => (
@@ -320,11 +321,11 @@ export default function FlowBuilder() {
       ))}
 
       <button onClick={addNode}
-        className="w-full mt-2 py-3 border-2 border-dashed border-gray-200 rounded-lg text-sm font-medium text-gray-400 hover:border-emerald-300 hover:text-emerald-600 transition animate-slideUp"
+        className="w-full mt-2 py-3.5 border-2 border-dashed border-gray-200 rounded-xl text-sm font-semibold text-gray-400 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all duration-300 animate-slideUp"
         style={{ animationDelay: `${360 + nodeIds.length * 60}ms` }}>
         + Add Screen
       </button>
-      <p className="text-[10px] text-gray-400 mt-1 px-1">Most businesses only need the Start Screen. Add extra screens for sub-menus.</p>
+      <p className="text-[11px] text-gray-500 mt-1.5 px-1">Most businesses only need the Start Screen. Add extra screens for sub-menus.</p>
     </div>
   );
 }
@@ -353,8 +354,8 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
   };
 
   return (
-    <div className={`bg-white rounded-lg border mb-2 transition-all duration-200 animate-slideUp
-      ${open ? 'border-emerald-200 shadow-sm' : 'border-gray-100 hover:border-gray-200'}`}
+    <div className={`bg-white rounded-xl border mb-2.5 transition-all duration-200 animate-slideUp
+      ${open ? 'border-emerald-300 shadow-md ring-1 ring-emerald-100' : 'border-gray-100 shadow-sm hover:border-gray-200 hover:shadow'}`}
       style={{ animationDelay: `${delay}ms` }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 cursor-pointer" onClick={onToggle}>
@@ -364,13 +365,13 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
             {step}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-800">{isStart ? 'Start Screen' : nodeId}</p>
-            <p className="text-xs text-gray-400 truncate max-w-[180px] sm:max-w-xs">{node.message?.substring(0, 55)}</p>
+            <p className="text-sm font-semibold text-gray-900">{isStart ? 'Start Screen' : nodeId}</p>
+            <p className="text-xs text-gray-500 truncate max-w-[180px] sm:max-w-xs">{node.message?.substring(0, 55)}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {!open && btns.length > 0 && (
-            <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded hidden sm:inline">{btns.length} buttons</span>
+            <span className="text-[10px] font-medium text-gray-500 bg-gray-50 px-2 py-0.5 rounded hidden sm:inline">{btns.length} buttons</span>
           )}
           <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
             fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
@@ -455,7 +456,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
               ))}
             </div>
             {btns.length < 10 && (
-              <button onClick={addBtn} className="mt-2 text-xs font-medium text-emerald-600 hover:text-emerald-700">+ Add Button</button>
+              <button onClick={addBtn} className="mt-3 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition">+ Add Button</button>
             )}
           </div>
 

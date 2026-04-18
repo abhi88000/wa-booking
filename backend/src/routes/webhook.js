@@ -14,6 +14,7 @@ const pool = require('../db/pool');
 const logger = require('../utils/logger');
 const WhatsAppService = require('../services/whatsapp');
 const MessageRouter = require('../services/messageRouter');
+const tenantCache = require('../services/tenantCache');
 
 const WH = { category: 'webhook' }; // tag for webhook-specific log file
 
@@ -163,13 +164,7 @@ router.post('/whatsapp', async (req, res) => {
 // ── Resolve Tenant from Phone Number ID ───────────────────
 async function resolveTenant(phoneNumberId) {
   try {
-    const { rows } = await pool.query(
-      `SELECT t.* FROM tenants t
-       JOIN wa_number_registry r ON r.tenant_id = t.id
-       WHERE r.wa_phone_number_id = $1 AND r.is_active = true AND t.is_active = true`,
-      [phoneNumberId]
-    );
-    return rows[0] || null;
+    return await tenantCache.getByPhoneNumberId(phoneNumberId);
   } catch (err) {
     logger.error('resolveTenant error:', err, WH);
     return null;

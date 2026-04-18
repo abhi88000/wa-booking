@@ -13,6 +13,7 @@
 require('dotenv').config();
 const logger = require('./utils/logger');
 const reminderService = require('./services/reminders');
+const ScheduledMessageService = require('./services/scheduledMessages');
 const tenantHealth = require('./services/tenantHealth');
 const pool = require('./db/pool');
 
@@ -54,6 +55,17 @@ async function runJob(name, fn) {
 function startReminderJob() {
   setInterval(() => runJob('reminders', async () => {
     const count = await reminderService.processPendingReminders();
+    return count > 0 ? `sent ${count}` : undefined;
+  }), 60 * 1000);
+}
+
+// ════════════════════════════════════════════════════════════
+// JOB 1b: Send Scheduled Messages (every 60s)
+// ════════════════════════════════════════════════════════════
+const scheduledMsgService = new ScheduledMessageService();
+function startScheduledMessageJob() {
+  setInterval(() => runJob('scheduled-messages', async () => {
+    const count = await scheduledMsgService.processPending();
     return count > 0 ? `sent ${count}` : undefined;
   }), 60 * 1000);
 }
@@ -176,6 +188,7 @@ async function startCron() {
 
   // Start all recurring jobs
   startReminderJob();
+  startScheduledMessageJob();
   startStuckConversationJob();
   startWATokenCheckJob();
   startCleanupJob();
@@ -183,6 +196,7 @@ async function startCron() {
 
   logger.info('All cron jobs scheduled:');
   logger.info('  • Reminders:          every 60s');
+  logger.info('  • Scheduled messages:  every 60s');
   logger.info('  • Stuck conversations: every 15min');
   logger.info('  • WA token validation: every 1h');
   logger.info('  • Data cleanup:        every 24h');

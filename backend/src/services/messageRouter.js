@@ -15,11 +15,51 @@ const FlowEngine = require('./flowEngine');
 const AIService = require('./aiService');
 const logger = require('../utils/logger');
 
+// ── Module state ownership ────────────────────────────────
+// Each module declares which states it owns.
+// When a new module is added, register its states here.
+const MODULE_STATES = {
+  booking: [
+    'awaiting_clinic', 'awaiting_doctor', 'awaiting_service',
+    'awaiting_date', 'awaiting_time', 'awaiting_confirm',
+    'awaiting_cancel', 'awaiting_reschedule',
+    'reschedule_awaiting_date', 'reschedule_awaiting_time',
+    'awaiting_reschedule_response'
+  ],
+  // Future modules register here:
+  // payment: ['awaiting_payment_method', 'awaiting_payment_confirm'],
+};
+
+// Build a reverse lookup: state → module name
+const STATE_TO_MODULE = {};
+for (const [mod, states] of Object.entries(MODULE_STATES)) {
+  for (const s of states) STATE_TO_MODULE[s] = mod;
+}
+
 class MessageRouter {
   constructor(tenant, patient, waService) {
     this.tenant = tenant;
     this.patient = patient;
     this.wa = waService;
+  }
+
+  /** Build module handlers map for FlowEngine */
+  _moduleHandlers() {
+    return {
+      booking: async () => {
+        const engine = new BookingEngine(this.tenant, this.patient, this.wa);
+        return await engine.startBookingFlow();
+      },
+      // Future: payment: async () => { ... }
+    };
+  }
+
+  /** Get the right engine for a module name */
+  _getModuleEngine(moduleName) {
+    switch (moduleName) {
+      case 'booking': return new BookingEngine(this.tenant, this.patient, this.wa);
+      default: return null;
+    }
   }
 
   /**
@@ -32,35 +72,29 @@ class MessageRouter {
 
     // ── Global reset: "flow_home" button → back to flow start ──
     if (content === 'flow_home' && this.tenant.flow_config) {
-      const flow = new FlowEngine(this.tenant, this.patient, this.wa);
+      const flow = new FlowEngine(this.tenant, this.patient, this.wa, this._moduleHandlers());
       return await flow.showNode('start');
     }
 
-    // ── BOOKING ENGINE STATES ──
-    // If the patient is mid-booking (awaiting_doctor, awaiting_time, etc.)
-    // always route to BookingEngine regardless of flow_config.
-    const bookingStates = [
-      'awaiting_clinic', 'awaiting_doctor', 'awaiting_service',
-      'awaiting_date', 'awaiting_time', 'awaiting_confirm',
-      'awaiting_cancel', 'awaiting_reschedule',
-      'reschedule_awaiting_date', 'reschedule_awaiting_time',
-      'awaiting_reschedule_response'
-    ];
-
-    if (bookingStates.includes(currentState)) {
+    // ── MODULE STATES (dynamic lookup) ──
+    // If the user is mid-module (booking, payment, etc.), route to that module
+    const activeModule = STATE_TO_MODULE[currentState];
+    if (activeModule) {
       // Let user escape back to flow menu
       if (this.tenant.flow_config && ['menu', 'home', 'start'].includes(msg)) {
-        const flow = new FlowEngine(this.tenant, this.patient, this.wa);
+        const flow = new FlowEngine(this.tenant, this.patient, this.wa, this._moduleHandlers());
         return await flow.showNode('start');
       }
-      const engine = new BookingEngine(this.tenant, this.patient, this.wa);
-      return await engine.handleMessage(content, messageType, interactiveData);
+      const engine = this._getModuleEngine(activeModule);
+      if (engine) {
+        return await engine.handleMessage(content, messageType, interactiveData);
+      }
     }
 
     // ── AWAITING INPUT STATE ──
     // If the patient is in an input node, route to FlowEngine
     if (currentState === 'awaiting_input' && this.tenant.flow_config) {
-      const flow = new FlowEngine(this.tenant, this.patient, this.wa);
+      const flow = new FlowEngine(this.tenant, this.patient, this.wa, this._moduleHandlers());
       return await flow.handleMessage(content, messageType, interactiveData);
     }
 
@@ -70,7 +104,7 @@ class MessageRouter {
       if (['menu', 'home', 'start', 'hi', 'hello'].includes(msg)) {
         // Exit AI mode → back to flow
         if (this.tenant.flow_config) {
-          const flow = new FlowEngine(this.tenant, this.patient, this.wa);
+          const flow = new FlowEngine(this.tenant, this.patient, this.wa, this._moduleHandlers());
           return await flow.showNode('start');
         }
         // No flow config → booking engine
@@ -86,7 +120,7 @@ class MessageRouter {
     // ── FLOW ENGINE ──
     // If tenant has a flow_config, use the FlowEngine
     if (this.tenant.flow_config && Object.keys(this.tenant.flow_config).length > 0) {
-      const flow = new FlowEngine(this.tenant, this.patient, this.wa);
+      const flow = new FlowEngine(this.tenant, this.patient, this.wa, this._moduleHandlers());
       return await flow.handleMessage(content, messageType, interactiveData);
     }
 

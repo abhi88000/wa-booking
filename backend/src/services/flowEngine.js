@@ -49,13 +49,14 @@ const VALIDATORS = {
 };
 
 class FlowEngine {
-  constructor(tenant, patient, waService) {
+  constructor(tenant, patient, waService, moduleHandlers = {}) {
     this.tenant = tenant;
     this.patient = patient;
     this.wa = waService;
     this.tenantId = tenant.id;
     this.phone = patient.phone;
     this.flow = tenant.flow_config || {};
+    this.modules = moduleHandlers; // { booking: fn, payment: fn, ... }
   }
 
   // ── Main Entry ──────────────────────────────────────────
@@ -322,6 +323,30 @@ class FlowEngine {
           }
           break;
         }
+
+        case 'send_followup': {
+          // Schedule a follow-up message to be sent later
+          const ScheduledMessageService = require('./scheduledMessages');
+          const delayMinutes = parseInt(node.delay_minutes) || 60;
+          const sendAt = new Date(Date.now() + delayMinutes * 60 * 1000);
+          const body = this.interpolate(node.followup_message || 'Hi {{customer_name}}, just following up!');
+          
+          await ScheduledMessageService.schedule({
+            tenantId: this.tenantId,
+            phone: this.phone,
+            patientId: this.patient.id,
+            body,
+            sendAt,
+            triggerType: 'followup',
+            source: 'flow_action',
+            metadata: { flow_node: nodeId, variables }
+          });
+
+          logger.info('Flow action: follow-up scheduled', {
+            tenantId: this.tenantId, phone: this.phone, sendAt: sendAt.toISOString()
+          });
+          break;
+        }
       }
     } catch (err) {
       logger.error('Flow action error:', {
@@ -361,10 +386,12 @@ class FlowEngine {
         return await this.showNode(button.next);
 
       case 'booking_flow': {
-        await this.setState({ state: 'idle' });
-        const BookingEngine = require('./bookingEngine');
-        const engine = new BookingEngine(this.tenant, this.patient, this.wa);
-        return await engine.startBookingFlow();
+        if (this.modules.booking) {
+          await this.setState({ state: 'idle' });
+          return await this.modules.booking();
+        }
+        await this.wa.sendText(this.phone, 'Booking is not set up yet.');
+        return;
       }
 
       case 'text':

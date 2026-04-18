@@ -4,12 +4,12 @@ import Icon from '../components/Icons';
 
 // ── Constants ──────────────────────────────────────────
 const BTN_ACTIONS = [
-  { value: 'next', label: 'Go to another step' },
-  { value: 'booking_flow', label: 'Booking — New appointment' },
-  { value: 'booking_status', label: 'Booking — My appointments' },
-  { value: 'booking_cancel', label: 'Booking — Cancel / Reschedule' },
-  { value: 'text', label: 'Send a text reply' },
-  { value: 'ai', label: 'Hand off to AI assistant' },
+  { value: 'next', label: 'Go to step' },
+  { value: 'booking_flow', label: 'Book new' },
+  { value: 'booking_status', label: 'View bookings' },
+  { value: 'booking_cancel', label: 'Cancel/Reschedule' },
+  { value: 'text', label: 'Text reply' },
+  { value: 'ai', label: 'AI assistant' },
 ];
 
 const INPUT_TYPES = [
@@ -200,7 +200,7 @@ function GettingStarted({ collapsed, onToggle }) {
 // ── Template Picker ────────────────────────────────────
 function TemplatePicker({ onPick }) {
   return (
-    <div className="animate-fadeIn max-w-5xl">
+    <div className="animate-fadeIn max-w-5xl min-w-0">
       <div className="text-center mb-6">
         <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900">What should your WhatsApp bot do?</h1>
         <p className="text-sm text-gray-500 mt-2">Pick a ready-made template to get started in seconds, or build from scratch.</p>
@@ -502,7 +502,7 @@ export default function FlowBuilder() {
   if (isNewFlow || !flow) return <TemplatePicker onPick={pickTemplate} />;
 
   return (
-    <div className="animate-fadeIn max-w-5xl">
+    <div className="animate-fadeIn max-w-5xl min-w-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
         <div>
@@ -679,7 +679,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
   );
 
   return (
-    <div className={`bg-white rounded-xl border mb-2.5 transition-all duration-200 animate-slideUp
+    <div className={`bg-white rounded-xl border mb-2.5 transition-all duration-200 animate-slideUp overflow-hidden
       ${open ? 'border-emerald-300 shadow-md ring-1 ring-emerald-100' : 'border-gray-100 shadow-sm hover:border-gray-200 hover:shadow'}`}
       style={{ animationDelay: `${delay}ms` }}>
 
@@ -704,7 +704,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
 
       {/* Expanded */}
       {open && (
-        <div className="px-4 pb-4 border-t border-gray-50 pt-4 space-y-4 animate-slideDown">
+        <div className="px-4 pb-4 border-t border-gray-50 pt-4 space-y-4 animate-slideDown min-w-0 overflow-hidden">
 
           {/* MENU NODE */}
           {nodeType === 'menu' && (
@@ -726,11 +726,11 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
                 <div className="space-y-2">
                   {btns.map((btn, idx) => (
                     <div key={idx} className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-2 min-w-0">
                         <span className="text-[10px] font-bold text-gray-400 w-5 shrink-0">{idx + 1}.</span>
                         <input value={btn.label} onChange={e => updateBtn(idx, { label: e.target.value })}
                           placeholder="Button text" maxLength={20}
-                          className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-800 outline-none focus:border-emerald-400 bg-white" />
+                          className="flex-1 min-w-0 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-800 outline-none focus:border-emerald-400 bg-white" />
                         <div className="flex gap-1 shrink-0">
                           {idx > 0 && <button onClick={() => moveBtn(idx, -1)} className="text-[10px] text-gray-400 hover:text-gray-600 px-1">↑</button>}
                           {idx < btns.length - 1 && <button onClick={() => moveBtn(idx, 1)} className="text-[10px] text-gray-400 hover:text-gray-600 px-1">↓</button>}

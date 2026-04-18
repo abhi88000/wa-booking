@@ -87,7 +87,13 @@ export default function Dashboard() {
 
   useEffect(() => {
     setLoading(true);
-    api.getDashboard(clinic).then(({ data }) => setData(data)).catch(console.error).finally(() => setLoading(false));
+    api.getDashboard(clinic).then(({ data }) => {
+      setData(data);
+      // Cache labels so sidebar can use tenant-specific terminology
+      if (data.flowStatus?.labels) {
+        localStorage.setItem('tenant_labels', JSON.stringify(data.flowStatus.labels));
+      }
+    }).catch(console.error).finally(() => setLoading(false));
   }, [clinic]);
 
   if (loading) return (

@@ -5,7 +5,9 @@ import Icon from '../components/Icons';
 // ── Constants ──────────────────────────────────────────
 const BTN_ACTIONS = [
   { value: 'next', label: 'Go to another step' },
-  { value: 'booking_flow', label: 'Start booking process' },
+  { value: 'booking_flow', label: 'Booking — New appointment' },
+  { value: 'booking_status', label: 'Booking — My appointments' },
+  { value: 'booking_cancel', label: 'Booking — Cancel / Reschedule' },
   { value: 'text', label: 'Send a text reply' },
   { value: 'ai', label: 'Hand off to AI assistant' },
 ];
@@ -74,10 +76,10 @@ const TEMPLATES = [
     icon: 'calendar',
     industries: 'Clinics, Salons, Gyms, Consultants',
     flow: {
-      start: { message: 'Welcome! 👋 How can I help you today?', buttons: [
+      start: { message: 'Welcome! How can I help you today?', buttons: [
         { id: 'book', label: 'Book Appointment', action: 'booking_flow' },
-        { id: 'status', label: 'My Appointments', action: 'booking_flow' },
-        { id: 'contact', label: 'Contact Us', action: 'text', response: 'Please call us or visit our website.' }
+        { id: 'status', label: 'My Appointments', action: 'booking_status' },
+        { id: 'contact', label: 'Cancel / Reschedule', action: 'booking_cancel' }
       ] },
       fallback: 'Sorry, I didn\'t understand. Please choose from the options above.'
     }
@@ -275,7 +277,7 @@ function Preview({ flow, screen, onTap, labels }) {
                       {btns.map((b, i) => (
                         <button key={i} onClick={() => {
                           if (b.action === 'next' && b.next && flow[b.next]) onTap(b.next);
-                          if (b.action === 'booking_flow') setBooking(true);
+                          if (['booking_flow', 'booking_status', 'booking_cancel'].includes(b.action)) setBooking(b.action);
                         }} className={`block w-full text-center py-1.5 text-[12px] text-[#00a5f4] font-medium hover:bg-blue-50/50 transition ${i < btns.length - 1 ? 'border-b border-gray-50' : ''}`}>
                           {b.label || '(no label)'}
                         </button>
@@ -312,15 +314,33 @@ function Preview({ flow, screen, onTap, labels }) {
       {booking && (
         <div className="mx-4 mb-4 bg-emerald-50 border border-emerald-100 rounded-lg p-4 animate-slideDown">
           <div className="flex justify-between items-center mb-2">
-            <h4 className="text-sm font-semibold text-gray-800">Booking Flow</h4>
+            <h4 className="text-sm font-semibold text-gray-800">
+              {booking === 'booking_status' ? 'View Appointments' : booking === 'booking_cancel' ? 'Cancel / Reschedule' : 'Booking Flow'}
+            </h4>
             <button onClick={() => setBooking(false)} className="text-xs text-gray-400 hover:text-gray-600 font-medium">Close</button>
           </div>
           <div className="space-y-1.5 text-sm text-gray-700">
-            <p>1. Customer picks a {labels?.staff || 'Staff'}</p>
-            <p>2. Customer picks a date</p>
-            <p>3. Customer picks a time slot</p>
-            <p>4. Bot shows {labels?.booking || 'Booking'} summary</p>
-            <p>5. Customer confirms</p>
+            {booking === 'booking_status' ? (
+              <>
+                <p>1. Bot fetches upcoming {labels?.booking || 'booking'}s</p>
+                <p>2. Shows list with dates & times</p>
+                <p>3. Customer sees their schedule</p>
+              </>
+            ) : booking === 'booking_cancel' ? (
+              <>
+                <p>1. Bot shows active {labels?.booking || 'booking'}s</p>
+                <p>2. Customer picks which to cancel or reschedule</p>
+                <p>3. Confirms the action</p>
+              </>
+            ) : (
+              <>
+                <p>1. Customer picks a {labels?.staff || 'Staff'}</p>
+                <p>2. Customer picks a date</p>
+                <p>3. Customer picks a time slot</p>
+                <p>4. Bot shows {labels?.booking || 'Booking'} summary</p>
+                <p>5. Customer confirms</p>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -367,7 +387,9 @@ function FlowMap({ flow, nodeIds, onJump }) {
                 {nodeType === 'menu' && (node.buttons || []).map((b, i) => (
                   <p key={i} className="text-[11px] text-gray-500 mt-0.5">
                     <span className="text-gray-700 font-medium">{b.label}</span> &rarr;{' '}
-                    {b.action === 'booking_flow' ? 'Booking'
+                    {b.action === 'booking_flow' ? 'Book New'
+                      : b.action === 'booking_status' ? 'View Appointments'
+                      : b.action === 'booking_cancel' ? 'Cancel/Reschedule'
                       : b.action === 'text' ? 'Reply'
                       : b.action === 'ai' ? 'AI'
                       : b.next ? friendlyName(b.next, nodeIds.indexOf(b.next)) : '?'}

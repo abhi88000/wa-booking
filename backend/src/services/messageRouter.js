@@ -46,9 +46,14 @@ class MessageRouter {
   /** Build module handlers map for FlowEngine */
   _moduleHandlers() {
     return {
-      booking: async () => {
+      booking: async (intent) => {
         const engine = new BookingEngine(this.tenant, this.patient, this.wa);
-        return await engine.startBookingFlow();
+        switch (intent) {
+          case 'status':     return await engine.showUpcomingAppointments();
+          case 'cancel':     return await engine.showCancellableAppointments();
+          case 'reschedule': return await engine.showReschedulableAppointments();
+          default:           return await engine.startBookingFlow();
+        }
       },
       // Future: payment: async () => { ... }
     };

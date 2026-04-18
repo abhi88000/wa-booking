@@ -385,10 +385,14 @@ class FlowEngine {
         }
         return await this.showNode(button.next);
 
-      case 'booking_flow': {
+      case 'booking_flow':
+      case 'booking_status':
+      case 'booking_cancel': {
         if (this.modules.booking) {
           await this.setState({ state: 'idle' });
-          return await this.modules.booking();
+          const intentMap = { booking_flow: 'book', booking_status: 'status', booking_cancel: 'cancel' };
+          const intent = button.booking_intent || intentMap[action] || 'book';
+          return await this.modules.booking(intent);
         }
         await this.wa.sendText(this.phone, 'Booking is not set up yet.');
         return;

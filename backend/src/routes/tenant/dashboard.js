@@ -44,11 +44,13 @@ router.get('/dashboard', async (req, res, next) => {
         ORDER BY a.start_time
       `, clinicFilter ? [tid, clinicFilter] : [tid]),
       (async () => {
-        const total = await pool.query(`SELECT COUNT(*)::int as count FROM tenant_records WHERE tenant_id = $1`, [tid]);
-        const thisMonth = await pool.query(`SELECT COUNT(*)::int as count FROM tenant_records WHERE tenant_id = $1 AND created_at >= date_trunc('month', NOW())`, [tid]);
-        const byType = await pool.query(`SELECT record_type, COUNT(*)::int as count FROM tenant_records WHERE tenant_id = $1 GROUP BY record_type ORDER BY count DESC`, [tid]);
-        const recentRecs = await pool.query(`SELECT id, record_type, phone, data, status, created_at FROM tenant_records WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 5`, [tid]);
-        return { total: total.rows[0].count, thisMonth: thisMonth.rows[0].count, byType: byType.rows, recent: recentRecs.rows };
+        try {
+          const total = await pool.query(`SELECT COUNT(*)::int as count FROM tenant_records WHERE tenant_id = $1`, [tid]);
+          const thisMonth = await pool.query(`SELECT COUNT(*)::int as count FROM tenant_records WHERE tenant_id = $1 AND created_at >= date_trunc('month', NOW())`, [tid]);
+          const byType = await pool.query(`SELECT record_type, COUNT(*)::int as count FROM tenant_records WHERE tenant_id = $1 GROUP BY record_type ORDER BY count DESC`, [tid]);
+          const recentRecs = await pool.query(`SELECT id, record_type, phone, data, status, created_at FROM tenant_records WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 5`, [tid]);
+          return { total: total.rows[0].count, thisMonth: thisMonth.rows[0].count, byType: byType.rows, recent: recentRecs.rows };
+        } catch { return { total: 0, thisMonth: 0, byType: [], recent: [] }; }
       })(),
       (async () => {
         const total = await pool.query(`SELECT COUNT(DISTINCT patient_id)::int as count FROM chat_messages WHERE tenant_id = $1`, [tid]);

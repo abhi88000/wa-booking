@@ -3,44 +3,221 @@ import api from '../api';
 
 // ── Constants ──────────────────────────────────────────
 const BTN_ACTIONS = [
-  { value: 'next', label: 'Go to another screen' },
+  { value: 'next', label: 'Go to another step' },
   { value: 'booking_flow', label: 'Start booking process' },
   { value: 'text', label: 'Send a text reply' },
-  { value: 'ai', label: 'Hand off to AI' },
+  { value: 'ai', label: 'Hand off to AI assistant' },
 ];
 
 const INPUT_TYPES = [
-  { value: 'text', label: 'Any text' },
-  { value: 'number', label: 'Number' },
-  { value: 'email', label: 'Email address' },
-  { value: 'phone', label: 'Phone number' },
-  { value: 'date', label: 'Date' },
-  { value: 'rating', label: 'Rating (1-5)' },
-  { value: 'yes_no', label: 'Yes or No' },
+  { value: 'text',   label: 'Any text',        hint: 'Name, address, message...' },
+  { value: 'number', label: 'Number',           hint: 'Age, quantity, budget...' },
+  { value: 'email',  label: 'Email address',    hint: 'john@example.com' },
+  { value: 'phone',  label: 'Phone number',     hint: '+91 9876543210' },
+  { value: 'date',   label: 'Date',             hint: '2025-01-15' },
+  { value: 'rating', label: 'Rating (1-5)',      hint: 'Customer satisfaction' },
+  { value: 'yes_no', label: 'Yes or No',        hint: 'Simple confirmation' },
 ];
 
 const CONDITION_OPS = [
-  { value: 'equals', label: 'is' },
-  { value: 'not_equals', label: 'is not' },
-  { value: 'contains', label: 'contains' },
+  { value: 'equals',       label: 'is exactly' },
+  { value: 'not_equals',   label: 'is not' },
+  { value: 'contains',     label: 'contains' },
   { value: 'greater_than', label: 'is more than' },
-  { value: 'less_than', label: 'is less than' },
+  { value: 'less_than',    label: 'is less than' },
 ];
 
 const LABEL_HELP = {
-  staff: { title: 'Staff Title', example: 'Doctor, Stylist, Trainer', desc: 'The bot says "Choose a {Staff Title}" when booking.' },
+  staff:    { title: 'Staff Title',    example: 'Doctor, Stylist, Trainer', desc: 'The bot says "Choose a {Staff Title}" when booking.' },
   customer: { title: 'Customer Title', example: 'Patient, Client, Student', desc: 'How customers are called in messages.' },
-  booking: { title: 'Booking Title', example: 'Appointment, Session, Visit', desc: 'Buttons say "Book {Booking Title}".' },
+  booking:  { title: 'Booking Title',  example: 'Appointment, Session, Visit', desc: 'Buttons say "Book {Booking Title}".' },
 };
+
+// ── Templates ──────────────────────────────────────────
+const TEMPLATES = [
+  {
+    id: 'lead_capture',
+    name: 'Lead Capture',
+    desc: 'Collect name, email, and interest from potential customers',
+    icon: '🎯',
+    industries: 'Real Estate, Education, Insurance',
+    flow: {
+      start: { message: 'Hi! 👋 Welcome. Let me help you get started.\n\nI just need a few details.', buttons: [{ id: 'go', label: 'Get Started', action: 'next', next: 'screen_ask_name' }] },
+      screen_ask_name: { type: 'input', message: 'What is your name?', input_type: 'text', variable: 'name', next: 'screen_ask_email' },
+      screen_ask_email: { type: 'input', message: 'Thanks {{name}}! What is your email address?', input_type: 'email', variable: 'email', next: 'screen_ask_interest' },
+      screen_ask_interest: { type: 'input', message: 'What are you interested in?', input_type: 'text', variable: 'interest', next: 'screen_save' },
+      screen_save: { type: 'action', action_type: 'save_record', record_type: 'lead', message: 'Thank you {{name}}! Our team will reach out to you at {{email}} shortly. 🙌', next: '' },
+      fallback: 'Please answer the question above, or type "menu" to start over.'
+    }
+  },
+  {
+    id: 'feedback',
+    name: 'Customer Feedback',
+    desc: 'Ask for a rating and collect comments after a service',
+    icon: '⭐',
+    industries: 'Restaurants, Hotels, Salons',
+    flow: {
+      start: { message: 'Hi! We\'d love to hear about your experience. It takes just 30 seconds.', buttons: [{ id: 'go', label: 'Give Feedback', action: 'next', next: 'screen_rating' }] },
+      screen_rating: { type: 'input', message: 'How would you rate us? (1 = Poor, 5 = Excellent)', input_type: 'rating', variable: 'rating', next: 'screen_check' },
+      screen_check: { type: 'condition', variable: 'rating', rules: [{ operator: 'greater_than', value: '3', next: 'screen_thanks' }], else_next: 'screen_improve' },
+      screen_improve: { type: 'input', message: 'We\'re sorry to hear that. What can we improve?', input_type: 'text', variable: 'feedback', next: 'screen_save_fb' },
+      screen_thanks: { type: 'input', message: 'Glad you liked it! 🎉 Any comments you\'d like to share?', input_type: 'text', variable: 'feedback', next: 'screen_save_fb' },
+      screen_save_fb: { type: 'action', action_type: 'save_record', record_type: 'feedback', message: 'Thank you for your feedback! We really appreciate it. 🙏', next: '' },
+      fallback: 'Please answer the question above.'
+    }
+  },
+  {
+    id: 'appointment',
+    name: 'Appointment Booking',
+    desc: 'Let customers book appointments directly on WhatsApp',
+    icon: '📅',
+    industries: 'Clinics, Salons, Gyms, Consultants',
+    flow: {
+      start: { message: 'Welcome! 👋 How can I help you today?', buttons: [
+        { id: 'book', label: 'Book Appointment', action: 'booking_flow' },
+        { id: 'status', label: 'My Appointments', action: 'booking_flow' },
+        { id: 'contact', label: 'Contact Us', action: 'text', response: 'Please call us or visit our website.' }
+      ] },
+      fallback: 'Sorry, I didn\'t understand. Please choose from the options above.'
+    }
+  },
+  {
+    id: 'faq',
+    name: 'FAQ / Info Bot',
+    desc: 'Answer common questions with menu buttons',
+    icon: '❓',
+    industries: 'Any business',
+    flow: {
+      start: { message: 'Welcome! 👋 What would you like to know?', buttons: [
+        { id: 'hours', label: 'Business Hours', action: 'text', response: 'We are open Mon-Sat, 9 AM to 6 PM.' },
+        { id: 'location', label: 'Our Location', action: 'text', response: 'We are located at [Your Address]. Google Maps: [link]' },
+        { id: 'pricing', label: 'Pricing', action: 'text', response: 'Check our pricing at [your-website.com/pricing]' },
+        { id: 'talk', label: 'Talk to a Human', action: 'ai' },
+      ] },
+      fallback: 'I can help with common questions. Please choose from the menu above, or type "menu" to see options again.'
+    }
+  },
+  {
+    id: 'order',
+    name: 'Order / Inquiry',
+    desc: 'Collect product interest and contact details for follow-up',
+    icon: '🛒',
+    industries: 'E-commerce, Wholesale, Services',
+    flow: {
+      start: { message: 'Hi! 👋 Welcome to our store.\n\nWhat are you looking for today?', buttons: [
+        { id: 'order', label: 'Place an Order', action: 'next', next: 'screen_product' },
+        { id: 'status', label: 'Order Status', action: 'text', response: 'Please share your order number and we\'ll check for you.' },
+        { id: 'help', label: 'Help', action: 'ai' },
+      ] },
+      screen_product: { type: 'input', message: 'What product or service are you interested in?', input_type: 'text', variable: 'product', next: 'screen_qty' },
+      screen_qty: { type: 'input', message: 'How many would you like?', input_type: 'number', variable: 'quantity', next: 'screen_contact' },
+      screen_contact: { type: 'input', message: 'Great! What\'s your name so we can process this?', input_type: 'text', variable: 'name', next: 'screen_save_order' },
+      screen_save_order: { type: 'action', action_type: 'save_record', record_type: 'order', message: 'Thanks {{name}}! Your inquiry for {{quantity}}x {{product}} has been received. We\'ll confirm availability shortly! 📦', next: '' },
+      fallback: 'Please answer the question, or type "menu" to start over.'
+    }
+  },
+  {
+    id: 'blank',
+    name: 'Start from Scratch',
+    desc: 'Build your own custom flow step by step',
+    icon: '✏️',
+    industries: 'Custom',
+    flow: null
+  },
+];
+
+// ── Step type explainers ───────────────────────────────
+const STEP_TYPES = [
+  { type: 'menu', name: 'Send Message', icon: '💬', color: 'emerald', desc: 'Show a message with buttons the customer can tap', example: 'Welcome menu, product categories, service list' },
+  { type: 'input', name: 'Ask a Question', icon: '✍️', color: 'purple', desc: 'Ask something and save the answer (name, email, phone...)', example: '"What is your name?", "What\'s your email?"' },
+  { type: 'condition', name: 'Smart Routing', icon: '🔀', color: 'amber', desc: 'Automatically send customer to different steps based on answers', example: 'If rating < 4, ask what went wrong' },
+  { type: 'action', name: 'Save & Finish', icon: '💾', color: 'blue', desc: 'Save all collected info as a lead, order, feedback, etc.', example: 'Save as "lead" — view in dashboard later' },
+];
 
 // ── Helpers ────────────────────────────────────────────
 function friendlyName(id, idx) {
-  if (id === 'start') return 'Welcome Screen';
-  if (/^screen_\d+$/.test(id)) return `Screen ${idx + 1}`;
+  if (id === 'start') return 'Welcome (Step 1)';
+  if (/^screen_\d+$/.test(id)) return `Step ${idx + 1}`;
+  // named steps from templates
+  if (id.startsWith('screen_')) {
+    const name = id.replace('screen_', '').replace(/_/g, ' ');
+    return name.replace(/\b\w/g, l => l.toUpperCase());
+  }
   return id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
-// ── Phone Preview ──────────────────────────────────────
+// ── Getting Started Guide ──────────────────────────────
+function GettingStarted({ collapsed, onToggle }) {
+  return (
+    <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border border-emerald-100 mb-4 animate-slideUp">
+      <button onClick={onToggle} className="w-full flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-base">💡</span>
+          <span className="text-sm font-bold text-gray-900">How the Flow Builder Works</span>
+          <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">Guide</span>
+        </div>
+        <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${collapsed ? '' : 'rotate-180'}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
+      </button>
+      {!collapsed && (
+        <div className="px-4 pb-4 animate-slideDown">
+          <p className="text-sm text-gray-600 mb-3">Your WhatsApp bot follows a series of <b>steps</b>. Each step does one thing:</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {STEP_TYPES.map(s => (
+              <div key={s.type} className="bg-white rounded-lg p-3 border border-gray-100">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm">{s.icon}</span>
+                  <span className="text-sm font-semibold text-gray-800">{s.name}</span>
+                </div>
+                <p className="text-xs text-gray-600">{s.desc}</p>
+                <p className="text-[10px] text-gray-400 mt-1 italic">e.g. {s.example}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 bg-white rounded-lg p-3 border border-gray-100">
+            <p className="text-xs font-semibold text-gray-700 mb-1">💬 How a typical flow works:</p>
+            <div className="flex flex-wrap items-center gap-1 text-xs text-gray-600">
+              <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-medium">Welcome Message</span>
+              <span>→</span>
+              <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded font-medium">Ask Name</span>
+              <span>→</span>
+              <span className="bg-purple-50 text-purple-700 px-2 py-0.5 rounded font-medium">Ask Email</span>
+              <span>→</span>
+              <span className="bg-amber-50 text-amber-700 px-2 py-0.5 rounded font-medium">Check Rating</span>
+              <span>→</span>
+              <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium">Save as Lead</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Template Picker ────────────────────────────────────
+function TemplatePicker({ onPick }) {
+  return (
+    <div className="animate-fadeIn max-w-5xl">
+      <div className="text-center mb-6">
+        <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900">What should your WhatsApp bot do?</h1>
+        <p className="text-sm text-gray-500 mt-2">Pick a ready-made template to get started in seconds, or build from scratch.</p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {TEMPLATES.map(t => (
+          <button key={t.id} onClick={() => onPick(t)}
+            className="text-left bg-white rounded-xl border border-gray-100 shadow-sm p-4 hover:border-emerald-300 hover:shadow-md transition-all duration-200 group">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-2xl">{t.icon}</span>
+              <h3 className="text-sm font-bold text-gray-900 group-hover:text-emerald-700 transition">{t.name}</h3>
+            </div>
+            <p className="text-xs text-gray-600 mb-2">{t.desc}</p>
+            <p className="text-[10px] text-gray-400">Works for: {t.industries}</p>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 function Preview({ flow, screen, onTap, labels }) {
   const node = flow?.[screen];
   const [booking, setBooking] = useState(false);
@@ -54,10 +231,10 @@ function Preview({ flow, screen, onTap, labels }) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm animate-slideUp" style={{ animationDelay: '60ms' }}>
       <div className="flex justify-between items-center px-4 pt-4 pb-2">
-        <h2 className="text-sm font-bold text-gray-900">Preview</h2>
+        <h2 className="text-sm font-bold text-gray-900">📱 Live Preview</h2>
         <div className="flex gap-2 items-center">
           {screen !== 'start' && (
-            <button onClick={() => onTap('start')} className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">Back to start</button>
+            <button onClick={() => onTap('start')} className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">← Back to start</button>
           )}
           <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded">{friendlyName(screen, screenIdx)}</span>
         </div>
@@ -155,8 +332,8 @@ function FlowMap({ flow, nodeIds, onJump }) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm animate-slideUp" style={{ animationDelay: '120ms' }}>
       <div className="px-4 pt-4 pb-2">
-        <h2 className="text-sm font-bold text-gray-900">Conversation Map</h2>
-        <p className="text-xs text-gray-500 mt-0.5">How your screens connect</p>
+        <h2 className="text-sm font-bold text-gray-900">🗺️ Conversation Flow</h2>
+        <p className="text-xs text-gray-500 mt-0.5">How your steps connect — tap any step to edit it</p>
       </div>
       <div className="px-4 pb-4 space-y-2">
         {nodeIds.map((id, idx) => {
@@ -216,16 +393,32 @@ export default function FlowBuilder() {
   const [preview, setPreview] = useState('start');
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [showGuide, setShowGuide] = useState(false);
+  const [isNewFlow, setIsNewFlow] = useState(false);
 
   useEffect(() => { load(); }, []);
 
   async function load() {
     try {
       const { data } = await api.getFlowConfig();
-      setFlow(data.flow_config || getDefault());
+      if (data.flow_config) {
+        setFlow(data.flow_config);
+      } else {
+        setIsNewFlow(true);
+      }
       setLabels(data.labels || { staff: 'Doctor', customer: 'Patient', booking: 'Appointment' });
     } catch { setError('Failed to load'); }
     finally { setLoading(false); }
+  }
+
+  function pickTemplate(template) {
+    if (template.flow) {
+      setFlow(template.flow);
+    } else {
+      setFlow(getDefault());
+    }
+    setIsNewFlow(false);
+    setShowGuide(true);
   }
 
   function getDefault() {
@@ -282,23 +475,35 @@ export default function FlowBuilder() {
     </div>
   );
 
+  // New flow — show template picker
+  if (isNewFlow || !flow) return <TemplatePicker onPick={pickTemplate} />;
+
   return (
     <div className="animate-fadeIn max-w-5xl">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
         <div>
           <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight">Flow Builder</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Design what your customers see on WhatsApp</p>
+          <p className="text-sm text-gray-500 mt-0.5">Design what your customers see on WhatsApp — step by step</p>
         </div>
-        <button onClick={save} disabled={saving}
-          className="w-full sm:w-auto px-6 py-2.5 text-white text-sm font-semibold rounded-xl disabled:opacity-50 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-200 active:scale-[0.98]"
-          style={{ background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)' }}>
-          {saving ? 'Saving...' : saved ? 'Saved' : 'Save Changes'}
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => { setIsNewFlow(true); }}
+            className="px-4 py-2.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">
+            📋 Templates
+          </button>
+          <button onClick={save} disabled={saving}
+            className="px-6 py-2.5 text-white text-sm font-semibold rounded-xl disabled:opacity-50 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-200 active:scale-[0.98]"
+            style={{ background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)' }}>
+            {saving ? 'Saving...' : saved ? '✓ Saved!' : 'Save Changes'}
+          </button>
+        </div>
       </div>
 
       {error && <div className="mb-4 text-sm font-medium text-red-700 bg-red-50 border border-red-100 rounded-xl px-4 py-3 animate-slideDown">{error}</div>}
-      {saved && <div className="mb-4 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 animate-slideDown">Flow saved successfully</div>}
+      {saved && <div className="mb-4 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 animate-slideDown">✅ Flow saved! Your WhatsApp bot is now updated.</div>}
+
+      {/* Getting Started Guide */}
+      <GettingStarted collapsed={!showGuide} onToggle={() => setShowGuide(!showGuide)} />
 
       {/* Preview + Map */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
@@ -330,10 +535,13 @@ export default function FlowBuilder() {
         </div>
       </div>
 
-      {/* Screens */}
+      {/* Steps */}
       <div className="mb-3 animate-slideUp" style={{ animationDelay: '300ms' }}>
-        <h2 className="text-sm font-bold text-gray-900">Screens</h2>
-        <p className="text-xs text-gray-500 mt-0.5">Each screen is a step in the conversation. Click to edit.</p>
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-bold text-gray-900">Your Bot's Steps</h2>
+          <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{nodeIds.length} steps</span>
+        </div>
+        <p className="text-xs text-gray-500 mt-0.5">Each step is one message in the conversation. Tap to edit. Drag the order by adding/removing.</p>
       </div>
 
       {nodeIds.map((nodeId, idx) => (
@@ -343,34 +551,37 @@ export default function FlowBuilder() {
           onUpdate={u => updateNode(nodeId, u)} onDelete={() => deleteNode(nodeId)} />
       ))}
 
-      {/* Add Screen */}
-      <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 animate-slideUp" style={{ animationDelay: `${360 + nodeIds.length * 60}ms` }}>
-        <button onClick={() => addNode('menu')}
-          className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all">
-          + Message
-          <p className="text-[10px] font-normal text-gray-400 mt-0.5">Show buttons</p>
-        </button>
-        <button onClick={() => addNode('input')}
-          className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50/30 transition-all">
-          + Ask Question
-          <p className="text-[10px] font-normal text-gray-400 mt-0.5">Collect info</p>
-        </button>
-        <button onClick={() => addNode('condition')}
-          className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50/30 transition-all">
-          + If / Else
-          <p className="text-[10px] font-normal text-gray-400 mt-0.5">Branch logic</p>
-        </button>
-        <button onClick={() => addNode('action')}
-          className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/30 transition-all">
-          + Save Data
-          <p className="text-[10px] font-normal text-gray-400 mt-0.5">Store answers</p>
-        </button>
+      {/* Add Step */}
+      <div className="mt-3 animate-slideUp" style={{ animationDelay: `${360 + nodeIds.length * 60}ms` }}>
+        <p className="text-xs font-semibold text-gray-600 mb-2">➕ Add a new step:</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <button onClick={() => addNode('menu')}
+            className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all">
+            💬 Send Message
+            <p className="text-[10px] font-normal text-gray-400 mt-0.5">Text + buttons</p>
+          </button>
+          <button onClick={() => addNode('input')}
+            className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50/30 transition-all">
+            ✍️ Ask Question
+            <p className="text-[10px] font-normal text-gray-400 mt-0.5">Name, email, phone...</p>
+          </button>
+          <button onClick={() => addNode('condition')}
+            className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50/30 transition-all">
+            🔀 Smart Route
+            <p className="text-[10px] font-normal text-gray-400 mt-0.5">Go to different steps based on answer</p>
+          </button>
+          <button onClick={() => addNode('action')}
+            className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/30 transition-all">
+            💾 Save & Finish
+            <p className="text-[10px] font-normal text-gray-400 mt-0.5">Save as lead, order, etc.</p>
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-// ── Screen Card ────────────────────────────────────────
+// ── Step Card ──────────────────────────────────────────
 function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle, onUpdate, onDelete }) {
   const isStart = nodeId === 'start';
   const btns = node.buttons || [];
@@ -402,21 +613,41 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
 
   const typeBadge = nodeType === 'input' ? 'bg-purple-50 text-purple-600'
     : nodeType === 'condition' ? 'bg-amber-50 text-amber-600'
-    : nodeType === 'action' ? 'bg-blue-50 text-blue-600' : '';
-  const typeLabel = nodeType === 'input' ? 'Question'
-    : nodeType === 'condition' ? 'If / Else'
-    : nodeType === 'action' ? 'Save Data' : '';
+    : nodeType === 'action' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600';
+  const typeIcon = nodeType === 'input' ? '✍️'
+    : nodeType === 'condition' ? '🔀'
+    : nodeType === 'action' ? '💾' : '💬';
+  const typeLabel = nodeType === 'input' ? 'Ask Question'
+    : nodeType === 'condition' ? 'Smart Route'
+    : nodeType === 'action' ? 'Save & Finish' : 'Message';
 
-  const ScreenSelect = ({ value, onChange, label }) => (
+  // Variable inserter helper
+  const VariableButtons = ({ field, current, onChange }) => {
+    if (allVariables.length === 0) return null;
+    return (
+      <div className="flex flex-wrap gap-1 mt-1">
+        <span className="text-[10px] text-gray-400 mr-1 pt-0.5">Insert:</span>
+        {allVariables.map(v => (
+          <button key={v} type="button" onClick={() => onChange((current || '') + '{{' + v + '}}')}
+            className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded hover:bg-purple-100 transition font-medium">
+            {v}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
+  const ScreenSelect = ({ value, onChange, label, helpText }) => (
     <div>
       {label && <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>}
       <select value={value || ''} onChange={e => onChange(e.target.value)}
         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
-        <option value="">Select next step...</option>
+        <option value="">Pick the next step...</option>
         {allNodes.filter(n => n !== nodeId).map(n => (
           <option key={n} value={n}>{friendlyName(n, allNodes.indexOf(n))}</option>
         ))}
       </select>
+      {helpText && <p className="text-[10px] text-gray-400 mt-0.5">{helpText}</p>}
     </div>
   );
 
@@ -428,14 +659,14 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 cursor-pointer" onClick={onToggle}>
         <div className="flex items-center gap-3 min-w-0">
-          <div className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold shrink-0
-            ${isStart ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-50 text-gray-600'}`}>
-            {step}
+          <div className={`w-7 h-7 rounded-md flex items-center justify-center text-xs shrink-0
+            ${isStart ? 'bg-emerald-50' : 'bg-gray-50'}`}>
+            {typeIcon}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold text-gray-900">{name}</p>
-              {typeLabel && <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${typeBadge}`}>{typeLabel}</span>}
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${typeBadge}`}>{typeLabel}</span>
             </div>
             <p className="text-xs text-gray-500 truncate max-w-[200px] sm:max-w-xs">{node.message?.substring(0, 55) || (nodeType === 'condition' ? 'Routes based on answers' : '')}</p>
           </div>
@@ -452,24 +683,25 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
           {nodeType === 'menu' && (
             <>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Message</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">💬 Bot Message</label>
                 <textarea value={node.message || ''} onChange={e => onUpdate({ message: e.target.value })} rows={3}
-                  placeholder="What should the bot say?"
+                  placeholder="What should the bot say? e.g. Hi! Welcome to our store. How can we help?"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none" />
-                {allVariables.length > 0 && (
-                  <p className="text-[10px] text-gray-400 mt-1">Tip: Use {allVariables.map(v => '{{' + v + '}}').join(', ')} to personalize</p>
-                )}
+                <VariableButtons field="message" current={node.message} onChange={v => onUpdate({ message: v })} />
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-2 block">
-                  Buttons <span className="font-normal text-gray-400">{btns.length > 3 ? '(shows as scrollable list)' : ''}</span>
+                <label className="text-xs font-medium text-gray-600 mb-1 block">
+                  🔘 Reply Buttons <span className="font-normal text-gray-400">— what can the customer tap?</span>
                 </label>
+                {btns.length > 3 && (
+                  <p className="text-[10px] text-amber-600 bg-amber-50 px-2 py-1 rounded mb-2">WhatsApp shows max 3 buttons. Extra ones appear as a list menu.</p>
+                )}
                 <div className="space-y-2">
                   {btns.map((btn, idx) => (
                     <div key={idx} className="bg-gray-50 rounded-lg p-3 space-y-2 border border-gray-100">
                       <div className="flex flex-col sm:flex-row gap-2">
                         <input value={btn.label} onChange={e => updateBtn(idx, { label: e.target.value })}
-                          placeholder="Button text" maxLength={20}
+                          placeholder="Button text (e.g. View Services)" maxLength={20}
                           className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 bg-white" />
                         <select value={btn.action} onChange={e => updateBtn(idx, { action: e.target.value })}
                           className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
@@ -479,7 +711,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
                       {btn.action === 'next' && (
                         <select value={btn.next || ''} onChange={e => updateBtn(idx, { next: e.target.value })}
                           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
-                          <option value="">Where does this go?</option>
+                          <option value="">Where should this button lead to?</option>
                           {allNodes.filter(n => n !== nodeId).map(n => (
                             <option key={n} value={n}>{friendlyName(n, allNodes.indexOf(n))}</option>
                           ))}
@@ -487,19 +719,19 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
                       )}
                       {btn.action === 'text' && (
                         <textarea value={btn.response || ''} onChange={e => updateBtn(idx, { response: e.target.value })}
-                          placeholder="What should the bot reply?" rows={2}
+                          placeholder="What should the bot reply? e.g. Our hours are Mon-Sat 9AM-6PM" rows={2}
                           className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none bg-white" />
                       )}
                       <div className="flex justify-end gap-3 text-xs font-medium pt-1">
-                        {idx > 0 && <button onClick={() => moveBtn(idx, -1)} className="text-gray-400 hover:text-gray-600">Up</button>}
-                        {idx < btns.length - 1 && <button onClick={() => moveBtn(idx, 1)} className="text-gray-400 hover:text-gray-600">Down</button>}
+                        {idx > 0 && <button onClick={() => moveBtn(idx, -1)} className="text-gray-400 hover:text-gray-600">↑ Up</button>}
+                        {idx < btns.length - 1 && <button onClick={() => moveBtn(idx, 1)} className="text-gray-400 hover:text-gray-600">↓ Down</button>}
                         <button onClick={() => removeBtn(idx)} className="text-red-400 hover:text-red-600">Remove</button>
                       </div>
                     </div>
                   ))}
                 </div>
                 {btns.length < 10 && (
-                  <button onClick={addBtn} className="mt-3 text-xs font-semibold text-emerald-600 hover:text-emerald-700">+ Add Button</button>
+                  <button onClick={addBtn} className="mt-3 text-xs font-semibold text-emerald-600 hover:text-emerald-700">+ Add a Button</button>
                 )}
               </div>
             </>
@@ -508,67 +740,82 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
           {/* INPUT NODE */}
           {nodeType === 'input' && (
             <>
+              <div className="bg-purple-50/50 rounded-lg px-3 py-2 border border-purple-100 mb-1">
+                <p className="text-[11px] text-purple-700">✍️ This step asks the customer a question and saves their answer. You can use their answer in later messages.</p>
+              </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Question to ask</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Question to ask the customer</label>
                 <textarea value={node.message || ''} onChange={e => onUpdate({ message: e.target.value })} rows={2}
-                  placeholder="e.g. What's your name?"
+                  placeholder="e.g. What is your name?"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none" />
+                <VariableButtons field="message" current={node.message} onChange={v => onUpdate({ message: v })} />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">What kind of answer?</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">What type of answer do you expect?</label>
                   <select value={node.input_type || 'text'} onChange={e => onUpdate({ input_type: e.target.value })}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
                     {INPUT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    {INPUT_TYPES.find(t => t.value === (node.input_type || 'text'))?.hint || ''}
+                    {' '}— bot will re-ask if customer sends wrong format
+                  </p>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Save this answer as</label>
                   <input value={node.variable || ''} onChange={e => onUpdate({ variable: e.target.value.replace(/[^a-z0-9_]/g, '') })}
-                    placeholder="e.g. name, budget, city"
+                    placeholder="e.g. name, email, city, budget"
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400" />
-                  <p className="text-[10px] text-gray-400 mt-0.5">Use {'{{' + (node.variable || 'name') + '}}'} in later messages</p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    {node.variable
+                      ? <>You can use <span className="bg-purple-50 text-purple-600 px-1 rounded font-medium">{`{{${node.variable}}}`}</span> in any message below</>
+                      : 'Give it a short name like "name" or "email" — no spaces'}
+                  </p>
                 </div>
               </div>
-              <ScreenSelect value={node.next} onChange={v => onUpdate({ next: v })} label="After they answer, go to" />
+              <ScreenSelect value={node.next} onChange={v => onUpdate({ next: v })} label="After they answer, go to" helpText="Pick the step that comes next in the conversation" />
             </>
           )}
 
           {/* CONDITION NODE */}
           {nodeType === 'condition' && (
             <>
+              <div className="bg-amber-50/50 rounded-lg px-3 py-2 border border-amber-100 mb-1">
+                <p className="text-[11px] text-amber-700">🔀 This step is automatic — the customer never sees it. It checks an answer and sends them to different steps.</p>
+              </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Which answer to check?</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Which answer should we check?</label>
                 {allVariables.length > 0 ? (
                   <select value={node.variable || ''} onChange={e => onUpdate({ variable: e.target.value })}
                     className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
-                    <option value="">Select...</option>
+                    <option value="">Pick an answer to check...</option>
                     {allVariables.map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                 ) : (
-                  <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">Add an "Ask Question" screen first to have answers to check.</p>
+                  <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">⚠️ Add an "Ask Question" step first — you need answers to route on.</p>
                 )}
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-2 block">Rules</label>
+                <label className="text-xs font-medium text-gray-600 mb-2 block">📋 Rules — check the answer and go to different steps</label>
                 <div className="space-y-2">
                   {(node.rules || []).map((rule, idx) => (
                     <div key={idx} className="bg-amber-50/50 rounded-lg p-3 border border-amber-100 space-y-2">
                       <div className="flex flex-col sm:flex-row gap-2">
-                        <span className="text-xs text-gray-500 pt-2 shrink-0">If answer</span>
+                        <span className="text-xs text-gray-600 pt-2 shrink-0 font-medium">If {node.variable || 'answer'}</span>
                         <select value={rule.operator || 'equals'} onChange={e => updateRule(idx, { operator: e.target.value })}
                           className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-amber-400 bg-white">
                           {CONDITION_OPS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select>
                         <input value={rule.value || ''} onChange={e => updateRule(idx, { value: e.target.value })}
-                          placeholder="value"
+                          placeholder="e.g. yes, 5, Mumbai"
                           className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-amber-400 bg-white" />
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500 shrink-0">then go to</span>
+                        <span className="text-xs text-gray-600 shrink-0 font-medium">→ then go to</span>
                         <select value={rule.next || ''} onChange={e => updateRule(idx, { next: e.target.value })}
                           className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-amber-400 bg-white">
-                          <option value="">Select step...</option>
+                          <option value="">Pick a step...</option>
                           {allNodes.filter(n => n !== nodeId).map(n => (
                             <option key={n} value={n}>{friendlyName(n, allNodes.indexOf(n))}</option>
                           ))}
@@ -578,40 +825,41 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
                     </div>
                   ))}
                 </div>
-                <button onClick={addRule} className="mt-3 text-xs font-semibold text-amber-600 hover:text-amber-700">+ Add Rule</button>
+                <button onClick={addRule} className="mt-3 text-xs font-semibold text-amber-600 hover:text-amber-700">+ Add Another Rule</button>
               </div>
-              <ScreenSelect value={node.else_next} onChange={v => onUpdate({ else_next: v })} label="If nothing matches, go to" />
+              <ScreenSelect value={node.else_next} onChange={v => onUpdate({ else_next: v })} label="If no rules match, go to" helpText="This is the fallback — where to go if none of the rules above apply" />
             </>
           )}
 
           {/* ACTION NODE */}
           {nodeType === 'action' && (
             <>
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Save as</label>
-                <input value={node.record_type || ''} onChange={e => onUpdate({ record_type: e.target.value.replace(/[^a-z0-9_]/g, '') })}
-                  placeholder="e.g. lead, order, feedback, inquiry"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400" />
-                <p className="text-[10px] text-gray-400 mt-0.5">All collected answers will be saved. View them in your dashboard.</p>
+              <div className="bg-blue-50/50 rounded-lg px-3 py-2 border border-blue-100 mb-1">
+                <p className="text-[11px] text-blue-700">💾 This step saves everything the customer has told you. You can view all saved data in your dashboard.</p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Confirmation message</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">What kind of data is this?</label>
+                <input value={node.record_type || ''} onChange={e => onUpdate({ record_type: e.target.value.replace(/[^a-z0-9_]/g, '') })}
+                  placeholder="e.g. lead, order, feedback, inquiry, registration"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400" />
+                <p className="text-[10px] text-gray-400 mt-0.5">This helps you organize data in your dashboard — e.g. "leads" tab, "orders" tab</p>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Thank you message (shown to customer)</label>
                 <textarea value={node.message || ''} onChange={e => onUpdate({ message: e.target.value })}
-                  placeholder='e.g. Thank you {{name}}! We will contact you soon.'
+                  placeholder='e.g. Thank you {{name}}! We will contact you at {{email}} shortly. 🙌'
                   rows={2}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none" />
-                {allVariables.length > 0 && (
-                  <p className="text-[10px] text-gray-400 mt-1">Use: {allVariables.map(v => '{{' + v + '}}').join(', ')}</p>
-                )}
+                <VariableButtons field="message" current={node.message} onChange={v => onUpdate({ message: v })} />
               </div>
-              <ScreenSelect value={node.next} onChange={v => onUpdate({ next: v })} label="After saving, go to (leave empty to end)" />
+              <ScreenSelect value={node.next} onChange={v => onUpdate({ next: v })} label="After saving, go to" helpText="Leave empty to end the conversation here" />
             </>
           )}
 
           {/* Delete */}
           {!isStart && (
             <div className="pt-3 border-t border-gray-100">
-              <button onClick={onDelete} className="text-xs font-medium text-red-400 hover:text-red-600">Delete this screen</button>
+              <button onClick={onDelete} className="text-xs font-medium text-red-400 hover:text-red-600">🗑️ Delete this step</button>
             </div>
           )}
         </div>

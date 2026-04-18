@@ -1,15 +1,52 @@
 // ============================================================
-// Flow Engine — Tenant-Configurable Decision Tree
+// Flow Engine — Tenant-Configurable Workflow Engine
 // ============================================================
 // Processes a tenant's flow_config (JSONB tree of nodes).
-// Each node has a message + buttons. Each button either navigates
-// to another node or triggers a special action (booking, AI, text).
+// Supports:
+//   - Menu nodes: message + buttons (navigate, booking, AI, text)
+//   - Input nodes: ask question → validate → store variable → next
+//   - Condition nodes: if variable == value → branch A, else → branch B
+//   - Action nodes: save record, notify admin, set variable
 //
-// BACKWARD COMPATIBLE: If tenant has no flow_config, this engine
-// is never invoked — MessageRouter falls back to BookingEngine.
+// BACKWARD COMPATIBLE: Existing flow_configs with only menu nodes
+// work exactly as before. New node types are additive.
 
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
+
+// ── Input Validators ────────────────────────────────────
+const VALIDATORS = {
+  text: (v) => v && v.trim().length > 0 ? v.trim() : null,
+  number: (v) => { const n = Number(v); return !isNaN(n) ? n : null; },
+  email: (v) => {
+    const m = (v || '').trim().match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/);
+    return m ? v.trim().toLowerCase() : null;
+  },
+  phone: (v) => {
+    const cleaned = (v || '').replace(/[\s\-()]/g, '');
+    return /^\+?\d{7,15}$/.test(cleaned) ? cleaned : null;
+  },
+  date: (v) => {
+    // Accept dd/mm/yyyy, dd-mm-yyyy, yyyy-mm-dd
+    const s = (v || '').trim();
+    let d = new Date(s);
+    if (isNaN(d)) {
+      const parts = s.split(/[\/\-\.]/);
+      if (parts.length === 3) d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+    }
+    return !isNaN(d) && d.getFullYear() > 2000 ? d.toISOString().split('T')[0] : null;
+  },
+  rating: (v) => {
+    const n = Number(v);
+    return n >= 1 && n <= 5 ? n : null;
+  },
+  yes_no: (v) => {
+    const s = (v || '').toLowerCase().trim();
+    if (['yes', 'y', 'ha', 'haan', '1'].includes(s)) return 'yes';
+    if (['no', 'n', 'nahi', 'nhi', '0'].includes(s)) return 'no';
+    return null;
+  }
+};
 
 class FlowEngine {
   constructor(tenant, patient, waService) {
@@ -30,7 +67,12 @@ class FlowEngine {
 
       // Global resets: "hi", "hello", "menu", "start" → back to root
       if (['hi', 'hello', 'hey', 'menu', 'start', 'home'].includes(msg)) {
-        return await this.showNode('start');
+        return await this.showNode('start', true);
+      }
+
+      // If awaiting input, process the user's typed answer
+      if (state.state === 'awaiting_input' && currentNode) {
+        return await this.handleInput(content, currentNode);
       }
 
       // If no current node, show the start node
@@ -74,33 +116,51 @@ class FlowEngine {
     }
   }
 
-  // ── Show a Node (message + buttons) ─────────────────────
-  async showNode(nodeId) {
+  // ── Show a Node ─────────────────────────────────────────
+  // Handles menu, input, condition, and action node types
+  async showNode(nodeId, resetVars = false) {
     const node = this.flow[nodeId];
     if (!node) {
-      // Node not found — show start or a generic message
-      if (nodeId !== 'start') {
-        return await this.showNode('start');
-      }
-      // Even start node missing — tenant hasn't configured flow
+      if (nodeId !== 'start') return await this.showNode('start');
       await this.wa.sendText(this.phone,
         `Welcome to ${this.tenant.business_name}! Please contact us for assistance.`
       );
       return;
     }
 
+    const nodeType = node.type || 'menu'; // default = menu (backward compat)
+
+    // Clear variables on reset (fresh conversation)
+    if (resetVars) {
+      await this.setVariables({});
+    }
+
+    switch (nodeType) {
+      case 'menu':
+        return await this.showMenuNode(nodeId, node);
+      case 'input':
+        return await this.showInputNode(nodeId, node);
+      case 'condition':
+        return await this.evaluateCondition(nodeId, node);
+      case 'action':
+        return await this.executeActionNode(nodeId, node);
+      default:
+        return await this.showMenuNode(nodeId, node);
+    }
+  }
+
+  // ── Menu Node (original behavior) ──────────────────────
+  async showMenuNode(nodeId, node) {
     const buttons = node.buttons || [];
-    const message = node.message || 'How can I help you?';
+    const message = this.interpolate(node.message || 'How can I help you?');
 
     if (buttons.length === 0) {
-      // Leaf node — just send the message
       await this.wa.sendText(this.phone, message);
       await this.setFlowNode(nodeId);
       return;
     }
 
     if (buttons.length <= 3) {
-      // Use WhatsApp buttons (max 3)
       await this.wa.sendButtons(this.phone, {
         bodyText: message,
         buttons: buttons.map(b => ({
@@ -109,7 +169,6 @@ class FlowEngine {
         }))
       });
     } else {
-      // Use WhatsApp list (max 10 items)
       await this.wa.sendList(this.phone, {
         headerText: this.tenant.business_name,
         bodyText: message,
@@ -128,33 +187,190 @@ class FlowEngine {
     await this.setFlowNode(nodeId);
   }
 
-  // ── Execute a Button Action ─────────────────────────────
+  // ── Input Node — Ask question, wait for answer ─────────
+  async showInputNode(nodeId, node) {
+    const message = this.interpolate(node.message || 'Please provide your answer:');
+    await this.wa.sendText(this.phone, message);
+
+    // Set state to awaiting_input — next message from user is the answer
+    const currentState = this.patient.wa_conversation_state || {};
+    await this.setState({
+      ...currentState,
+      state: 'awaiting_input',
+      flow_node: nodeId,
+      variables: currentState.variables || {}
+    });
+  }
+
+  // ── Handle typed input from user ───────────────────────
+  async handleInput(content, nodeId) {
+    const node = this.flow[nodeId];
+    if (!node) return await this.showNode('start');
+
+    const inputType = node.input_type || 'text';
+    const varName = node.variable || 'input';
+    const validator = VALIDATORS[inputType] || VALIDATORS.text;
+
+    const validated = validator(content);
+
+    if (validated === null) {
+      // Validation failed — send error message and ask again
+      const errorMsg = node.error_message || this.getDefaultError(inputType);
+      await this.wa.sendText(this.phone, errorMsg);
+      return; // Stay in awaiting_input state, same node
+    }
+
+    // Store the variable
+    await this.setVariable(varName, validated);
+
+    // Move to next node
+    const nextNode = node.next;
+    if (nextNode) {
+      return await this.showNode(nextNode);
+    }
+
+    // No next node — show back to menu
+    await this.wa.sendButtons(this.phone, {
+      bodyText: this.interpolate('Thank you! What else can I help with?'),
+      buttons: [{ id: 'flow_home', title: 'Main Menu' }]
+    });
+  }
+
+  // ── Condition Node — If/else branching ─────────────────
+  async evaluateCondition(nodeId, node) {
+    const varName = node.variable || '';
+    const variables = this.getVariables();
+    const value = variables[varName];
+    const rules = node.rules || [];
+
+    // Evaluate rules in order — first match wins
+    for (const rule of rules) {
+      const matched = this.matchRule(value, rule.operator, rule.value);
+      if (matched && rule.next) {
+        return await this.showNode(rule.next);
+      }
+    }
+
+    // No rule matched — use default/else branch
+    if (node.else_next) {
+      return await this.showNode(node.else_next);
+    }
+
+    // No else either — show menu
+    await this.wa.sendButtons(this.phone, {
+      bodyText: 'What else can I help with?',
+      buttons: [{ id: 'flow_home', title: 'Main Menu' }]
+    });
+  }
+
+  // ── Action Node — Do something, then proceed ──────────
+  async executeActionNode(nodeId, node) {
+    const actionType = node.action_type || 'save_record';
+    const variables = this.getVariables();
+
+    try {
+      switch (actionType) {
+        case 'save_record': {
+          // Save collected variables as a tenant_record
+          const recordType = node.record_type || 'lead';
+          const data = {};
+          const fieldsToSave = node.save_fields || Object.keys(variables);
+          for (const f of fieldsToSave) {
+            if (variables[f] !== undefined) data[f] = variables[f];
+          }
+
+          await pool.query(
+            `INSERT INTO tenant_records (tenant_id, record_type, phone, data, status)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [this.tenantId, recordType, this.phone, JSON.stringify(data), 'new']
+          );
+          logger.info('Flow action: saved record', {
+            tenantId: this.tenantId, recordType, phone: this.phone
+          });
+          break;
+        }
+
+        case 'notify_admin': {
+          // Send WhatsApp message to business owner/admin
+          const tenantPhone = this.tenant.wa_phone_number || this.tenant.phone;
+          if (tenantPhone) {
+            const notifMsg = this.interpolate(
+              node.notify_message || 'New inquiry from {{phone}}'
+            );
+            // Use tenant's own WA to send to their own number won't work (can't message yourself)
+            // Instead, log to audit for now — admin sees it in dashboard
+            await pool.query(
+              `INSERT INTO audit_log (tenant_id, event, data) VALUES ($1, $2, $3)`,
+              [this.tenantId, 'flow_notification', JSON.stringify({
+                message: notifMsg,
+                phone: this.phone,
+                variables,
+                timestamp: new Date().toISOString()
+              })]
+            );
+          }
+          logger.info('Flow action: admin notified', {
+            tenantId: this.tenantId, phone: this.phone
+          });
+          break;
+        }
+
+        case 'set_variable': {
+          // Set a variable to a fixed value
+          if (node.set_var && node.set_value !== undefined) {
+            await this.setVariable(node.set_var, node.set_value);
+          }
+          break;
+        }
+      }
+    } catch (err) {
+      logger.error('Flow action error:', {
+        error: err.message,
+        tenantId: this.tenantId,
+        actionType
+      });
+      // Don't crash the flow — continue to next node
+    }
+
+    // Send confirmation message if configured
+    if (node.message) {
+      await this.wa.sendText(this.phone, this.interpolate(node.message));
+    }
+
+    // Proceed to next node
+    if (node.next) {
+      return await this.showNode(node.next);
+    }
+
+    await this.wa.sendButtons(this.phone, {
+      bodyText: 'What else can I help with?',
+      buttons: [{ id: 'flow_home', title: 'Main Menu' }]
+    });
+  }
+
+  // ── Execute a Button Action (ORIGINAL — untouched) ─────
   async executeAction(button) {
     const action = button.action || 'next';
 
     switch (action) {
       case 'next':
-        // Navigate to another node
         if (!button.next) {
           await this.wa.sendText(this.phone, 'This option is not configured yet.');
           return;
         }
         return await this.showNode(button.next);
 
-      case 'booking_flow':
-        // Hand off to BookingEngine — clear flow node, set booking state
+      case 'booking_flow': {
         await this.setState({ state: 'idle' });
-        // The MessageRouter will detect booking state and route accordingly
         const BookingEngine = require('./bookingEngine');
         const engine = new BookingEngine(this.tenant, this.patient, this.wa);
         return await engine.startBookingFlow();
+      }
 
       case 'text':
-        // Send a static text reply
         if (button.response) {
-          await this.wa.sendText(this.phone, button.response);
+          await this.wa.sendText(this.phone, this.interpolate(button.response));
         }
-        // Show a "back to menu" option
         await this.wa.sendButtons(this.phone, {
           bodyText: 'What else can I help with?',
           buttons: [{ id: 'flow_home', title: 'Main Menu' }]
@@ -162,12 +378,10 @@ class FlowEngine {
         return;
 
       case 'ai':
-        // Hand off to AI service (if enabled)
         if (!this.tenant.features?.ai_chatbot) {
           await this.wa.sendText(this.phone, 'This feature is not available yet.');
           return;
         }
-        // Set state to AI mode — MessageRouter handles the rest
         await this.setState({ state: 'ai_chat', flow_node: this.patient.wa_conversation_state?.flow_node });
         await this.wa.sendText(this.phone, 'You can now ask me anything. Type "menu" to go back.');
         return;
@@ -175,6 +389,70 @@ class FlowEngine {
       default:
         await this.wa.sendText(this.phone, 'This option is not configured yet.');
     }
+  }
+
+  // ── Variable helpers ────────────────────────────────────
+  getVariables() {
+    const state = this.patient.wa_conversation_state || {};
+    return state.variables || {};
+  }
+
+  async setVariable(key, value) {
+    const state = this.patient.wa_conversation_state || {};
+    const variables = { ...(state.variables || {}), [key]: value };
+    await this.setState({ ...state, variables });
+  }
+
+  async setVariables(vars) {
+    const state = this.patient.wa_conversation_state || {};
+    await this.setState({ ...state, variables: vars });
+  }
+
+  // ── Interpolate {{variables}} in messages ──────────────
+  interpolate(message) {
+    if (!message) return message;
+    const variables = this.getVariables();
+    // Add built-in variables
+    variables.phone = this.phone;
+    variables.business_name = this.tenant.business_name;
+    variables.customer_name = this.patient.name || '';
+
+    return message.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+      return variables[key] !== undefined ? String(variables[key]) : match;
+    });
+  }
+
+  // ── Rule matcher for condition nodes ───────────────────
+  matchRule(value, operator, ruleValue) {
+    if (value === undefined || value === null) return operator === 'is_empty';
+
+    const v = String(value).toLowerCase();
+    const rv = String(ruleValue).toLowerCase();
+
+    switch (operator) {
+      case 'equals': return v === rv;
+      case 'not_equals': return v !== rv;
+      case 'contains': return v.includes(rv);
+      case 'greater_than': return Number(value) > Number(ruleValue);
+      case 'less_than': return Number(value) < Number(ruleValue);
+      case 'is_empty': return !value || String(value).trim() === '';
+      case 'is_not_empty': return value && String(value).trim() !== '';
+      default: return v === rv;
+    }
+  }
+
+  // ── Default validation error messages ──────────────────
+  getDefaultError(inputType) {
+    const errors = {
+      text: 'Please type a valid answer.',
+      number: 'Please enter a valid number.',
+      email: 'Please enter a valid email address (e.g. name@example.com).',
+      phone: 'Please enter a valid phone number.',
+      date: 'Please enter a valid date (DD/MM/YYYY).',
+      rating: 'Please enter a number from 1 to 5.',
+      yes_no: 'Please reply with Yes or No.'
+    };
+    return errors[inputType] || errors.text;
   }
 
   // ── State helpers ───────────────────────────────────────

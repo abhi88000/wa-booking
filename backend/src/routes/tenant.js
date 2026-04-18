@@ -1264,21 +1264,67 @@ router.put('/flow-config', async (req, res, next) => {
       if (!flow_config.start && Object.keys(flow_config).length > 0) {
         return res.status(400).json({ error: 'flow_config must have a "start" node' });
       }
+      // Valid node types
+      const validTypes = ['menu', 'input', 'condition', 'action'];
+      const validInputTypes = ['text', 'number', 'email', 'phone', 'date', 'rating', 'yes_no'];
+      const validActionTypes = ['save_record', 'notify_admin', 'set_variable'];
+      const validOperators = ['equals', 'not_equals', 'contains', 'greater_than', 'less_than', 'is_empty', 'is_not_empty'];
+
       // Validate each node
       for (const [nodeId, node] of Object.entries(flow_config)) {
         if (nodeId === 'fallback') continue; // fallback is a string, not a node
-        if (!node.message) {
+
+        const nodeType = node.type || 'menu';
+        if (!validTypes.includes(nodeType)) {
+          return res.status(400).json({ error: `Node "${nodeId}" has invalid type "${nodeType}"` });
+        }
+
+        if (!node.message && nodeType !== 'condition') {
           return res.status(400).json({ error: `Node "${nodeId}" must have a message` });
         }
-        if (node.buttons && node.buttons.length > 10) {
-          return res.status(400).json({ error: `Node "${nodeId}" has more than 10 buttons (WhatsApp limit)` });
-        }
-        // Validate each button has an id and label
-        if (node.buttons) {
-          for (const btn of node.buttons) {
-            if (!btn.id || !btn.label) {
-              return res.status(400).json({ error: `Each button in node "${nodeId}" must have id and label` });
+
+        // Menu node validation
+        if (nodeType === 'menu') {
+          if (node.buttons && node.buttons.length > 10) {
+            return res.status(400).json({ error: `Node "${nodeId}" has more than 10 buttons (WhatsApp limit)` });
+          }
+          if (node.buttons) {
+            for (const btn of node.buttons) {
+              if (!btn.id || !btn.label) {
+                return res.status(400).json({ error: `Each button in node "${nodeId}" must have id and label` });
+              }
             }
+          }
+        }
+
+        // Input node validation
+        if (nodeType === 'input') {
+          if (!node.variable) {
+            return res.status(400).json({ error: `Input node "${nodeId}" must have a variable name` });
+          }
+          if (node.input_type && !validInputTypes.includes(node.input_type)) {
+            return res.status(400).json({ error: `Input node "${nodeId}" has invalid input_type "${node.input_type}"` });
+          }
+        }
+
+        // Condition node validation
+        if (nodeType === 'condition') {
+          if (!node.variable) {
+            return res.status(400).json({ error: `Condition node "${nodeId}" must have a variable to check` });
+          }
+          if (node.rules) {
+            for (const rule of node.rules) {
+              if (rule.operator && !validOperators.includes(rule.operator)) {
+                return res.status(400).json({ error: `Condition node "${nodeId}" has invalid operator "${rule.operator}"` });
+              }
+            }
+          }
+        }
+
+        // Action node validation
+        if (nodeType === 'action') {
+          if (node.action_type && !validActionTypes.includes(node.action_type)) {
+            return res.status(400).json({ error: `Action node "${nodeId}" has invalid action_type "${node.action_type}"` });
           }
         }
       }
@@ -1307,6 +1353,100 @@ router.put('/ai-config', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// ── TENANT RECORDS (Generic Data) ─────────────────────────
+
+// List records (with type filter, search, pagination)
+router.get('/records', async (req, res, next) => {
+  try {
+    const { type, status, search, page = 1, limit = 30 } = req.query;
+    const offset = (page - 1) * limit;
+    let where = 'WHERE tenant_id = $1';
+    const params = [req.tenantId];
+    let idx = 2;
+
+    if (type) { where += ` AND record_type = $${idx++}`; params.push(type); }
+    if (status) { where += ` AND status = $${idx++}`; params.push(status); }
+    if (search) { where += ` AND (phone ILIKE $${idx} OR data::text ILIKE $${idx})`; params.push(`%${search}%`); idx++; }
+
+    const countResult = await pool.query(`SELECT COUNT(*) FROM tenant_records ${where}`, params);
+    params.push(Number(limit), Number(offset));
+    const { rows } = await pool.query(
+      `SELECT * FROM tenant_records ${where} ORDER BY created_at DESC LIMIT $${idx++} OFFSET $${idx}`,
+      params
+    );
+
+    res.json({
+      records: rows,
+      total: parseInt(countResult.rows[0].count),
+      page: Number(page),
+      totalPages: Math.ceil(countResult.rows[0].count / limit)
+    });
+  } catch (err) { next(err); }
+});
+
+// Get single record
+router.get('/records/:id', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT * FROM tenant_records WHERE id = $1 AND tenant_id = $2',
+      [req.params.id, req.tenantId]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Record not found' });
+    res.json(rows[0]);
+  } catch (err) { next(err); }
+});
+
+// Update record status
+router.patch('/records/:id', requireRole('owner', 'admin', 'staff'), async (req, res, next) => {
+  try {
+    const { status, assigned_to, data } = req.body;
+    const updates = [];
+    const params = [];
+    let idx = 1;
+
+    if (status) { updates.push(`status = $${idx++}`); params.push(status); }
+    if (assigned_to !== undefined) { updates.push(`assigned_to = $${idx++}`); params.push(assigned_to); }
+    if (data) { updates.push(`data = data || $${idx++}::jsonb`); params.push(JSON.stringify(data)); }
+
+    if (updates.length === 0) return res.status(400).json({ error: 'Nothing to update' });
+
+    updates.push(`updated_at = NOW()`);
+    params.push(req.params.id, req.tenantId);
+
+    const { rows } = await pool.query(
+      `UPDATE tenant_records SET ${updates.join(', ')} WHERE id = $${idx++} AND tenant_id = $${idx} RETURNING *`,
+      params
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Record not found' });
+    res.json(rows[0]);
+  } catch (err) { next(err); }
+});
+
+// Delete record
+router.delete('/records/:id', requireRole('owner', 'admin'), async (req, res, next) => {
+  try {
+    const { rowCount } = await pool.query(
+      'DELETE FROM tenant_records WHERE id = $1 AND tenant_id = $2',
+      [req.params.id, req.tenantId]
+    );
+    if (!rowCount) return res.status(404).json({ error: 'Record not found' });
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
+// Get record type summary (counts per type)
+router.get('/records-summary', async (req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT record_type, status, COUNT(*)::int as count
+       FROM tenant_records WHERE tenant_id = $1
+       GROUP BY record_type, status ORDER BY record_type, status`,
+      [req.tenantId]
+    );
+    res.json(rows);
+  } catch (err) { next(err); }
 });
 
 // ── CONVERSATIONS / INBOX ─────────────────────────────────

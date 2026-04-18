@@ -57,6 +57,13 @@ class MessageRouter {
       return await engine.handleMessage(content, messageType, interactiveData);
     }
 
+    // ── AWAITING INPUT STATE ──
+    // If the patient is in an input node, route to FlowEngine
+    if (currentState === 'awaiting_input' && this.tenant.flow_config) {
+      const flow = new FlowEngine(this.tenant, this.patient, this.wa);
+      return await flow.handleMessage(content, messageType, interactiveData);
+    }
+
     // ── AI CHAT STATE ──
     // If the patient is in AI chat mode, route to AI service
     if (currentState === 'ai_chat') {

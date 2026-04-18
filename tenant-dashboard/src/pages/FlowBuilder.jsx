@@ -8,6 +8,39 @@ const ACTION_TYPES = [
   { value: 'ai', label: 'Hand off to AI' },
 ];
 
+const NODE_TYPES = [
+  { value: 'menu', label: 'Menu', desc: 'Show message with buttons' },
+  { value: 'input', label: 'Input', desc: 'Ask a question, store the answer' },
+  { value: 'condition', label: 'Condition', desc: 'If/else branching on a variable' },
+  { value: 'action', label: 'Action', desc: 'Save data, notify admin, etc.' },
+];
+
+const INPUT_TYPES = [
+  { value: 'text', label: 'Text' },
+  { value: 'number', label: 'Number' },
+  { value: 'email', label: 'Email' },
+  { value: 'phone', label: 'Phone' },
+  { value: 'date', label: 'Date' },
+  { value: 'rating', label: 'Rating (1-5)' },
+  { value: 'yes_no', label: 'Yes / No' },
+];
+
+const CONDITION_OPS = [
+  { value: 'equals', label: 'equals' },
+  { value: 'not_equals', label: 'not equals' },
+  { value: 'contains', label: 'contains' },
+  { value: 'greater_than', label: 'greater than' },
+  { value: 'less_than', label: 'less than' },
+  { value: 'is_empty', label: 'is empty' },
+  { value: 'is_not_empty', label: 'is not empty' },
+];
+
+const ACTION_NODE_TYPES = [
+  { value: 'save_record', label: 'Save collected data' },
+  { value: 'notify_admin', label: 'Notify admin' },
+  { value: 'set_variable', label: 'Set a variable' },
+];
+
 const LABEL_HELP = {
   staff: { title: 'Staff Title', example: 'Doctor, Stylist, Trainer', desc: 'What your team members are called. The bot says "Choose a {Staff Title}" when booking.' },
   customer: { title: 'Customer Title', example: 'Patient, Client, Student', desc: 'What your customers are called in confirmation messages.' },
@@ -40,6 +73,7 @@ function Preview({ flow, screen, onTap, labels }) {
   const [booking, setBooking] = useState(false);
   if (!node) return null;
   const btns = node.buttons || [];
+  const nodeType = node.type || 'menu';
   const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 
   return (
@@ -68,6 +102,22 @@ function Preview({ flow, screen, onTap, labels }) {
           </div>
           {/* Chat */}
           <div className="bg-[#efeae2] px-3 py-3 min-h-[130px]">
+            {nodeType === 'condition' ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-[11px] text-amber-700">
+                Condition: checks <span className="font-bold">{'{{' + (node.variable || '?') + '}}'}</span>
+                {(node.rules || []).map((r, i) => (
+                  <p key={i} className="mt-1">If {r.operator} "{r.value}" &rarr; {r.next || '?'}</p>
+                ))}
+                {node.else_next && <p className="mt-1">Else &rarr; {node.else_next}</p>}
+              </div>
+            ) : nodeType === 'action' ? (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-[11px] text-blue-700">
+                <p className="font-bold mb-1">Action: {node.action_type || 'save_record'}</p>
+                {node.message && <p className="text-blue-600">{node.message}</p>}
+                {node.next && <p className="mt-1">Then &rarr; {node.next}</p>}
+              </div>
+            ) : (
+            <>
             <div className="bg-white rounded-lg rounded-tl-none shadow-sm max-w-[250px]">
               <p className="px-3 py-2 text-[13px] text-gray-800 whitespace-pre-wrap leading-relaxed">
                 {node.message || '(empty)'}
@@ -90,6 +140,14 @@ function Preview({ flow, screen, onTap, labels }) {
               <div className="mt-2 bg-white rounded-lg shadow-sm text-center py-1.5 text-[12px] text-[#00a5f4] font-medium max-w-[250px]">
                 View Options ({btns.length})
               </div>
+            )}
+            {nodeType === 'input' && (
+              <div className="mt-2 bg-emerald-50 border border-emerald-200 rounded-lg px-2 py-1.5 max-w-[250px]">
+                <p className="text-[10px] text-emerald-700">Waiting for user to type: <span className="font-bold">{node.input_type || 'text'}</span></p>
+                <p className="text-[10px] text-emerald-600 mt-0.5">Stores as: {'{{' + (node.variable || '?') + '}}'}</p>
+              </div>
+            )}
+            </>
             )}
           </div>
           {/* Input */}
@@ -134,6 +192,24 @@ function FlowMap({ flow, nodeIds, onJump }) {
     return b.action;
   };
 
+  const nodeTypeIcon = (type) => {
+    switch (type) {
+      case 'input': return '?';
+      case 'condition': return 'if';
+      case 'action': return '!';
+      default: return null;
+    }
+  };
+
+  const nodeTypeColor = (type) => {
+    switch (type) {
+      case 'input': return 'bg-purple-100 text-purple-700';
+      case 'condition': return 'bg-amber-100 text-amber-700';
+      case 'action': return 'bg-blue-100 text-blue-700';
+      default: return '';
+    }
+  };
+
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm animate-slideUp" style={{ animationDelay: '120ms' }}>
       <div className="px-4 pt-4 pb-2">
@@ -154,15 +230,46 @@ function FlowMap({ flow, nodeIds, onJump }) {
                 {idx < nodeIds.length - 1 && <div className="w-px h-4 bg-gray-100 mt-1" />}
               </div>
               <div className="flex-1 min-w-0">
-                <button onClick={() => onJump(id)} className="text-sm font-medium text-gray-800 hover:text-emerald-600 transition text-left">
-                  {id === 'start' ? 'Start Screen' : id}
-                </button>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => onJump(id)} className="text-sm font-medium text-gray-800 hover:text-emerald-600 transition text-left">
+                    {id === 'start' ? 'Start Screen' : id}
+                  </button>
+                  {nodeTypeIcon(node.type) && (
+                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${nodeTypeColor(node.type)}`}>
+                      {node.type?.toUpperCase()}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-gray-400 truncate">{node.message?.substring(0, 50)}</p>
-                {(node.buttons || []).map((b, i) => (
+                {/* Menu node buttons */}
+                {(!node.type || node.type === 'menu') && (node.buttons || []).map((b, i) => (
                   <p key={i} className="text-[11px] text-gray-500 mt-0.5">
                     <span className="text-gray-700 font-medium">{b.label}</span> &rarr; {desc(b)}
                   </p>
                 ))}
+                {/* Input node */}
+                {node.type === 'input' && (
+                  <p className="text-[11px] text-purple-500 mt-0.5">
+                    stores <span className="font-medium">{'{{' + (node.variable || '?') + '}}'}</span> &rarr; {node.next || '?'}
+                  </p>
+                )}
+                {/* Condition node */}
+                {node.type === 'condition' && (
+                  <>
+                    {(node.rules || []).map((r, i) => (
+                      <p key={i} className="text-[11px] text-amber-600 mt-0.5">
+                        if {r.operator} "{r.value}" &rarr; {r.next || '?'}
+                      </p>
+                    ))}
+                    {node.else_next && <p className="text-[11px] text-amber-500 mt-0.5">else &rarr; {node.else_next}</p>}
+                  </>
+                )}
+                {/* Action node */}
+                {node.type === 'action' && (
+                  <p className="text-[11px] text-blue-500 mt-0.5">
+                    {node.action_type || 'save_record'} &rarr; {node.next || 'end'}
+                  </p>
+                )}
               </div>
             </div>
           );
@@ -335,6 +442,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
   const [renameId, setRenameId] = useState(nodeId);
   const isStart = nodeId === 'start';
   const btns = node.buttons || [];
+  const nodeType = node.type || 'menu';
 
   function addBtn() { onUpdate({ buttons: [...btns, { ...EMPTY_BUTTON, id: `btn_${Date.now()}` }] }); }
   function updateBtn(i, u) { const b = [...btns]; b[i] = { ...b[i], ...u }; onUpdate({ buttons: b }); }
@@ -345,6 +453,23 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
     [b[i], b[n]] = [b[n], b[i]]; onUpdate({ buttons: b });
   }
 
+  function addRule() {
+    const rules = [...(node.rules || [])];
+    rules.push({ operator: 'equals', value: '', next: '' });
+    onUpdate({ rules });
+  }
+  function updateRule(i, u) {
+    const rules = [...(node.rules || [])];
+    rules[i] = { ...rules[i], ...u };
+    onUpdate({ rules });
+  }
+  function removeRule(i) {
+    onUpdate({ rules: (node.rules || []).filter((_, j) => j !== i) });
+  }
+
+  // Collect all variable names used in input nodes for dropdowns
+  const allVariables = Object.values(flow).filter(n => typeof n === 'object' && n?.type === 'input' && n?.variable).map(n => n.variable);
+
   const actionText = (b) => {
     if (b.action === 'next') return b.next ? `Goes to "${b.next}"` : 'Not linked';
     if (b.action === 'booking_flow') return 'Starts booking';
@@ -352,6 +477,12 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
     if (b.action === 'ai') return 'AI assistant';
     return b.action;
   };
+
+  const nodeTypeLabel = NODE_TYPES.find(t => t.value === nodeType)?.label || 'Menu';
+  const nodeTypeBadge = nodeType === 'input' ? 'bg-purple-50 text-purple-700 border-purple-200'
+    : nodeType === 'condition' ? 'bg-amber-50 text-amber-700 border-amber-200'
+    : nodeType === 'action' ? 'bg-blue-50 text-blue-700 border-blue-200'
+    : 'bg-gray-50 text-gray-600 border-gray-200';
 
   return (
     <div className={`bg-white rounded-xl border mb-2.5 transition-all duration-200 animate-slideUp
@@ -365,12 +496,19 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
             {step}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-900">{isStart ? 'Start Screen' : nodeId}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-semibold text-gray-900">{isStart ? 'Start Screen' : nodeId}</p>
+              {nodeType !== 'menu' && (
+                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${nodeTypeBadge}`}>
+                  {nodeTypeLabel.toUpperCase()}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-gray-500 truncate max-w-[180px] sm:max-w-xs">{node.message?.substring(0, 55)}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {!open && btns.length > 0 && (
+          {!open && nodeType === 'menu' && btns.length > 0 && (
             <span className="text-[10px] font-medium text-gray-500 bg-gray-50 px-2 py-0.5 rounded hidden sm:inline">{btns.length} buttons</span>
           )}
           <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
@@ -378,14 +516,29 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
         </div>
       </div>
 
-      {/* Collapsed: show connections */}
-      {!open && btns.length > 0 && (
+      {/* Collapsed summary */}
+      {!open && nodeType === 'menu' && btns.length > 0 && (
         <div className="px-4 pb-3 -mt-1 flex flex-wrap gap-1">
           {btns.map((b, i) => (
             <span key={i} className="text-[10px] bg-gray-50 text-gray-500 px-2 py-0.5 rounded">
               {b.label} &rarr; {b.action === 'booking_flow' ? 'Booking' : b.action === 'text' ? 'Reply' : b.action === 'ai' ? 'AI' : b.next || '?'}
             </span>
           ))}
+        </div>
+      )}
+      {!open && nodeType === 'input' && (
+        <div className="px-4 pb-3 -mt-1">
+          <span className="text-[10px] text-purple-500">Asks for {node.input_type || 'text'} &rarr; {'{{' + (node.variable || '?') + '}}'}</span>
+        </div>
+      )}
+      {!open && nodeType === 'condition' && (
+        <div className="px-4 pb-3 -mt-1">
+          <span className="text-[10px] text-amber-600">Checks {'{{' + (node.variable || '?') + '}}'} &rarr; {(node.rules || []).length} rules</span>
+        </div>
+      )}
+      {!open && nodeType === 'action' && (
+        <div className="px-4 pb-3 -mt-1">
+          <span className="text-[10px] text-blue-500">{node.action_type || 'save_record'} &rarr; {node.next || 'end'}</span>
         </div>
       )}
 
@@ -406,59 +559,261 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
             </div>
           )}
 
-          {/* Message */}
+          {/* Node Type Selector */}
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">Bot message</label>
-            <textarea value={node.message || ''} onChange={e => onUpdate({ message: e.target.value })} rows={3}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none" />
-          </div>
-
-          {/* Buttons */}
-          <div>
-            <label className="text-xs font-medium text-gray-600 mb-2 block">
-              Buttons {btns.length > 3 && <span className="text-amber-600 font-normal">(shows as list menu)</span>}
-            </label>
-            <div className="space-y-2">
-              {btns.map((btn, idx) => (
-                <div key={idx} className="bg-gray-50 rounded-lg p-3 space-y-2 border border-gray-100">
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <input value={btn.label} onChange={e => updateBtn(idx, { label: e.target.value })}
-                      placeholder="Button text" maxLength={20}
-                      className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 bg-white" />
-                    <select value={btn.action} onChange={e => updateBtn(idx, { action: e.target.value })}
-                      className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
-                      {ACTION_TYPES.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
-                    </select>
-                  </div>
-                  {btn.action === 'next' && (
-                    <select value={btn.next || ''} onChange={e => updateBtn(idx, { next: e.target.value })}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
-                      <option value="">Select target screen</option>
-                      {allNodes.filter(n => n !== nodeId).map(n => (
-                        <option key={n} value={n}>{n === 'start' ? 'Start Screen' : n}</option>
-                      ))}
-                    </select>
-                  )}
-                  {btn.action === 'text' && (
-                    <textarea value={btn.response || ''} onChange={e => updateBtn(idx, { response: e.target.value })}
-                      placeholder="Reply text" rows={2}
-                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none bg-white" />
-                  )}
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 pt-1">
-                    <span className="text-[10px] text-gray-400">{actionText(btn)}</span>
-                    <div className="flex gap-3 text-xs font-medium">
-                      {idx > 0 && <button onClick={() => moveBtn(idx, -1)} className="text-gray-400 hover:text-gray-600">Up</button>}
-                      {idx < btns.length - 1 && <button onClick={() => moveBtn(idx, 1)} className="text-gray-400 hover:text-gray-600">Down</button>}
-                      <button onClick={() => removeBtn(idx)} className="text-red-400 hover:text-red-600">Remove</button>
-                    </div>
-                  </div>
-                </div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">Node Type</label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              {NODE_TYPES.map(t => (
+                <button key={t.value}
+                  onClick={() => onUpdate({ type: t.value })}
+                  className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all
+                    ${nodeType === t.value
+                      ? 'border-emerald-400 bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100'
+                      : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'}`}>
+                  {t.label}
+                  <p className="text-[9px] font-normal mt-0.5 opacity-70">{t.desc}</p>
+                </button>
               ))}
             </div>
-            {btns.length < 10 && (
-              <button onClick={addBtn} className="mt-3 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition">+ Add Button</button>
-            )}
           </div>
+
+          {/* ── MENU NODE ── */}
+          {nodeType === 'menu' && (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Bot message</label>
+                <textarea value={node.message || ''} onChange={e => onUpdate({ message: e.target.value })} rows={3}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none" />
+                {allVariables.length > 0 && (
+                  <p className="text-[10px] text-gray-400 mt-1">Variables: {allVariables.map(v => '{{' + v + '}}').join(', ')}</p>
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-2 block">
+                  Buttons {btns.length > 3 && <span className="text-amber-600 font-normal">(shows as list menu)</span>}
+                </label>
+                <div className="space-y-2">
+                  {btns.map((btn, idx) => (
+                    <div key={idx} className="bg-gray-50 rounded-lg p-3 space-y-2 border border-gray-100">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input value={btn.label} onChange={e => updateBtn(idx, { label: e.target.value })}
+                          placeholder="Button text" maxLength={20}
+                          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 bg-white" />
+                        <select value={btn.action} onChange={e => updateBtn(idx, { action: e.target.value })}
+                          className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
+                          {ACTION_TYPES.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                        </select>
+                      </div>
+                      {btn.action === 'next' && (
+                        <select value={btn.next || ''} onChange={e => updateBtn(idx, { next: e.target.value })}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
+                          <option value="">Select target screen</option>
+                          {allNodes.filter(n => n !== nodeId).map(n => (
+                            <option key={n} value={n}>{n === 'start' ? 'Start Screen' : n}</option>
+                          ))}
+                        </select>
+                      )}
+                      {btn.action === 'text' && (
+                        <textarea value={btn.response || ''} onChange={e => updateBtn(idx, { response: e.target.value })}
+                          placeholder="Reply text" rows={2}
+                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none bg-white" />
+                      )}
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 pt-1">
+                        <span className="text-[10px] text-gray-400">{actionText(btn)}</span>
+                        <div className="flex gap-3 text-xs font-medium">
+                          {idx > 0 && <button onClick={() => moveBtn(idx, -1)} className="text-gray-400 hover:text-gray-600">Up</button>}
+                          {idx < btns.length - 1 && <button onClick={() => moveBtn(idx, 1)} className="text-gray-400 hover:text-gray-600">Down</button>}
+                          <button onClick={() => removeBtn(idx)} className="text-red-400 hover:text-red-600">Remove</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {btns.length < 10 && (
+                  <button onClick={addBtn} className="mt-3 text-xs font-semibold text-emerald-600 hover:text-emerald-700 transition">+ Add Button</button>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ── INPUT NODE ── */}
+          {nodeType === 'input' && (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Question to ask</label>
+                <textarea value={node.message || ''} onChange={e => onUpdate({ message: e.target.value })} rows={2}
+                  placeholder="e.g. What's your name?"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Expected answer type</label>
+                  <select value={node.input_type || 'text'} onChange={e => onUpdate({ input_type: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
+                    {INPUT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Store answer as variable</label>
+                  <input value={node.variable || ''} onChange={e => onUpdate({ variable: e.target.value.replace(/[^a-z0-9_]/g, '') })}
+                    placeholder="e.g. customer_name"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono text-gray-700 outline-none focus:border-emerald-400" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Error message (if validation fails)</label>
+                <input value={node.error_message || ''} onChange={e => onUpdate({ error_message: e.target.value })}
+                  placeholder="Leave empty for default"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">After answer, go to</label>
+                <select value={node.next || ''} onChange={e => onUpdate({ next: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
+                  <option value="">Select next screen</option>
+                  {allNodes.filter(n => n !== nodeId).map(n => (
+                    <option key={n} value={n}>{n === 'start' ? 'Start Screen' : n}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="bg-purple-50 rounded-lg px-3 py-2 text-[11px] text-purple-700">
+                Use <span className="font-mono font-bold">{'{{' + (node.variable || 'variable_name') + '}}'}</span> in any message to insert the answer.
+              </div>
+            </>
+          )}
+
+          {/* ── CONDITION NODE ── */}
+          {nodeType === 'condition' && (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Variable to check</label>
+                {allVariables.length > 0 ? (
+                  <select value={node.variable || ''} onChange={e => onUpdate({ variable: e.target.value })}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
+                    <option value="">Select variable</option>
+                    {allVariables.map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                ) : (
+                  <input value={node.variable || ''} onChange={e => onUpdate({ variable: e.target.value.replace(/[^a-z0-9_]/g, '') })}
+                    placeholder="variable_name"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono text-gray-700 outline-none focus:border-emerald-400" />
+                )}
+              </div>
+              <div>
+                <label className="text-xs font-medium text-gray-600 mb-2 block">Rules (first match wins)</label>
+                <div className="space-y-2">
+                  {(node.rules || []).map((rule, idx) => (
+                    <div key={idx} className="bg-amber-50 rounded-lg p-3 border border-amber-100">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <select value={rule.operator || 'equals'} onChange={e => updateRule(idx, { operator: e.target.value })}
+                          className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-amber-400 bg-white">
+                          {CONDITION_OPS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                        {!['is_empty', 'is_not_empty'].includes(rule.operator) && (
+                          <input value={rule.value || ''} onChange={e => updateRule(idx, { value: e.target.value })}
+                            placeholder="Value"
+                            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-amber-400 bg-white" />
+                        )}
+                        <select value={rule.next || ''} onChange={e => updateRule(idx, { next: e.target.value })}
+                          className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-amber-400 bg-white">
+                          <option value="">Go to...</option>
+                          {allNodes.filter(n => n !== nodeId).map(n => (
+                            <option key={n} value={n}>{n === 'start' ? 'Start Screen' : n}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex justify-end mt-1">
+                        <button onClick={() => removeRule(idx)} className="text-xs text-red-400 hover:text-red-600">Remove</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button onClick={addRule} className="mt-3 text-xs font-semibold text-amber-600 hover:text-amber-700 transition">+ Add Rule</button>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Else (no rules matched), go to</label>
+                <select value={node.else_next || ''} onChange={e => onUpdate({ else_next: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
+                  <option value="">Select screen</option>
+                  {allNodes.filter(n => n !== nodeId).map(n => (
+                    <option key={n} value={n}>{n === 'start' ? 'Start Screen' : n}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
+
+          {/* ── ACTION NODE ── */}
+          {nodeType === 'action' && (
+            <>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Action type</label>
+                <select value={node.action_type || 'save_record'} onChange={e => onUpdate({ action_type: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
+                  {ACTION_NODE_TYPES.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                </select>
+              </div>
+
+              {node.action_type === 'save_record' || !node.action_type ? (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Record type label</label>
+                  <input value={node.record_type || ''} onChange={e => onUpdate({ record_type: e.target.value.replace(/[^a-z0-9_]/g, '') })}
+                    placeholder="e.g. lead, order, feedback"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono text-gray-700 outline-none focus:border-emerald-400" />
+                  <p className="text-[10px] text-gray-400 mt-1">All collected variables will be saved. You can view them in the Records section.</p>
+                </div>
+              ) : null}
+
+              {node.action_type === 'notify_admin' && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Notification message</label>
+                  <textarea value={node.notify_message || ''} onChange={e => onUpdate({ notify_message: e.target.value })}
+                    placeholder="e.g. New lead from {{phone}}: {{name}} - Budget: {{budget}}"
+                    rows={2}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none" />
+                </div>
+              )}
+
+              {node.action_type === 'set_variable' && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Variable name</label>
+                    <input value={node.set_var || ''} onChange={e => onUpdate({ set_var: e.target.value.replace(/[^a-z0-9_]/g, '') })}
+                      placeholder="e.g. status"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm font-mono text-gray-700 outline-none focus:border-emerald-400" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Value</label>
+                    <input value={node.set_value || ''} onChange={e => onUpdate({ set_value: e.target.value })}
+                      placeholder="e.g. qualified"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400" />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Confirmation message (shown to user)</label>
+                <textarea value={node.message || ''} onChange={e => onUpdate({ message: e.target.value })}
+                  placeholder='e.g. Thank you {{name}}! We will contact you soon.'
+                  rows={2}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none" />
+                {allVariables.length > 0 && (
+                  <p className="text-[10px] text-gray-400 mt-1">Variables: {allVariables.map(v => '{{' + v + '}}').join(', ')}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">After action, go to</label>
+                <select value={node.next || ''} onChange={e => onUpdate({ next: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
+                  <option value="">End conversation</option>
+                  {allNodes.filter(n => n !== nodeId).map(n => (
+                    <option key={n} value={n}>{n === 'start' ? 'Start Screen' : n}</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
 
           {!isStart && (
             <div className="pt-3 border-t border-gray-100">

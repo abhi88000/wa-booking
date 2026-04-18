@@ -74,6 +74,13 @@ export default {
   saveFlowConfig: (data) => api.put('/tenant/flow-config', data),
   saveAIConfig: (data) => api.put('/tenant/ai-config', data),
 
+  // Records (generic data from flow actions)
+  getRecords: (params) => api.get('/tenant/records', { params }),
+  getRecord: (id) => api.get(`/tenant/records/${id}`),
+  updateRecord: (id, data) => api.patch(`/tenant/records/${id}`, data),
+  deleteRecord: (id) => api.delete(`/tenant/records/${id}`),
+  getRecordsSummary: () => api.get('/tenant/records-summary'),
+
   // Settings
   getSettings: () => api.get('/tenant/settings'),
   updateSettings: (data) => api.patch('/tenant/settings', data),

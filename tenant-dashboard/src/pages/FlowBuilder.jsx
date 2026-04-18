@@ -450,8 +450,8 @@ export default function FlowBuilder() {
         message: 'Welcome! How can I help you today?',
         buttons: [
           { id: 'book', label: 'Book Appointment', action: 'booking_flow' },
-          { id: 'status', label: 'My Appointments', action: 'booking_flow' },
-          { id: 'contact', label: 'Contact Us', action: 'text', response: 'Please call us or visit our website.' }
+          { id: 'status', label: 'My Appointments', action: 'booking_status' },
+          { id: 'cancel', label: 'Cancel / Reschedule', action: 'booking_cancel' }
         ]
       },
       fallback: 'Sorry, I didn\'t understand that. Please pick an option from the menu.'
@@ -725,34 +725,37 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
                 )}
                 <div className="space-y-2">
                   {btns.map((btn, idx) => (
-                    <div key={idx} className="bg-gray-50 rounded-lg p-3 space-y-2 border border-gray-100">
-                      <div className="flex flex-col sm:flex-row gap-2">
+                    <div key={idx} className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-[10px] font-bold text-gray-400 w-5 shrink-0">{idx + 1}.</span>
                         <input value={btn.label} onChange={e => updateBtn(idx, { label: e.target.value })}
-                          placeholder="Button text (e.g. View Services)" maxLength={20}
-                          className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 bg-white" />
+                          placeholder="Button text" maxLength={20}
+                          className="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-800 outline-none focus:border-emerald-400 bg-white" />
+                        <div className="flex gap-1 shrink-0">
+                          {idx > 0 && <button onClick={() => moveBtn(idx, -1)} className="text-[10px] text-gray-400 hover:text-gray-600 px-1">↑</button>}
+                          {idx < btns.length - 1 && <button onClick={() => moveBtn(idx, 1)} className="text-[10px] text-gray-400 hover:text-gray-600 px-1">↓</button>}
+                          <button onClick={() => removeBtn(idx)} className="text-[10px] text-red-400 hover:text-red-600 px-1">✕</button>
+                        </div>
+                      </div>
+                      <div className="ml-5">
                         <select value={btn.action} onChange={e => updateBtn(idx, { action: e.target.value })}
-                          className="border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
+                          className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
                           {BTN_ACTIONS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
                         </select>
-                      </div>
-                      {btn.action === 'next' && (
-                        <select value={btn.next || ''} onChange={e => updateBtn(idx, { next: e.target.value })}
-                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
-                          <option value="">Where should this button lead to?</option>
-                          {allNodes.filter(n => n !== nodeId).map(n => (
-                            <option key={n} value={n}>{friendlyName(n, allNodes.indexOf(n))}</option>
-                          ))}
-                        </select>
-                      )}
-                      {btn.action === 'text' && (
-                        <textarea value={btn.response || ''} onChange={e => updateBtn(idx, { response: e.target.value })}
-                          placeholder="What should the bot reply? e.g. Our hours are Mon-Sat 9AM-6PM" rows={2}
-                          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none bg-white" />
-                      )}
-                      <div className="flex justify-end gap-3 text-xs font-medium pt-1">
-                        {idx > 0 && <button onClick={() => moveBtn(idx, -1)} className="text-gray-400 hover:text-gray-600">↑ Up</button>}
-                        {idx < btns.length - 1 && <button onClick={() => moveBtn(idx, 1)} className="text-gray-400 hover:text-gray-600">↓ Down</button>}
-                        <button onClick={() => removeBtn(idx)} className="text-red-400 hover:text-red-600">Remove</button>
+                        {btn.action === 'next' && (
+                          <select value={btn.next || ''} onChange={e => updateBtn(idx, { next: e.target.value })}
+                            className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white mt-1.5">
+                            <option value="">Where should this button lead to?</option>
+                            {allNodes.filter(n => n !== nodeId).map(n => (
+                              <option key={n} value={n}>{friendlyName(n, allNodes.indexOf(n))}</option>
+                            ))}
+                          </select>
+                        )}
+                        {btn.action === 'text' && (
+                          <textarea value={btn.response || ''} onChange={e => updateBtn(idx, { response: e.target.value })}
+                            placeholder="What should the bot reply?" rows={2}
+                            className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none bg-white mt-1.5" />
+                        )}
                       </div>
                     </div>
                   ))}

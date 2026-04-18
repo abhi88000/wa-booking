@@ -15,6 +15,7 @@ import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import DataDeletion from './pages/DataDeletion';
 import { ClinicProvider, useClinic } from './ClinicContext';
+import Icon from './components/Icons';
 
 function App() {
   const [token, setToken] = useState(localStorage.getItem('tenant_token'));
@@ -85,14 +86,14 @@ function Sidebar({ onLogout }) {
   const bookingLabel = tenantLabels.booking || 'Bookings';
   
   const links = [
-    { to: '/', label: 'Dashboard', emoji: '📊' },
-    { to: '/appointments', label: bookingLabel + 's', emoji: '📅' },
-    { to: '/doctors', label: staffLabel + 's', emoji: '🧑‍⚕️' },
-    { to: '/services', label: 'Services', emoji: '📦' },
-    { to: '/patients', label: customerLabel + 's', emoji: '👥' },
-    { to: '/flow-builder', label: 'Flow Builder', emoji: '🤖' },
-    { to: '/inbox', label: 'Inbox', emoji: '💬' },
-    { to: '/settings', label: 'Settings', emoji: '⚙️' },
+    { to: '/', label: 'Dashboard', icon: 'dashboard' },
+    { to: '/appointments', label: bookingLabel + 's', icon: 'calendar' },
+    { to: '/doctors', label: staffLabel + 's', icon: 'userCircle' },
+    { to: '/services', label: 'Services', icon: 'package' },
+    { to: '/patients', label: customerLabel + 's', icon: 'users' },
+    { to: '/flow-builder', label: 'Flow Builder', icon: 'bot' },
+    { to: '/inbox', label: 'Inbox', icon: 'messageCircle' },
+    { to: '/settings', label: 'Settings', icon: 'settings' },
   ];
 
   return (
@@ -125,16 +126,11 @@ function Sidebar({ onLogout }) {
               Future<span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, #25D366, #128C7E)' }}>Z</span>Minds
             </span>
           </div>
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shadow-sm" style={{ background: 'linear-gradient(135deg, #25D366, #128C7E)' }}>
-              {(tenantInfo.businessName || 'M')[0]}
-            </div>
-            <div>
-              <h1 className="text-[13px] font-semibold text-gray-900 truncate leading-tight">
-                {tenantInfo.businessName || 'My Business'}
-              </h1>
-              <p className="text-gray-400 text-[10px] mt-0.5">WhatsApp Automation</p>
-            </div>
+          <div>
+            <h1 className="text-[13px] font-semibold text-gray-900 truncate leading-tight">
+              {tenantInfo.businessName || 'My Business'}
+            </h1>
+            <p className="text-gray-400 text-[10px] mt-0.5">WhatsApp Automation</p>
           </div>
           {clinics.length > 1 && (
             <select value={clinic} onChange={e => setClinic(e.target.value)}
@@ -156,7 +152,7 @@ function Sidebar({ onLogout }) {
                   ${active
                     ? 'bg-emerald-50 text-emerald-700 font-semibold shadow-sm'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 font-medium'}`}>
-                <span className="text-base w-[18px] text-center flex-shrink-0">{link.emoji}</span>
+                <Icon name={link.icon} className={`w-[18px] h-[18px] flex-shrink-0 ${active ? 'text-emerald-600' : 'text-gray-400'}`} />
                 {link.label}
               </Link>
             );

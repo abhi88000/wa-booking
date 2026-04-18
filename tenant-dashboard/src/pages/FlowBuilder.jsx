@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
+import Icon from '../components/Icons';
 
 // ── Constants ──────────────────────────────────────────
 const BTN_ACTIONS = [
@@ -39,7 +40,7 @@ const TEMPLATES = [
     id: 'lead_capture',
     name: 'Lead Capture',
     desc: 'Collect name, email, and interest from potential customers',
-    icon: '🎯',
+    icon: 'target',
     industries: 'Real Estate, Education, Insurance',
     flow: {
       start: { message: 'Hi! 👋 Welcome. Let me help you get started.\n\nI just need a few details.', buttons: [{ id: 'go', label: 'Get Started', action: 'next', next: 'screen_ask_name' }] },
@@ -54,7 +55,7 @@ const TEMPLATES = [
     id: 'feedback',
     name: 'Customer Feedback',
     desc: 'Ask for a rating and collect comments after a service',
-    icon: '⭐',
+    icon: 'star',
     industries: 'Restaurants, Hotels, Salons',
     flow: {
       start: { message: 'Hi! We\'d love to hear about your experience. It takes just 30 seconds.', buttons: [{ id: 'go', label: 'Give Feedback', action: 'next', next: 'screen_rating' }] },
@@ -70,7 +71,7 @@ const TEMPLATES = [
     id: 'appointment',
     name: 'Appointment Booking',
     desc: 'Let customers book appointments directly on WhatsApp',
-    icon: '📅',
+    icon: 'calendar',
     industries: 'Clinics, Salons, Gyms, Consultants',
     flow: {
       start: { message: 'Welcome! 👋 How can I help you today?', buttons: [
@@ -85,7 +86,7 @@ const TEMPLATES = [
     id: 'faq',
     name: 'FAQ / Info Bot',
     desc: 'Answer common questions with menu buttons',
-    icon: '❓',
+    icon: 'helpCircle',
     industries: 'Any business',
     flow: {
       start: { message: 'Welcome! 👋 What would you like to know?', buttons: [
@@ -101,7 +102,7 @@ const TEMPLATES = [
     id: 'order',
     name: 'Order / Inquiry',
     desc: 'Collect product interest and contact details for follow-up',
-    icon: '🛒',
+    icon: 'shoppingCart',
     industries: 'E-commerce, Wholesale, Services',
     flow: {
       start: { message: 'Hi! 👋 Welcome to our store.\n\nWhat are you looking for today?', buttons: [
@@ -120,7 +121,7 @@ const TEMPLATES = [
     id: 'blank',
     name: 'Start from Scratch',
     desc: 'Build your own custom flow step by step',
-    icon: '✏️',
+    icon: 'edit',
     industries: 'Custom',
     flow: null
   },
@@ -128,10 +129,10 @@ const TEMPLATES = [
 
 // ── Step type explainers ───────────────────────────────
 const STEP_TYPES = [
-  { type: 'menu', name: 'Send Message', icon: '💬', color: 'emerald', desc: 'Show a message with buttons the customer can tap', example: 'Welcome menu, product categories, service list' },
-  { type: 'input', name: 'Ask a Question', icon: '✍️', color: 'purple', desc: 'Ask something and save the answer (name, email, phone...)', example: '"What is your name?", "What\'s your email?"' },
-  { type: 'condition', name: 'Smart Routing', icon: '🔀', color: 'amber', desc: 'Automatically send customer to different steps based on answers', example: 'If rating < 4, ask what went wrong' },
-  { type: 'action', name: 'Save & Finish', icon: '💾', color: 'blue', desc: 'Save all collected info as a lead, order, feedback, etc.', example: 'Save as "lead" — view in dashboard later' },
+  { type: 'menu', name: 'Send Message', icon: 'messageSquare', color: 'emerald', desc: 'Show a message with buttons the customer can tap', example: 'Welcome menu, product categories, service list' },
+  { type: 'input', name: 'Ask a Question', icon: 'formInput', color: 'purple', desc: 'Ask something and save the answer (name, email, phone...)', example: '"What is your name?", "What\'s your email?"' },
+  { type: 'condition', name: 'Smart Routing', icon: 'gitBranch', color: 'amber', desc: 'Automatically send customer to different steps based on answers', example: 'If rating < 4, ask what went wrong' },
+  { type: 'action', name: 'Save & Finish', icon: 'save', color: 'blue', desc: 'Save all collected info as a lead, order, feedback, etc.', example: 'Save as "lead" — view in dashboard later' },
 ];
 
 // ── Helpers ────────────────────────────────────────────
@@ -152,7 +153,7 @@ function GettingStarted({ collapsed, onToggle }) {
     <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border border-emerald-100 mb-4 animate-slideUp">
       <button onClick={onToggle} className="w-full flex items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="text-base">💡</span>
+          <Icon name="lightbulb" className="w-4 h-4 text-emerald-600" />
           <span className="text-sm font-bold text-gray-900">How the Flow Builder Works</span>
           <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">Guide</span>
         </div>
@@ -166,7 +167,7 @@ function GettingStarted({ collapsed, onToggle }) {
             {STEP_TYPES.map(s => (
               <div key={s.type} className="bg-white rounded-lg p-3 border border-gray-100">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm">{s.icon}</span>
+                  <Icon name={s.icon} className="w-4 h-4 text-gray-600" />
                   <span className="text-sm font-semibold text-gray-800">{s.name}</span>
                 </div>
                 <p className="text-xs text-gray-600">{s.desc}</p>
@@ -175,7 +176,7 @@ function GettingStarted({ collapsed, onToggle }) {
             ))}
           </div>
           <div className="mt-3 bg-white rounded-lg p-3 border border-gray-100">
-            <p className="text-xs font-semibold text-gray-700 mb-1">💬 How a typical flow works:</p>
+            <p className="text-xs font-semibold text-gray-700 mb-1">How a typical flow works:</p>
             <div className="flex flex-wrap items-center gap-1 text-xs text-gray-600">
               <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-medium">Welcome Message</span>
               <span>→</span>
@@ -207,7 +208,7 @@ function TemplatePicker({ onPick }) {
           <button key={t.id} onClick={() => onPick(t)}
             className="text-left bg-white rounded-xl border border-gray-100 shadow-sm p-4 hover:border-emerald-300 hover:shadow-md transition-all duration-200 group">
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-2xl">{t.icon}</span>
+              <Icon name={t.icon} className="w-6 h-6 text-gray-500 group-hover:text-emerald-600 transition" />
               <h3 className="text-sm font-bold text-gray-900 group-hover:text-emerald-700 transition">{t.name}</h3>
             </div>
             <p className="text-xs text-gray-600 mb-2">{t.desc}</p>
@@ -231,7 +232,7 @@ function Preview({ flow, screen, onTap, labels }) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm animate-slideUp" style={{ animationDelay: '60ms' }}>
       <div className="flex justify-between items-center px-4 pt-4 pb-2">
-        <h2 className="text-sm font-bold text-gray-900">📱 Live Preview</h2>
+        <h2 className="text-sm font-bold text-gray-900">Live Preview</h2>
         <div className="flex gap-2 items-center">
           {screen !== 'start' && (
             <button onClick={() => onTap('start')} className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">← Back to start</button>
@@ -332,7 +333,7 @@ function FlowMap({ flow, nodeIds, onJump }) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm animate-slideUp" style={{ animationDelay: '120ms' }}>
       <div className="px-4 pt-4 pb-2">
-        <h2 className="text-sm font-bold text-gray-900">🗺️ Conversation Flow</h2>
+        <h2 className="text-sm font-bold text-gray-900">Conversation Flow</h2>
         <p className="text-xs text-gray-500 mt-0.5">How your steps connect — tap any step to edit it</p>
       </div>
       <div className="px-4 pb-4 space-y-2">
@@ -488,8 +489,8 @@ export default function FlowBuilder() {
         </div>
         <div className="flex gap-2">
           <button onClick={() => { setIsNewFlow(true); }}
-            className="px-4 py-2.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition">
-            📋 Templates
+            className="px-4 py-2.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition flex items-center gap-1.5">
+            <Icon name="clipboard" className="w-3.5 h-3.5" /> Templates
           </button>
           <button onClick={save} disabled={saving}
             className="px-6 py-2.5 text-white text-sm font-semibold rounded-xl disabled:opacity-50 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-200 active:scale-[0.98]"
@@ -500,7 +501,7 @@ export default function FlowBuilder() {
       </div>
 
       {error && <div className="mb-4 text-sm font-medium text-red-700 bg-red-50 border border-red-100 rounded-xl px-4 py-3 animate-slideDown">{error}</div>}
-      {saved && <div className="mb-4 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 animate-slideDown">✅ Flow saved! Your WhatsApp bot is now updated.</div>}
+      {saved && <div className="mb-4 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 animate-slideDown">Flow saved! Your WhatsApp bot is now updated.</div>}
 
       {/* Getting Started Guide */}
       <GettingStarted collapsed={!showGuide} onToggle={() => setShowGuide(!showGuide)} />
@@ -553,27 +554,31 @@ export default function FlowBuilder() {
 
       {/* Add Step */}
       <div className="mt-3 animate-slideUp" style={{ animationDelay: `${360 + nodeIds.length * 60}ms` }}>
-        <p className="text-xs font-semibold text-gray-600 mb-2">➕ Add a new step:</p>
+        <p className="text-xs font-semibold text-gray-600 mb-2">Add a new step:</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           <button onClick={() => addNode('menu')}
-            className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all">
-            💬 Send Message
-            <p className="text-[10px] font-normal text-gray-400 mt-0.5">Text + buttons</p>
+            className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all flex flex-col items-center gap-1">
+            <Icon name="messageSquare" className="w-5 h-5" />
+            Send Message
+            <p className="text-[10px] font-normal text-gray-400">Text + buttons</p>
           </button>
           <button onClick={() => addNode('input')}
-            className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50/30 transition-all">
-            ✍️ Ask Question
-            <p className="text-[10px] font-normal text-gray-400 mt-0.5">Name, email, phone...</p>
+            className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50/30 transition-all flex flex-col items-center gap-1">
+            <Icon name="formInput" className="w-5 h-5" />
+            Ask Question
+            <p className="text-[10px] font-normal text-gray-400">Name, email, phone...</p>
           </button>
           <button onClick={() => addNode('condition')}
-            className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50/30 transition-all">
-            🔀 Smart Route
-            <p className="text-[10px] font-normal text-gray-400 mt-0.5">Go to different steps based on answer</p>
+            className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50/30 transition-all flex flex-col items-center gap-1">
+            <Icon name="gitBranch" className="w-5 h-5" />
+            Smart Route
+            <p className="text-[10px] font-normal text-gray-400">Go to different steps based on answer</p>
           </button>
           <button onClick={() => addNode('action')}
-            className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/30 transition-all">
-            💾 Save & Finish
-            <p className="text-[10px] font-normal text-gray-400 mt-0.5">Save as lead, order, etc.</p>
+            className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/30 transition-all flex flex-col items-center gap-1">
+            <Icon name="save" className="w-5 h-5" />
+            Save & Finish
+            <p className="text-[10px] font-normal text-gray-400">Save as lead, order, etc.</p>
           </button>
         </div>
       </div>
@@ -614,9 +619,9 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
   const typeBadge = nodeType === 'input' ? 'bg-purple-50 text-purple-600'
     : nodeType === 'condition' ? 'bg-amber-50 text-amber-600'
     : nodeType === 'action' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600';
-  const typeIcon = nodeType === 'input' ? '✍️'
-    : nodeType === 'condition' ? '🔀'
-    : nodeType === 'action' ? '💾' : '💬';
+  const typeIcon = nodeType === 'input' ? 'formInput'
+    : nodeType === 'condition' ? 'gitBranch'
+    : nodeType === 'action' ? 'save' : 'messageSquare';
   const typeLabel = nodeType === 'input' ? 'Ask Question'
     : nodeType === 'condition' ? 'Smart Route'
     : nodeType === 'action' ? 'Save & Finish' : 'Message';
@@ -659,9 +664,9 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 cursor-pointer" onClick={onToggle}>
         <div className="flex items-center gap-3 min-w-0">
-          <div className={`w-7 h-7 rounded-md flex items-center justify-center text-xs shrink-0
+          <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0
             ${isStart ? 'bg-emerald-50' : 'bg-gray-50'}`}>
-            {typeIcon}
+            <Icon name={typeIcon} className="w-3.5 h-3.5 text-gray-500" />
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -683,7 +688,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
           {nodeType === 'menu' && (
             <>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">💬 Bot Message</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Bot Message</label>
                 <textarea value={node.message || ''} onChange={e => onUpdate({ message: e.target.value })} rows={3}
                   placeholder="What should the bot say? e.g. Hi! Welcome to our store. How can we help?"
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none" />
@@ -691,7 +696,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
               </div>
               <div>
                 <label className="text-xs font-medium text-gray-600 mb-1 block">
-                  🔘 Reply Buttons <span className="font-normal text-gray-400">— what can the customer tap?</span>
+                  Reply Buttons <span className="font-normal text-gray-400">— what can the customer tap?</span>
                 </label>
                 {btns.length > 3 && (
                   <p className="text-[10px] text-amber-600 bg-amber-50 px-2 py-1 rounded mb-2">WhatsApp shows max 3 buttons. Extra ones appear as a list menu.</p>
@@ -741,7 +746,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
           {nodeType === 'input' && (
             <>
               <div className="bg-purple-50/50 rounded-lg px-3 py-2 border border-purple-100 mb-1">
-                <p className="text-[11px] text-purple-700">✍️ This step asks the customer a question and saves their answer. You can use their answer in later messages.</p>
+                <p className="text-[11px] text-purple-700">This step asks the customer a question and saves their answer. You can use their answer in later messages.</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Question to ask the customer</label>
@@ -782,7 +787,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
           {nodeType === 'condition' && (
             <>
               <div className="bg-amber-50/50 rounded-lg px-3 py-2 border border-amber-100 mb-1">
-                <p className="text-[11px] text-amber-700">🔀 This step is automatic — the customer never sees it. It checks an answer and sends them to different steps.</p>
+                <p className="text-[11px] text-amber-700">This step is automatic — the customer never sees it. It checks an answer and sends them to different steps.</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Which answer should we check?</label>
@@ -793,11 +798,11 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
                     {allVariables.map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                 ) : (
-                  <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">⚠️ Add an "Ask Question" step first — you need answers to route on.</p>
+                  <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-lg">Add an "Ask Question" step first — you need answers to route on.</p>
                 )}
               </div>
               <div>
-                <label className="text-xs font-medium text-gray-600 mb-2 block">📋 Rules — check the answer and go to different steps</label>
+                <label className="text-xs font-medium text-gray-600 mb-2 block">Rules — check the answer and go to different steps</label>
                 <div className="space-y-2">
                   {(node.rules || []).map((rule, idx) => (
                     <div key={idx} className="bg-amber-50/50 rounded-lg p-3 border border-amber-100 space-y-2">
@@ -835,7 +840,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
           {nodeType === 'action' && (
             <>
               <div className="bg-blue-50/50 rounded-lg px-3 py-2 border border-blue-100 mb-1">
-                <p className="text-[11px] text-blue-700">💾 This step saves everything the customer has told you. You can view all saved data in your dashboard.</p>
+                <p className="text-[11px] text-blue-700">This step saves everything the customer has told you. You can view all saved data in your dashboard.</p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">What kind of data is this?</label>
@@ -859,7 +864,9 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
           {/* Delete */}
           {!isStart && (
             <div className="pt-3 border-t border-gray-100">
-              <button onClick={onDelete} className="text-xs font-medium text-red-400 hover:text-red-600">🗑️ Delete this step</button>
+              <button onClick={onDelete} className="text-xs font-medium text-red-400 hover:text-red-600 flex items-center gap-1">
+                <Icon name="trash" className="w-3.5 h-3.5" /> Delete this step
+              </button>
             </div>
           )}
         </div>

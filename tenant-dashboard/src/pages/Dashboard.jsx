@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
 import { useClinic } from '../ClinicContext';
+import Icon from '../components/Icons';
 
 // ── Helpers ───────────────────────────────────────────────
 function formatTime(t) {
@@ -58,7 +59,9 @@ function TypeBadge({ type }) {
 function StatCard({ icon, value, label, accent, link, delay }) {
   return (
     <Link to={link} className="animate-slideUp bg-white rounded-xl border border-gray-100 p-4 hover:border-gray-200 hover:shadow-sm transition-all group" style={{ animationDelay: `${delay}ms` }}>
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm mb-3 ${accent}`}>{icon}</div>
+      <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-3 ${accent}`}>
+        <Icon name={icon} className="w-4 h-4" />
+      </div>
       <p className="text-2xl font-bold text-gray-900">{value}</p>
       <p className="text-xs text-gray-400 mt-0.5 group-hover:text-gray-500 transition">{label}</p>
     </Link>
@@ -69,7 +72,9 @@ function StatCard({ icon, value, label, accent, link, delay }) {
 function QuickAction({ icon, label, desc, to, color, delay }) {
   return (
     <Link to={to} className="animate-slideUp flex items-center gap-3 bg-white rounded-xl border border-gray-100 px-4 py-3 hover:border-gray-200 hover:shadow-sm transition-all group" style={{ animationDelay: `${delay}ms` }}>
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-base ${color}`}>{icon}</div>
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${color}`}>
+        <Icon name={icon} className="w-[18px] h-[18px]" />
+      </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-gray-800 group-hover:text-gray-900">{label}</p>
         <p className="text-xs text-gray-400">{desc}</p>
@@ -118,7 +123,7 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-2">
         <div>
-          <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight">{getGreeting()} 👋</h1>
+          <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight">{getGreeting()}</h1>
           <p className="text-xs text-gray-400 mt-0.5">
             {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
@@ -137,7 +142,7 @@ export default function Dashboard() {
       {/* No bot setup — onboarding nudge */}
       {!hasFlow && !hasBooking && !hasRecords && (
         <div className="mb-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border border-emerald-100 p-5 animate-slideUp">
-          <h2 className="text-base font-bold text-gray-900 mb-1">🚀 Let's get your WhatsApp bot running!</h2>
+          <h2 className="text-base font-bold text-gray-900 mb-1">Let's get your WhatsApp bot running!</h2>
           <p className="text-sm text-gray-600 mb-4">Pick a template to get started in seconds — no coding needed.</p>
           <div className="flex gap-2">
             <Link to="/flow-builder" className="px-4 py-2 text-sm font-semibold text-white rounded-lg transition hover:shadow-lg" style={{ background: 'linear-gradient(135deg, #25D366, #128C7E)' }}>
@@ -153,24 +158,24 @@ export default function Dashboard() {
       {/* Stat Cards — adaptive based on what tenant uses */}
       <div className={`grid gap-3 mb-6 ${hasBooking ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 lg:grid-cols-4'}`}>
         {/* Always show conversations */}
-        <StatCard icon="💬" value={data.conversations?.total || 0} label="Total Conversations" accent="bg-emerald-50" link="/inbox" delay={0} />
-        <StatCard icon="📩" value={data.conversations?.today || 0} label="Conversations Today" accent="bg-blue-50" link="/inbox" delay={60} />
+        <StatCard icon="messageCircle" value={data.conversations?.total || 0} label="Total Conversations" accent="bg-emerald-50 text-emerald-600" link="/inbox" delay={0} />
+        <StatCard icon="inbox" value={data.conversations?.today || 0} label="Conversations Today" accent="bg-blue-50 text-blue-600" link="/inbox" delay={60} />
 
         {/* Records or appointment stats depending on usage */}
         {hasRecords ? (
           <>
-            <StatCard icon="📋" value={data.records?.total || 0} label="Records Collected" accent="bg-purple-50" link="/flow-builder" delay={120} />
-            <StatCard icon="📈" value={data.records?.thisMonth || 0} label="This Month" accent="bg-amber-50" link="/flow-builder" delay={180} />
+            <StatCard icon="clipboard" value={data.records?.total || 0} label="Records Collected" accent="bg-purple-50 text-purple-600" link="/flow-builder" delay={120} />
+            <StatCard icon="trendingUp" value={data.records?.thisMonth || 0} label="This Month" accent="bg-amber-50 text-amber-600" link="/flow-builder" delay={180} />
           </>
         ) : hasBooking ? (
           <>
-            <StatCard icon="📅" value={data.stats.today} label={`Today's ${bookingLabel}s`} accent="bg-emerald-50" link="/appointments" delay={120} />
-            <StatCard icon="⏳" value={data.stats.upcoming} label={`Upcoming ${bookingLabel}s`} accent="bg-blue-50" link="/appointments" delay={180} />
+            <StatCard icon="calendar" value={data.stats.today} label={`Today's ${bookingLabel}s`} accent="bg-emerald-50 text-emerald-600" link="/appointments" delay={120} />
+            <StatCard icon="clock" value={data.stats.upcoming} label={`Upcoming ${bookingLabel}s`} accent="bg-blue-50 text-blue-600" link="/appointments" delay={180} />
           </>
         ) : (
           <>
-            <StatCard icon="👥" value={data.stats.total_patients} label={`${customerLabel}s`} accent="bg-purple-50" link="/patients" delay={120} />
-            <StatCard icon="🤖" value={hasFlow ? 'Active' : 'Off'} label="Bot Status" accent={hasFlow ? 'bg-emerald-50' : 'bg-red-50'} link="/flow-builder" delay={180} />
+            <StatCard icon="users" value={data.stats.total_patients} label={`${customerLabel}s`} accent="bg-purple-50 text-purple-600" link="/patients" delay={120} />
+            <StatCard icon="bot" value={hasFlow ? 'Active' : 'Off'} label="Bot Status" accent={hasFlow ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'} link="/flow-builder" delay={180} />
           </>
         )}
       </div>
@@ -178,10 +183,10 @@ export default function Dashboard() {
       {/* Booking stats row (only if they use booking system) */}
       {hasBooking && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-          <StatCard icon="📅" value={data.stats.today} label={`${bookingLabel}s Today`} accent="bg-slate-50" link="/appointments" delay={240} />
-          <StatCard icon="⏳" value={data.stats.upcoming} label={`Upcoming`} accent="bg-slate-50" link="/appointments" delay={300} />
-          <StatCard icon="👥" value={data.stats.total_patients} label={`${customerLabel}s`} accent="bg-slate-50" link="/patients" delay={360} />
-          <StatCard icon="🧑‍⚕️" value={data.stats.active_doctors} label={`${staffLabel}s`} accent="bg-slate-50" link="/doctors" delay={420} />
+          <StatCard icon="calendar" value={data.stats.today} label={`${bookingLabel}s Today`} accent="bg-slate-50 text-slate-600" link="/appointments" delay={240} />
+          <StatCard icon="clock" value={data.stats.upcoming} label={`Upcoming`} accent="bg-slate-50 text-slate-600" link="/appointments" delay={300} />
+          <StatCard icon="users" value={data.stats.total_patients} label={`${customerLabel}s`} accent="bg-slate-50 text-slate-600" link="/patients" delay={360} />
+          <StatCard icon="userCircle" value={data.stats.active_doctors} label={`${staffLabel}s`} accent="bg-slate-50 text-slate-600" link="/doctors" delay={420} />
         </div>
       )}
 
@@ -192,7 +197,7 @@ export default function Dashboard() {
         {hasRecords && data.records.byType.length > 0 && (
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 animate-slideUp" style={{ animationDelay: '300ms' }}>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold text-gray-900">📊 Records Overview</h2>
+              <h2 className="text-sm font-bold text-gray-900">Records Overview</h2>
               <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded">{data.records.total} total</span>
             </div>
             <div className="space-y-2">
@@ -218,7 +223,7 @@ export default function Dashboard() {
         {hasBooking && (
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 animate-slideUp" style={{ animationDelay: '360ms' }}>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold text-gray-900">📅 Today's {bookingLabel}s</h2>
+              <h2 className="text-sm font-bold text-gray-900">Today's {bookingLabel}s</h2>
               <Link to="/appointments" className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">View all →</Link>
             </div>
             {data.today.length > 0 ? (
@@ -248,7 +253,7 @@ export default function Dashboard() {
         {hasRecords && (
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 animate-slideUp" style={{ animationDelay: '420ms' }}>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold text-gray-900">🕐 Recent Records</h2>
+              <h2 className="text-sm font-bold text-gray-900">Recent Records</h2>
               <span className="text-[10px] text-gray-400">{data.records.thisMonth} this month</span>
             </div>
             <div className="divide-y divide-gray-50 max-h-56 overflow-y-auto">
@@ -277,7 +282,7 @@ export default function Dashboard() {
         {!hasRecords && !hasBooking && hasConversations && (
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 animate-slideUp" style={{ animationDelay: '300ms' }}>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold text-gray-900">💬 Conversations</h2>
+              <h2 className="text-sm font-bold text-gray-900">Conversations</h2>
               <Link to="/inbox" className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">Open Inbox →</Link>
             </div>
             <div className="grid grid-cols-3 gap-3 text-center py-4">
@@ -302,7 +307,7 @@ export default function Dashboard() {
       {hasBooking && data.upcoming.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-6 animate-slideUp" style={{ animationDelay: '480ms' }}>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold text-gray-900">⏳ Upcoming {bookingLabel}s</h2>
+            <h2 className="text-sm font-bold text-gray-900">Upcoming {bookingLabel}s</h2>
             <Link to="/appointments" className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">View all →</Link>
           </div>
           <div className="divide-y divide-gray-50 max-h-64 overflow-y-auto">
@@ -324,15 +329,15 @@ export default function Dashboard() {
 
       {/* Quick Actions */}
       <div className="mb-2 animate-slideUp" style={{ animationDelay: '540ms' }}>
-        <h2 className="text-sm font-bold text-gray-900 mb-2">⚡ Quick Actions</h2>
+        <h2 className="text-sm font-bold text-gray-900 mb-2">Quick Actions</h2>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-        <QuickAction icon="🤖" label="Flow Builder" desc="Design your WhatsApp bot" to="/flow-builder" color="bg-emerald-50" delay={600} />
-        <QuickAction icon="💬" label="Inbox" desc={`${data.conversations?.unread || 0} unread`} to="/inbox" color="bg-blue-50" delay={660} />
-        {hasBooking && <QuickAction icon="📅" label={`${bookingLabel}s`} desc={`${data.stats.upcoming} upcoming`} to="/appointments" color="bg-purple-50" delay={720} />}
-        <QuickAction icon="👥" label={`${customerLabel}s`} desc={`${data.stats.total_patients} total`} to="/patients" color="bg-amber-50" delay={hasBooking ? 780 : 720} />
-        {hasBooking && <QuickAction icon="🧑‍⚕️" label={`${staffLabel} List`} desc={`${data.stats.active_doctors} active`} to="/doctors" color="bg-rose-50" delay={840} />}
-        <QuickAction icon="⚙️" label="Settings" desc="Business & WhatsApp config" to="/settings" color="bg-slate-50" delay={hasBooking ? 900 : 780} />
+        <QuickAction icon="bot" label="Flow Builder" desc="Design your WhatsApp bot" to="/flow-builder" color="bg-emerald-50 text-emerald-600" delay={600} />
+        <QuickAction icon="messageCircle" label="Inbox" desc={`${data.conversations?.unread || 0} unread`} to="/inbox" color="bg-blue-50 text-blue-600" delay={660} />
+        {hasBooking && <QuickAction icon="calendar" label={`${bookingLabel}s`} desc={`${data.stats.upcoming} upcoming`} to="/appointments" color="bg-purple-50 text-purple-600" delay={720} />}
+        <QuickAction icon="users" label={`${customerLabel}s`} desc={`${data.stats.total_patients} total`} to="/patients" color="bg-amber-50 text-amber-600" delay={hasBooking ? 780 : 720} />
+        {hasBooking && <QuickAction icon="userCircle" label={`${staffLabel} List`} desc={`${data.stats.active_doctors} active`} to="/doctors" color="bg-rose-50 text-rose-600" delay={840} />}
+        <QuickAction icon="settings" label="Settings" desc="Business & WhatsApp config" to="/settings" color="bg-slate-50 text-slate-600" delay={hasBooking ? 900 : 780} />
       </div>
 
       {/* Mobile usage bar */}

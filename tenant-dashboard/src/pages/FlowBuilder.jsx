@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api';
 import Icon from '../components/Icons';
+import { ACTION_TYPES, deleteNodeAndCleanup, validateFlowDraft } from './flowBuilderUtils';
 
 // ── Constants ──────────────────────────────────────────
 const BTN_ACTIONS = [
@@ -134,7 +135,7 @@ const STEP_TYPES = [
   { type: 'menu', name: 'Send Message', icon: 'messageSquare', color: 'emerald', desc: 'Show a message with buttons the customer can tap', example: 'Welcome menu, product categories, service list' },
   { type: 'input', name: 'Ask a Question', icon: 'formInput', color: 'purple', desc: 'Ask something and save the answer (name, email, phone...)', example: '"What is your name?", "What\'s your email?"' },
   { type: 'condition', name: 'Smart Routing', icon: 'gitBranch', color: 'amber', desc: 'Automatically send customer to different steps based on answers', example: 'If rating < 4, ask what went wrong' },
-  { type: 'action', name: 'Save & Finish', icon: 'save', color: 'blue', desc: 'Save all collected info as a lead, order, feedback, etc.', example: 'Save as "lead" — view in dashboard later' },
+  { type: 'action', name: 'Action Step', icon: 'save', color: 'blue', desc: 'Save data, set variables, notify your team, or schedule follow-ups.', example: 'Save a lead, flag someone as VIP, or queue a reminder' },
 ];
 
 // ── Helpers ────────────────────────────────────────────
@@ -459,6 +460,13 @@ export default function FlowBuilder() {
   }
 
   async function save() {
+    const validationErrors = validateFlowDraft(flow);
+    if (validationErrors.length > 0) {
+      setError(validationErrors[0]);
+      setSaved(false);
+      return;
+    }
+
     setSaving(true); setError(''); setSaved(false);
     try {
       await api.saveFlowConfig({ flow_config: flow, labels });
@@ -481,8 +489,9 @@ export default function FlowBuilder() {
 
   function deleteNode(id) {
     if (id === 'start') return;
-    setFlow(p => { const n = { ...p }; delete n[id]; return n; });
+    setFlow(p => deleteNodeAndCleanup(p, id));
     if (editing === id) setEditing(null);
+    if (preview === id) setPreview('start');
   }
 
   function updateNode(id, u) {
@@ -599,8 +608,8 @@ export default function FlowBuilder() {
           <button onClick={() => addNode('action')}
             className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/30 transition-all flex flex-col items-center gap-1">
             <Icon name="save" className="w-5 h-5" />
-            Save & Finish
-            <p className="text-[10px] font-normal text-gray-400">Save as lead, order, etc.</p>
+            Action Step
+            <p className="text-[10px] font-normal text-gray-400">Save data, notify, or follow up</p>
           </button>
         </div>
       </div>
@@ -613,6 +622,8 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
   const isStart = nodeId === 'start';
   const btns = node.buttons || [];
   const nodeType = node.type || 'menu';
+  const actionType = node.action_type || 'save_record';
+  const actionMeta = ACTION_TYPES.find(action => action.value === actionType) || ACTION_TYPES[0];
 
   function addBtn() { onUpdate({ buttons: [...btns, { id: `btn_${Date.now()}`, label: '', action: 'next', next: '', response: '' }] }); }
   function updateBtn(i, u) { const b = [...btns]; b[i] = { ...b[i], ...u }; onUpdate({ buttons: b }); }
@@ -646,7 +657,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
     : nodeType === 'action' ? 'save' : 'messageSquare';
   const typeLabel = nodeType === 'input' ? 'Ask Question'
     : nodeType === 'condition' ? 'Smart Route'
-    : nodeType === 'action' ? 'Save & Finish' : 'Message';
+    : nodeType === 'action' ? 'Action' : 'Message';
 
   // Variable inserter helper
   const VariableButtons = ({ field, current, onChange }) => {
@@ -865,24 +876,79 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
           {nodeType === 'action' && (
             <>
               <div className="bg-blue-50/50 rounded-lg px-3 py-2 border border-blue-100 mb-1">
-                <p className="text-[11px] text-blue-700">This step saves everything the customer has told you. You can view all saved data in your dashboard.</p>
+                <p className="text-[11px] text-blue-700">This step performs work behind the scenes, like saving data, setting variables, or scheduling a follow-up.</p>
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">What kind of data is this?</label>
-                <input value={node.record_type || ''} onChange={e => onUpdate({ record_type: e.target.value.replace(/[^a-z0-9_]/g, '') })}
-                  placeholder="e.g. lead, order, feedback, inquiry, registration"
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400" />
-                <p className="text-[10px] text-gray-400 mt-0.5">This helps you organize data in your dashboard — e.g. "leads" tab, "orders" tab</p>
+                <label className="block text-xs font-medium text-gray-600 mb-1">What should this action do?</label>
+                <select value={actionType} onChange={e => onUpdate({ action_type: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
+                  {ACTION_TYPES.map(action => <option key={action.value} value={action.value}>{action.label}</option>)}
+                </select>
+                <p className="text-[10px] text-gray-400 mt-0.5">{actionMeta.hint}</p>
               </div>
+              {actionType === 'save_record' && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">What kind of data is this?</label>
+                  <input value={node.record_type || ''} onChange={e => onUpdate({ record_type: e.target.value.replace(/[^a-z0-9_]/g, '') })}
+                    placeholder="e.g. lead, order, feedback, inquiry, registration"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400" />
+                  <p className="text-[10px] text-gray-400 mt-0.5">This helps you organize saved entries in the dashboard.</p>
+                </div>
+              )}
+              {actionType === 'notify_admin' && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Internal note for the team</label>
+                  <textarea value={node.notify_message || ''} onChange={e => onUpdate({ notify_message: e.target.value })}
+                    placeholder="e.g. New high-priority inquiry from {{customer_name}} about {{service}}."
+                    rows={2}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none" />
+                  <VariableButtons field="notify_message" current={node.notify_message} onChange={v => onUpdate({ notify_message: v })} />
+                </div>
+              )}
+              {actionType === 'set_variable' && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Variable name</label>
+                    <input value={node.set_var || ''} onChange={e => onUpdate({ set_var: e.target.value.replace(/[^a-z0-9_]/g, '') })}
+                      placeholder="e.g. priority, segment, source"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Value to store</label>
+                    <input value={node.set_value ?? ''} onChange={e => onUpdate({ set_value: e.target.value })}
+                      placeholder="e.g. vip"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400" />
+                  </div>
+                </div>
+              )}
+              {actionType === 'send_followup' && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Follow-up message</label>
+                    <textarea value={node.followup_message || ''} onChange={e => onUpdate({ followup_message: e.target.value })}
+                      placeholder="e.g. Hi {{customer_name}}, just checking in on your inquiry."
+                      rows={2}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none" />
+                    <VariableButtons field="followup_message" current={node.followup_message} onChange={v => onUpdate({ followup_message: v })} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Delay in minutes</label>
+                    <input type="number" min="1" value={node.delay_minutes ?? ''} onChange={e => onUpdate({ delay_minutes: e.target.value })}
+                      placeholder="60"
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400" />
+                    <p className="text-[10px] text-gray-400 mt-0.5">How long to wait before the follow-up is sent.</p>
+                  </div>
+                </>
+              )}
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Thank you message (shown to customer)</label>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Bot message after this action (optional)</label>
                 <textarea value={node.message || ''} onChange={e => onUpdate({ message: e.target.value })}
-                  placeholder='e.g. Thank you {{name}}! We will contact you at {{email}} shortly. 🙌'
+                  placeholder="e.g. Thanks {{name}}! We'll take it from here."
                   rows={2}
                   className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none" />
                 <VariableButtons field="message" current={node.message} onChange={v => onUpdate({ message: v })} />
               </div>
-              <ScreenSelect value={node.next} onChange={v => onUpdate({ next: v })} label="After saving, go to" helpText="Leave empty to end the conversation here" />
+              <ScreenSelect value={node.next} onChange={v => onUpdate({ next: v })} label="After this action, go to" helpText="Leave empty to end this branch here." />
             </>
           )}
 

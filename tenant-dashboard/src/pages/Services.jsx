@@ -14,7 +14,7 @@ export default function Services() {
     try {
       const { data } = await api.getServices();
       setServices(data);
-    } catch (err) { console.error(err); }
+    } catch (err) { /* silenced */ }
     finally { setLoading(false); }
   };
 

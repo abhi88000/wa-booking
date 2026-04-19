@@ -6,6 +6,7 @@
 
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
+const tenantCache = require('../services/tenantCache');
 
 /**
  * Load full tenant profile and check it's active.
@@ -13,16 +14,13 @@ const logger = require('../utils/logger');
  */
 async function loadTenantContext(req, res, next) {
   try {
-    const { rows } = await pool.query(
-      `SELECT * FROM tenants WHERE id = $1 AND is_active = true`,
-      [req.tenantId]
-    );
+    const tenant = await tenantCache.getById(req.tenantId);
 
-    if (rows.length === 0) {
+    if (!tenant) {
       return res.status(404).json({ error: 'Tenant not found or inactive' });
     }
 
-    req.tenant = rows[0];
+    req.tenant = tenant;
 
     // Set tenant context for Row-Level Security
     // Using set_config() which supports parameterized values (SET LOCAL does not)

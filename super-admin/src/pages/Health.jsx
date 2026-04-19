@@ -14,7 +14,7 @@ export default function Health() {
       const res = await api.getHealth();
       setData(res.data);
     } catch (err) {
-      console.error(err);
+      // silenced
     }
     setLoading(false);
   };

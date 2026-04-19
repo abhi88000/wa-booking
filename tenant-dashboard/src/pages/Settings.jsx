@@ -17,7 +17,7 @@ export default function Settings() {
   useEffect(() => {
     api.getSettings()
       .then(({ data }) => setSettings(data))
-      .catch(console.error)
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
@@ -260,7 +260,7 @@ export default function Settings() {
         ) : (
           <div className="space-y-3 mt-2">
             <p className="text-xs text-gray-500">
-              Enter your WhatsApp Cloud API credentials from the <a href="https://developers.facebook.com" target="_blank" className="text-slate-700 underline">Meta Developer Portal</a>
+              Enter your WhatsApp Cloud API credentials from the <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="text-slate-700 underline">Meta Developer Portal</a>
             </p>
             <div>
               <label className="block text-sm font-medium mb-1">Phone Number ID</label>

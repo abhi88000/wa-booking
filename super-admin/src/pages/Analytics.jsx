@@ -9,7 +9,7 @@ export default function Analytics() {
   useEffect(() => {
     api.getAnalytics()
       .then(({ data }) => setData(data))
-      .catch(console.error)
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 

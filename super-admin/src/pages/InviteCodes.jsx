@@ -13,7 +13,7 @@ export default function InviteCodes() {
       const { data } = await api.getInviteCodes();
       setCodes(data);
     } catch (err) {
-      console.error('Failed to fetch invite codes', err);
+      // silenced
     } finally {
       setLoading(false);
     }

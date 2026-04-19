@@ -10,7 +10,7 @@ export default function Dashboard() {
   useEffect(() => {
     api.getDashboard()
       .then(({ data }) => setStats(data))
-      .catch(console.error)
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 

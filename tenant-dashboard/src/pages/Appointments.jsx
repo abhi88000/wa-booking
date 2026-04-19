@@ -27,10 +27,9 @@ export default function Appointments() {
       const { data } = await api.getAppointments({ page, status: statusFilter || undefined, limit: 20, clinic: clinic !== 'all' ? clinic : undefined, hideCancelled: hideCancelled && !statusFilter ? true : undefined });
       setAppointments(data.appointments);
       setTotal(data.total);
-    } catch (err) { console.error(err); }
+    } catch (err) { setError('Failed to load'); }
     finally { setLoading(false); }
   };
-
   const loadMeta = async () => {
     try {
       const [d, s] = await Promise.all([api.getDoctors(), api.getServices()]);
@@ -38,7 +37,7 @@ export default function Appointments() {
       if (clinic !== 'all') activeDocs = activeDocs.filter(doc => !doc.clinic || doc.clinic === clinic);
       setDoctors(activeDocs);
       setServices(s.data.filter(svc => svc.is_active !== false));
-    } catch (err) { console.error(err); }
+    } catch (err) { /* load error handled silently */ }
   };
 
   const updateStatus = async (id, status) => {
@@ -271,7 +270,7 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
       try {
         const { data } = await api.getPatients({ search: q });
         setPatients(data.patients || data);
-      } catch (err) { console.error(err); }
+      } catch (err) { /* search error silenced */ }
     } else {
       setPatients([]);
     }

@@ -1,4 +1,10 @@
-// ── Dashboard Routes ──────────────────────────────────────
+// ============================================================
+// Dashboard Route — Tenant Overview & Stats
+// ============================================================
+// GET /dashboard — Returns aggregated stats (appointments, patients,
+// doctors, records, conversations) plus today's schedule.
+// Adapts to business type and supports multi-branch clinic filter.
+
 const express = require('express');
 const router = express.Router();
 const pool = require('../../db/pool');

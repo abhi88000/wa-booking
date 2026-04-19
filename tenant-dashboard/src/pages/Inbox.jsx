@@ -31,7 +31,7 @@ export default function Inbox() {
       const { data } = await api.getConversations(params);
       setConversations(data.conversations || []);
     } catch (e) {
-      console.error('Failed to load conversations', e);
+      // load error silenced
     } finally {
       if (!silent) setLoading(false);
     }
@@ -44,7 +44,7 @@ export default function Inbox() {
       setMessages(data.messages || []);
       setPatient(data.patient);
     } catch (e) {
-      console.error('Failed to load messages', e);
+      // load error silenced
     } finally {
       setLoadingMsgs(false);
     }

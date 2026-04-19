@@ -1,4 +1,10 @@
-// ── Records Routes ────────────────────────────────────────
+// ============================================================
+// Records Routes — Generic Data Records (Leads, Orders, etc.)
+// ============================================================
+// 5 routes: list (filter by type/status, search, paginate),
+// get single, update status/data, delete, and summary by type.
+// Records are created by flow engine actions (save_record).
+
 const express = require('express');
 const router = express.Router();
 const pool = require('../../db/pool');

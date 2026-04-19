@@ -679,7 +679,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
   );
 
   return (
-    <div className={`bg-white rounded-xl border mb-2.5 transition-all duration-200 animate-slideUp overflow-hidden
+    <div className={`bg-white rounded-xl border mb-2.5 transition-all duration-200 animate-slideUp overflow-x-hidden
       ${open ? 'border-emerald-300 shadow-md ring-1 ring-emerald-100' : 'border-gray-100 shadow-sm hover:border-gray-200 hover:shadow'}`}
       style={{ animationDelay: `${delay}ms` }}>
 
@@ -704,7 +704,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
 
       {/* Expanded */}
       {open && (
-        <div className="px-4 pb-4 border-t border-gray-50 pt-4 space-y-4 animate-slideDown min-w-0 overflow-hidden">
+        <div className="px-4 pb-4 border-t border-gray-50 pt-4 space-y-4 animate-slideDown min-w-0">
 
           {/* MENU NODE */}
           {nodeType === 'menu' && (

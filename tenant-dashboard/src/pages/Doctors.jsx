@@ -44,7 +44,7 @@ export default function Doctors() {
     try {
       const { data } = await api.getDoctors();
       setDoctors(data);
-    } catch (err) { console.error(err); }
+    } catch (err) { /* silenced */ }
     finally { setLoading(false); }
   };
 
@@ -52,7 +52,7 @@ export default function Doctors() {
     try {
       const { data } = await api.getSettings();
       setClinics(data?.settings?.branches || []);
-    } catch (err) { console.error(err); }
+    } catch (err) { /* silenced */ }
   };
 
   const openAdd = () => {

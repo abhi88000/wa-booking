@@ -37,6 +37,14 @@ app.set('trust proxy', 1);
 // ── Global Middleware ──────────────────────────────────────
 app.use(helmet());
 app.use(compression());
+
+// Capture raw body for webhook signature verification
+app.use('/webhook', express.json({
+  limit: '5mb',
+  verify: (req, _res, buf) => { req.rawBody = buf; }
+}));
+
+// JSON parser for all other routes
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cors({

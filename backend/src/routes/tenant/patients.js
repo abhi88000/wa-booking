@@ -1,4 +1,9 @@
-// ── Patient Routes ────────────────────────────────────────
+// ============================================================
+// Patient/Contact Routes — Customer Management
+// ============================================================
+// 4 routes: list (search + pagination + sort), create, update,
+// and detail view with appointment history.
+
 const express = require('express');
 const router = express.Router();
 const pool = require('../../db/pool');

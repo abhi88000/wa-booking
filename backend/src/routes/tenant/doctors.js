@@ -1,4 +1,10 @@
-// ── Doctor Routes ─────────────────────────────────────────
+// ============================================================
+// Doctor/Staff Routes — CRUD & Availability Management
+// ============================================================
+// 7 routes: list, create, update, delete, get slots for a date,
+// get weekly availability, and update availability schedule.
+// Slot generation respects breaks, blocked dates, and existing bookings.
+
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');

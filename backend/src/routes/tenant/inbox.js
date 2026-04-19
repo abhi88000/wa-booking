@@ -1,4 +1,10 @@
-// ── Inbox / Conversations Routes ──────────────────────────
+// ============================================================
+// Inbox Routes — WhatsApp Conversation Management
+// ============================================================
+// 4 routes: legacy chat lookup, conversation list (grouped by
+// patient with unread counts), message history, and manual reply.
+// Reply route sends via WhatsApp API and logs with delivery status.
+
 const express = require('express');
 const router = express.Router();
 const pool = require('../../db/pool');
@@ -119,12 +125,24 @@ router.post('/conversations/:patientId/reply', async (req, res, next) => {
     const patient = patients[0];
     const wa = new WhatsAppService(req.tenant);
     const waMessageId = await wa.sendText(patient.phone, message.trim());
+    const status = waMessageId ? 'sent' : 'failed';
 
     await pool.query(
-      `INSERT INTO chat_messages (tenant_id, patient_id, phone, direction, message_type, content, wa_message_id)
-       VALUES ($1, $2, $3, 'outbound', 'text', $4, $5)`,
-      [req.tenantId, patient.id, patient.phone, message.trim(), waMessageId]
-    );
+      `INSERT INTO chat_messages (tenant_id, patient_id, phone, direction, message_type, content, wa_message_id, status)
+       VALUES ($1, $2, $3, 'outbound', 'text', $4, $5, $6)`,
+      [req.tenantId, patient.id, patient.phone, message.trim(), waMessageId, status]
+    ).catch(() => {
+      // Fallback if status column doesn't exist yet
+      return pool.query(
+        `INSERT INTO chat_messages (tenant_id, patient_id, phone, direction, message_type, content, wa_message_id)
+         VALUES ($1, $2, $3, 'outbound', 'text', $4, $5)`,
+        [req.tenantId, patient.id, patient.phone, message.trim(), waMessageId]
+      );
+    });
+
+    if (!waMessageId) {
+      return res.status(502).json({ error: 'Message saved but WhatsApp delivery failed' });
+    }
 
     res.json({ success: true, wa_message_id: waMessageId });
   } catch (err) {

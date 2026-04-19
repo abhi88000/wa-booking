@@ -67,7 +67,7 @@ class AIService {
 
   /**
    * Call the AI provider API.
-   * TODO: Implement when AI module is activated.
+   * Supports OpenAI-compatible endpoints (OpenAI, Groq, local LLMs).
    * Supports: gemini, openai
    */
   async _callAI(systemPrompt, history, userMessage) {

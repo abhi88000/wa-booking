@@ -1,4 +1,9 @@
-// ── Service Routes ────────────────────────────────────────
+// ============================================================
+// Service Routes — Service Catalog CRUD
+// ============================================================
+// 4 routes: list, create, update, delete.
+// Services are linked to appointments and shown during booking.
+
 const express = require('express');
 const router = express.Router();
 const pool = require('../../db/pool');

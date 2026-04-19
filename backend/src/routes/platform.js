@@ -256,11 +256,17 @@ router.delete('/tenants/:id', async (req, res, next) => {
 
     const tid = req.params.id;
     // Cascade delete in order (respecting foreign keys)
+    await pool.query('DELETE FROM scheduled_messages WHERE tenant_id = $1', [tid]);
+    await pool.query('DELETE FROM tenant_records WHERE tenant_id = $1', [tid]);
+    await pool.query('DELETE FROM chat_messages WHERE tenant_id = $1', [tid]);
     await pool.query('DELETE FROM reminders WHERE appointment_id IN (SELECT id FROM appointments WHERE tenant_id = $1)', [tid]);
     await pool.query('DELETE FROM appointments WHERE tenant_id = $1', [tid]);
+    await pool.query('DELETE FROM doctor_breaks WHERE doctor_id IN (SELECT id FROM doctors WHERE tenant_id = $1)', [tid]);
+    await pool.query('DELETE FROM doctor_availability WHERE doctor_id IN (SELECT id FROM doctors WHERE tenant_id = $1)', [tid]);
     await pool.query('DELETE FROM patients WHERE tenant_id = $1', [tid]);
     await pool.query('DELETE FROM services WHERE tenant_id = $1', [tid]);
     await pool.query('DELETE FROM doctors WHERE tenant_id = $1', [tid]);
+    await pool.query('DELETE FROM wa_number_registry WHERE tenant_id = $1', [tid]);
     await pool.query('DELETE FROM subscriptions WHERE tenant_id = $1', [tid]);
     await pool.query('DELETE FROM tenant_users WHERE tenant_id = $1', [tid]);
     await pool.query('DELETE FROM audit_log WHERE tenant_id = $1', [tid]);

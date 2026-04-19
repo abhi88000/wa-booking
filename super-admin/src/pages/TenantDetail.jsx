@@ -25,7 +25,7 @@ export default function TenantDetail() {
           wa_access_token: ''
         });
       })
-      .catch(console.error)
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [id]);
 

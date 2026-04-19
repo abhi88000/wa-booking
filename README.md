@@ -38,7 +38,7 @@ Multi-tenant WhatsApp automation platform. Businesses sign up, connect their Wha
 │   └── init-saas.sql              # Full schema: tables, indexes, enums, RLS
 │
 ├── backend/
-│   ├── migrations/                # Incremental schema migrations (001–004)
+│   ├── migrations/                # Incremental schema migrations (001–005)
 │   └── src/
 │       ├── index.js               # Express server entry point
 │       ├── cron.js                 # Scheduled jobs (reminders, health checks, outbound)
@@ -208,6 +208,7 @@ See [docs/whatsapp-setup.md](docs/whatsapp-setup.md) for the full walkthrough.
 - **Webhook URL**: `https://api.yourdomain.com/webhook/whatsapp`
 - **Verify Token**: same as `WA_VERIFY_TOKEN` in `.env`
 - **Subscribe to**: `messages` field
+- **App Secret**: set `WA_APP_SECRET` in `.env` to enable webhook signature validation (X-Hub-Signature-256)
 
 
 ## Deployment
@@ -251,6 +252,8 @@ The visual flow builder lets business owners create custom WhatsApp conversation
 - **Timezone-aware** — Each tenant sets their timezone. The booking engine generates dates/slots in the tenant's local time.
 - **Adaptive UI** — Dashboard, sidebar labels, and features adapt based on business type (clinic, salon, gym, etc.).
 - **Invite-code signup** — New tenants need an invite code. Controls growth during early stage.
+- **Webhook signature validation** — Optional HMAC-SHA256 verification of incoming Meta webhooks via `WA_APP_SECRET`. Uses `crypto.timingSafeEqual` to prevent timing attacks.
+- **Message status tracking** — Every chat message is tracked with a status (received/sent/failed/pending). Reply failures are surfaced to the dashboard.
 - **Fault-isolated webhook** — One tenant's WhatsApp failure never affects another tenant. Async processing with immediate 200 response.
 
 

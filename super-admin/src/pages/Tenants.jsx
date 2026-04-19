@@ -36,7 +36,7 @@ export default function Tenants() {
       setTenants(data.tenants);
       setTotal(data.total);
     } catch (err) {
-      console.error(err);
+      // silenced
     } finally {
       setLoading(false);
     }

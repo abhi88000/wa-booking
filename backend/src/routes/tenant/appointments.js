@@ -1,4 +1,11 @@
-// ── Appointment Routes ────────────────────────────────────
+// ============================================================
+// Appointment Routes — Booking CRUD & Management
+// ============================================================
+// 6 routes: list, create, update status, reschedule, follow-up,
+// and single appointment detail. Supports pagination, filters,
+// WhatsApp notifications on booking/cancellation, and
+// appointment limit enforcement per tenant plan.
+
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');

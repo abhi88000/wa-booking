@@ -301,8 +301,8 @@ class FlowEngine {
             // Use tenant's own WA to send to their own number won't work (can't message yourself)
             // Instead, log to audit for now — admin sees it in dashboard
             await pool.query(
-              `INSERT INTO audit_log (tenant_id, event, data) VALUES ($1, $2, $3)`,
-              [this.tenantId, 'flow_notification', JSON.stringify({
+              `INSERT INTO audit_log (tenant_id, user_type, action, entity_type, details) VALUES ($1, $2, $3, $4, $5)`,
+              [this.tenantId, 'system', 'flow_notification', 'flow', JSON.stringify({
                 message: notifMsg,
                 phone: this.phone,
                 variables,

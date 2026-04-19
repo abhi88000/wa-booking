@@ -1,4 +1,10 @@
-// ── Team Management Routes ────────────────────────────────
+// ============================================================
+// Team Routes — User Management (RBAC)
+// ============================================================
+// 4 routes: list, create, update, delete team members.
+// Roles: owner (cannot be modified), admin, staff, doctor.
+// Only owners can create/modify/delete team members.
+
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');

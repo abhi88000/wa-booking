@@ -9,6 +9,7 @@
 // Failed messages are logged to audit_log for investigation.
 
 const express = require('express');
+const crypto = require('crypto');
 const router = express.Router();
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
@@ -77,6 +78,21 @@ router.get('/whatsapp', (req, res) => {
 
 // ── Message Handler (POST) ────────────────────────────────
 router.post('/whatsapp', async (req, res) => {
+  // Verify webhook signature (if app secret is configured)
+  const appSecret = process.env.WA_APP_SECRET;
+  if (appSecret && req.rawBody) {
+    const signature = req.headers['x-hub-signature-256'];
+    if (!signature) {
+      logger.warn('Webhook received without X-Hub-Signature-256 header', WH);
+      return res.status(401).send('Missing signature');
+    }
+    const expected = 'sha256=' + crypto.createHmac('sha256', appSecret).update(req.rawBody).digest('hex');
+    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+      logger.warn('Webhook signature verification FAILED', WH);
+      return res.status(401).send('Invalid signature');
+    }
+  }
+
   // ALWAYS respond 200 immediately to Meta (they retry on failure)
   res.status(200).send('EVENT_RECEIVED');
 
@@ -268,15 +284,24 @@ async function getOrCreatePatient(tenantId, phone, name) {
 }
 
 // ── Log Message ───────────────────────────────────────────
-async function logMessage(tenantId, patientId, phone, direction, type, content, waMessageId) {
+async function logMessage(tenantId, patientId, phone, direction, type, content, waMessageId, status = 'received') {
   try {
     await pool.query(
-      `INSERT INTO chat_messages (tenant_id, patient_id, phone, direction, message_type, content, wa_message_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [tenantId, patientId, phone, direction, type, content, waMessageId]
+      `INSERT INTO chat_messages (tenant_id, patient_id, phone, direction, message_type, content, wa_message_id, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [tenantId, patientId, phone, direction, type, content, waMessageId, status]
     );
   } catch (err) {
-    logger.error('logMessage error:', err, WH);
+    // If status column doesn't exist yet (migration not run), fall back
+    if (err.message?.includes('status')) {
+      await pool.query(
+        `INSERT INTO chat_messages (tenant_id, patient_id, phone, direction, message_type, content, wa_message_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [tenantId, patientId, phone, direction, type, content, waMessageId]
+      ).catch(e => logger.error('logMessage fallback error:', e, WH));
+    } else {
+      logger.error('logMessage error:', err, WH);
+    }
   }
 }
 

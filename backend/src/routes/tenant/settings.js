@@ -1,4 +1,11 @@
-// ── Settings Routes ───────────────────────────────────────
+// ============================================================
+// Settings Routes — Business Config & WhatsApp Connection
+// ============================================================
+// 3 routes: get settings, update settings, connect/update WhatsApp.
+// WhatsApp route verifies credentials with Meta API before saving.
+// Both save routes invalidate tenant cache so changes take effect
+// immediately on the next webhook or API call.
+
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');

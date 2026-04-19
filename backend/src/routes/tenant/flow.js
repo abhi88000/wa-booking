@@ -1,4 +1,11 @@
-// ── Flow Config Routes ────────────────────────────────────
+// ============================================================
+// Flow Config Routes — Visual Flow Builder API
+// ============================================================
+// 3 routes: get flow config, save flow config, save AI config.
+// Flow config is a JSON tree of nodes (menu, input, condition, action)
+// that the flow engine executes when customers message on WhatsApp.
+// Save routes invalidate tenant cache for immediate effect.
+
 const express = require('express');
 const router = express.Router();
 const pool = require('../../db/pool');

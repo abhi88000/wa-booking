@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 
@@ -75,7 +75,7 @@ export default function Onboarding() {
         <div className="bg-white rounded-xl shadow-sm p-6 border">
           <h2 className="text-lg font-semibold mb-4">Connect WhatsApp</h2>
           <p className="text-sm text-gray-500 mb-6">
-            Enter your WhatsApp Cloud API credentials from the <a href="https://developers.facebook.com" target="_blank" className="text-slate-700 underline">Meta Developer Portal</a>
+            Enter your WhatsApp Cloud API credentials from the <a href="https://developers.facebook.com" target="_blank" rel="noopener noreferrer" className="text-slate-700 underline">Meta Developer Portal</a>
           </p>
           <div className="space-y-4">
             <div>

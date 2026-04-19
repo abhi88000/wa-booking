@@ -18,7 +18,7 @@ const pool = new Pool({
 
 // Warn if using default credentials in production
 if (process.env.NODE_ENV === 'production' && (!process.env.DB_USER || !process.env.DB_PASSWORD)) {
-  console.error('WARNING: Using default DB credentials in production! Set DB_USER and DB_PASSWORD.');
+  logger.warn('Using default DB credentials in production! Set DB_USER and DB_PASSWORD.');
 }
 
 pool.on('error', (err) => {

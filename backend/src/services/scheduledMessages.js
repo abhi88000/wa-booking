@@ -85,7 +85,7 @@ class ScheduledMessageService {
 
     if (msg.message_type === 'template' && msg.template_name) {
       const lang = msg.tenant_settings?.wa_template_language || 'en';
-      await wa.sendTemplate(msg.contact_phone, msg.template_name, msg.template_params || [], lang);
+      await wa.sendTemplate(msg.contact_phone, msg.template_name, lang, msg.template_params || []);
     } else {
       // Plain text — only works within 24h window
       const result = await wa.sendText(msg.contact_phone, msg.message_body);

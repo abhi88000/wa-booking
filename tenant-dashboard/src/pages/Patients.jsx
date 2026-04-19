@@ -24,7 +24,7 @@ export default function Patients() {
       });
       setPatients(data.patients || data);
       setTotal(data.total || 0);
-    } catch (err) { console.error(err); }
+    } catch (err) { /* silenced */ }
     finally { setLoading(false); }
   }, [search, page, sort]);
 
@@ -67,7 +67,7 @@ export default function Patients() {
     try {
       const { data } = await api.getPatient(p.id);
       setDetailData(data);
-    } catch (err) { console.error(err); }
+    } catch (err) { /* silenced */ }
   };
 
   // Group patients by when they joined

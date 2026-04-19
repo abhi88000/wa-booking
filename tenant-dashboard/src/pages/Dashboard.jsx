@@ -98,7 +98,7 @@ export default function Dashboard() {
       if (data.flowStatus?.labels) {
         localStorage.setItem('tenant_labels', JSON.stringify(data.flowStatus.labels));
       }
-    }).catch(console.error).finally(() => setLoading(false));
+    }).catch(() => {}).finally(() => setLoading(false));
   }, [clinic]);
 
   if (loading) return (

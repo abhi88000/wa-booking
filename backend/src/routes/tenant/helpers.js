@@ -1,4 +1,9 @@
-// Shared helpers for tenant routes
+// ============================================================
+// Shared Helpers — Tenant Route Utilities
+// ============================================================
+// Date/time formatters shared across tenant route files.
+// Used by appointments, dashboard, and other routes that
+// display human-readable dates and times.
 
 function formatTime12(timeStr) {
   if (!timeStr) return '';

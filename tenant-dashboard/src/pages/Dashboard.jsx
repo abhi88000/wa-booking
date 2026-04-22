@@ -29,35 +29,7 @@ function timeAgo(d) {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
-function getGreeting() {
-  const h = new Date().getHours();
-  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
-}
 
-// ── Mini Sparkline (SVG) ──────────────────────────────────
-function Sparkline({ data, color = '#25D366' }) {
-  if (!data || data.length === 0) return null;
-  const max = Math.max(...data, 1);
-  const w = 120, h = 32, pad = 2;
-  const points = data.map((v, i) => {
-    const x = pad + (i / (data.length - 1)) * (w - pad * 2);
-    const y = h - pad - (v / max) * (h - pad * 2);
-    return `${x},${y}`;
-  }).join(' ');
-  const areaPoints = `${pad},${h - pad} ${points} ${w - pad},${h - pad}`;
-  return (
-    <svg width={w} height={h} className="block">
-      <defs>
-        <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.15" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon points={areaPoints} fill="url(#sparkFill)" />
-      <polyline points={points} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
 
 // ── Status Badge ──────────────────────────────────────────
 function StatusBadge({ status }) {
@@ -112,8 +84,7 @@ export default function Dashboard() {
   const hasRecords = (data.records?.total || 0) > 0;
   const hasFlow = data.flowStatus?.hasFlow;
   const conversations = data.conversations || {};
-  const trend = (conversations.trend || []).map(t => t.count);
-  const recentChats = conversations.recentChats || [];
+
   const usagePct = data.limits ? Math.min(100, Math.round((data.limits.usedAppointmentsMonth / data.limits.maxAppointmentsMonth) * 100)) : 0;
 
   return (
@@ -131,9 +102,9 @@ export default function Dashboard() {
         <div className="relative px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <p className="text-emerald-300/70 text-xs font-medium tracking-wider uppercase mb-1">
-              {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </p>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">{getGreeting()} 👋</h1>
+            <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">Dashboard</h1>
             <div className="flex items-center gap-3 mt-2.5">
               <div className="flex items-center gap-1.5">
                 <div className={`w-2 h-2 rounded-full ${hasFlow ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
@@ -146,13 +117,6 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Sparkline */}
-            {trend.length > 0 && (
-              <div className="hidden sm:block">
-                <p className="text-[10px] text-emerald-300/50 mb-1 text-right">7-day conversations</p>
-                <Sparkline data={trend} color="#34d399" />
-              </div>
-            )}
             {/* Usage ring */}
             {data.limits && (
               <div className="relative w-14 h-14 shrink-0">
@@ -312,49 +276,6 @@ export default function Dashboard() {
 
         {/* Right column — Activity Feed (2/5) */}
         <div className="lg:col-span-2 space-y-3">
-
-          {/* Recent Conversations */}
-          {recentChats.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm animate-slideUp" style={{ animationDelay: '240ms' }}>
-              <div className="flex items-center justify-between px-4 pt-4 pb-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-gradient-to-b from-emerald-400 to-green-500" />
-                  <h2 className="text-sm font-bold text-gray-900">Recent Messages</h2>
-                </div>
-                <Link to="/inbox" className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">Inbox →</Link>
-              </div>
-              <div className="px-4 pb-3 divide-y divide-gray-50 max-h-72 overflow-y-auto">
-                {recentChats.map((c, i) => (
-                  <div key={i} className="py-2.5 group">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <p className="text-sm font-semibold text-gray-800 truncate">{c.name || c.phone}</p>
-                      <span className="text-[10px] text-gray-400 shrink-0 ml-2">{timeAgo(c.created_at)}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {c.direction === 'outbound' && <span className="text-[9px] text-emerald-500 font-bold shrink-0">YOU</span>}
-                      <p className="text-xs text-gray-500 truncate">{c.content || '(media)'}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Unread indicator */}
-          {(conversations.unread || 0) > 0 && (
-            <Link to="/inbox" className="block bg-gradient-to-r from-emerald-500 to-teal-600 rounded-xl p-4 animate-slideUp hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200" style={{ animationDelay: '300ms' }}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                  <Icon name="messageCircle" className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <p className="text-white font-bold text-lg">{conversations.unread}</p>
-                  <p className="text-emerald-100 text-xs">unread conversations</p>
-                </div>
-                <svg className="w-5 h-5 text-white/60 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
-              </div>
-            </Link>
-          )}
 
           {/* Recent records */}
           {hasRecords && data.records.recent.length > 0 && (

@@ -71,7 +71,27 @@ router.get('/dashboard', async (req, res, next) => {
             )
           ) sub
         `, [tid]);
-        return { total: total.rows[0].count, today: today.rows[0].count, unread: unread.rows[0].count };
+        const lastMsg = await pool.query(`SELECT created_at FROM chat_messages WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 1`, [tid]);
+        const recentChats = await pool.query(`
+          SELECT p.name, p.phone, m.content, m.direction, m.created_at
+          FROM chat_messages m
+          JOIN patients p ON p.id = m.patient_id AND p.tenant_id = m.tenant_id
+          WHERE m.tenant_id = $1
+          ORDER BY m.created_at DESC LIMIT 5
+        `, [tid]);
+        // 7-day conversation trend
+        const trend = await pool.query(`
+          SELECT d::date as day, COUNT(DISTINCT patient_id)::int as count
+          FROM generate_series(CURRENT_DATE - 6, CURRENT_DATE, '1 day') d
+          LEFT JOIN chat_messages cm ON cm.tenant_id = $1 AND cm.created_at::date = d
+          GROUP BY d ORDER BY d
+        `, [tid]);
+        return {
+          total: total.rows[0].count, today: today.rows[0].count, unread: unread.rows[0].count,
+          lastMessage: lastMsg.rows[0]?.created_at || null,
+          recentChats: recentChats.rows,
+          trend: trend.rows
+        };
       })(),
       (async () => {
         const fc = await pool.query(`SELECT flow_config, labels FROM tenants WHERE id = $1`, [tid]);

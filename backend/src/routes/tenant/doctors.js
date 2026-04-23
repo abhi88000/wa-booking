@@ -388,8 +388,7 @@ router.put('/doctors/:id/availability', requireRole('owner', 'admin'), async (re
             `INSERT INTO doctor_availability (tenant_id, doctor_id, day, start_time, end_time, is_active, clinic_label)
              VALUES ($1, $2, $3, $4, $5, true, $6)`,
             [tenantId, doctorId, a.day, a.startTime, a.endTime, clinicLabel || null]
-            );
-          }
+          );
         }
       }
 

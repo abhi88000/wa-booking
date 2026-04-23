@@ -204,7 +204,7 @@ router.delete('/doctors/:id', requireRole('owner', 'admin'), async (req, res, ne
 router.get('/doctors/:id/slots', async (req, res, next) => {
   try {
     const doctorId = req.params.id;
-    const { date } = req.query;
+    const { date, clinic } = req.query;
     if (!date) return res.status(400).json({ error: 'date query param required (YYYY-MM-DD)' });
 
     const [y, m, d] = date.split('-').map(Number);
@@ -218,11 +218,24 @@ router.get('/doctors/:id/slots', async (req, res, next) => {
     );
     const duration = (docRows.length > 0 && docRows[0].slot_duration) ? docRows[0].slot_duration : 30;
 
-    const { rows: avail } = await pool.query(
-      `SELECT start_time, end_time FROM doctor_availability 
-       WHERE doctor_id = $1 AND tenant_id = $2 AND day = $3 AND is_active = true`,
-      [doctorId, req.tenantId, dayName]
-    );
+    // Fetch availability — prefer clinic-specific, fall back to global
+    let avail;
+    if (clinic && clinic !== 'all') {
+      const { rows } = await pool.query(
+        `SELECT start_time, end_time FROM doctor_availability 
+         WHERE doctor_id = $1 AND tenant_id = $2 AND day = $3 AND is_active = true AND clinic_label = $4`,
+        [doctorId, req.tenantId, dayName, clinic]
+      );
+      avail = rows;
+    }
+    if (!avail || avail.length === 0) {
+      const { rows } = await pool.query(
+        `SELECT start_time, end_time FROM doctor_availability 
+         WHERE doctor_id = $1 AND tenant_id = $2 AND day = $3 AND is_active = true AND clinic_label IS NULL`,
+        [doctorId, req.tenantId, dayName]
+      );
+      avail = rows;
+    }
 
     if (avail.length === 0) return res.json({ slots: [], message: 'Doctor not available on this day' });
 
@@ -271,13 +284,20 @@ router.get('/doctors/:id/slots', async (req, res, next) => {
 
 router.get('/doctors/:id/availability', async (req, res, next) => {
   try {
-    const { rows: avail } = await pool.query(
-      `SELECT id, day, start_time, end_time, is_active 
-       FROM doctor_availability WHERE doctor_id = $1 AND tenant_id = $2 ORDER BY 
-       CASE day WHEN 'monday' THEN 1 WHEN 'tuesday' THEN 2 WHEN 'wednesday' THEN 3 
-       WHEN 'thursday' THEN 4 WHEN 'friday' THEN 5 WHEN 'saturday' THEN 6 WHEN 'sunday' THEN 7 END`,
-      [req.params.id, req.tenantId]
-    );
+    const { clinic } = req.query;
+    const clinicFilter = clinic && clinic !== 'all' ? clinic : null;
+
+    let availQuery = `SELECT id, day, start_time, end_time, is_active, clinic_label
+       FROM doctor_availability WHERE doctor_id = $1 AND tenant_id = $2`;
+    const availParams = [req.params.id, req.tenantId];
+    if (clinicFilter) {
+      availQuery += ` AND (clinic_label = $3 OR clinic_label IS NULL)`;
+      availParams.push(clinicFilter);
+    }
+    availQuery += ` ORDER BY CASE day WHEN 'monday' THEN 1 WHEN 'tuesday' THEN 2 WHEN 'wednesday' THEN 3 
+       WHEN 'thursday' THEN 4 WHEN 'friday' THEN 5 WHEN 'saturday' THEN 6 WHEN 'sunday' THEN 7 END`;
+
+    const { rows: avail } = await pool.query(availQuery, availParams);
     const { rows: breaks } = await pool.query(
       `SELECT id, break_date, start_time, end_time, reason, is_full_day 
        FROM doctor_breaks WHERE doctor_id = $1 AND tenant_id = $2 
@@ -291,10 +311,14 @@ router.get('/doctors/:id/availability', async (req, res, next) => {
     const { rows: tenant } = await pool.query(
       `SELECT timezone FROM tenants WHERE id = $1`, [req.tenantId]
     );
+    const { rows: docClinics } = await pool.query(
+      `SELECT clinic_label FROM doctor_clinics WHERE doctor_id = $1`, [req.params.id]
+    );
     res.json({
       availability: avail, breaks,
       slotDuration: doctor[0]?.slot_duration || 30,
-      timezone: tenant[0]?.timezone || 'Asia/Kolkata'
+      timezone: tenant[0]?.timezone || 'Asia/Kolkata',
+      clinics: docClinics.map(r => r.clinic_label)
     });
   } catch (err) {
     next(err);
@@ -303,7 +327,7 @@ router.get('/doctors/:id/availability', async (req, res, next) => {
 
 router.put('/doctors/:id/availability', requireRole('owner', 'admin'), async (req, res, next) => {
   try {
-    const { availability, breaks, slotDuration, timezone } = req.body;
+    const { availability, breaks, slotDuration, timezone, clinicLabel } = req.body;
     const doctorId = req.params.id;
     const tenantId = req.tenantId;
 
@@ -326,16 +350,24 @@ router.put('/doctors/:id/availability', requireRole('owner', 'admin'), async (re
       }
 
       if (availability) {
-        await client.query(
-          `DELETE FROM doctor_availability WHERE doctor_id = $1 AND tenant_id = $2`,
-          [doctorId, tenantId]
-        );
+        // Delete only for this clinic (or global if no clinicLabel)
+        if (clinicLabel) {
+          await client.query(
+            `DELETE FROM doctor_availability WHERE doctor_id = $1 AND tenant_id = $2 AND clinic_label = $3`,
+            [doctorId, tenantId, clinicLabel]
+          );
+        } else {
+          await client.query(
+            `DELETE FROM doctor_availability WHERE doctor_id = $1 AND tenant_id = $2 AND clinic_label IS NULL`,
+            [doctorId, tenantId]
+          );
+        }
         for (const a of availability) {
           if (a.isActive !== false) {
             await client.query(
-              `INSERT INTO doctor_availability (tenant_id, doctor_id, day, start_time, end_time, is_active)
-               VALUES ($1, $2, $3, $4, $5, true)`,
-              [tenantId, doctorId, a.day, a.startTime, a.endTime]
+              `INSERT INTO doctor_availability (tenant_id, doctor_id, day, start_time, end_time, is_active, clinic_label)
+               VALUES ($1, $2, $3, $4, $5, true, $6)`,
+              [tenantId, doctorId, a.day, a.startTime, a.endTime, clinicLabel || null]
             );
           }
         }

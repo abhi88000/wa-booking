@@ -182,6 +182,7 @@ export default function Doctors() {
       {/* Availability Editor Modal */}
       {editingAvail && (
         <AvailabilityEditor doctorId={editingAvail.id} doctorName={editingAvail.name}
+          doctorClinics={editingAvail.clinics || []}
           onClose={() => { setEditingAvail(null); load(); }} />
       )}
 
@@ -254,9 +255,12 @@ export default function Doctors() {
   );
 }
 
-function AvailabilityEditor({ doctorId, doctorName, onClose }) {
+function AvailabilityEditor({ doctorId, doctorName, doctorClinics, onClose }) {
   const [schedule, setSchedule] = useState(
     DAYS.map(day => ({ day, enabled: false, startTime: '10:00', endTime: '16:00' }))
+  );
+  const [selectedClinic, setSelectedClinic] = useState(
+    doctorClinics?.length === 1 ? doctorClinics[0] : null
   );
   const [breaks, setBreaks] = useState([{ startTime: '13:00', endTime: '14:00', reason: 'Lunch' }]);
   const [blockedDates, setBlockedDates] = useState([]);
@@ -267,7 +271,8 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    api.getDoctorAvailability(doctorId).then(({ data }) => {
+    setLoaded(false);
+    api.getDoctorAvailability(doctorId, selectedClinic).then(({ data }) => {
       setSlotDuration(data.slotDuration || 20);
       setTimezone(data.timezone || 'Asia/Kolkata');
       if (data.availability.length > 0) {
@@ -292,7 +297,7 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
       }
       setLoaded(true);
     }).catch(() => setLoaded(true));
-  }, [doctorId]);
+  }, [doctorId, selectedClinic]);
 
   const toggleDay = (idx) => {
     const s = [...schedule];
@@ -345,6 +350,7 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
       await api.updateDoctorAvailability(doctorId, {
         slotDuration,
         timezone,
+        clinicLabel: selectedClinic || undefined,
         availability: schedule.filter(s => s.enabled).map(s => ({
           day: s.day, startTime: s.startTime, endTime: s.endTime
         })),
@@ -376,6 +382,26 @@ function AvailabilityEditor({ doctorId, doctorName, onClose }) {
         </div>
 
         <div className="p-5 space-y-5 max-h-[75vh] overflow-y-auto">
+
+          {/* Clinic Selector (if doctor has multiple clinics) */}
+          {doctorClinics && doctorClinics.length > 1 && (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1.5">Schedule for Clinic</label>
+              <div className="flex flex-wrap gap-2">
+                {doctorClinics.map(cl => (
+                  <button key={cl} type="button" onClick={() => setSelectedClinic(cl)}
+                    className={`text-xs px-3 py-1.5 rounded-lg border transition font-medium ${
+                      selectedClinic === cl 
+                        ? 'bg-slate-800 text-white border-slate-800' 
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-slate-400'
+                    }`}>
+                    {cl}
+                  </button>
+                ))}
+              </div>
+              {!selectedClinic && <p className="text-[11px] text-amber-600 mt-1">Please select a clinic to set its schedule</p>}
+            </div>
+          )}
 
           {/* Timezone + Duration */}
           <div className="grid grid-cols-2 gap-3">

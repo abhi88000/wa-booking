@@ -73,23 +73,23 @@ export default function Settings() {
             <div>
               <label className="block text-sm font-medium mb-1">Phone</label>
               <input value={settings.phone || ''} onChange={e => setSettings({...settings, phone: e.target.value})}
-                className="w-full border rounded-lg px-4 py-2 text-sm outline-none" />
+                className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">City</label>
               <input value={settings.city || ''} onChange={e => setSettings({...settings, city: e.target.value})}
-                className="w-full border rounded-lg px-4 py-2 text-sm outline-none" />
+                className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
             </div>
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Address</label>
             <textarea value={settings.address || ''} onChange={e => setSettings({...settings, address: e.target.value})}
-              className="w-full border rounded-lg px-4 py-2 text-sm outline-none" rows={2} />
+              className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" rows={2} />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">Google Maps Link</label>
             <input value={s.google_maps_url || ''} placeholder="https://maps.google.com/..." onChange={e => setSettings({...settings, settings: {...s, google_maps_url: e.target.value}})}
-              className="w-full border rounded-lg px-4 py-2 text-sm outline-none" />
+              className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
             <p className="text-xs text-gray-400 mt-1">Optional. Will be shared with patients in booking confirmations.</p>
           </div>
         </div>
@@ -188,20 +188,20 @@ export default function Settings() {
             <label className="block text-sm font-medium mb-1">Welcome Message</label>
             <textarea value={s.welcome_message || ''} rows={3}
               onChange={e => setSettings({...settings, settings: {...s, welcome_message: e.target.value}})}
-              className="w-full border rounded-lg px-4 py-2 text-sm outline-none" />
+              className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Booking Window (days ahead)</label>
               <input type="number" value={s.booking_window_days || 14}
                 onChange={e => setSettings({...settings, settings: {...s, booking_window_days: parseInt(e.target.value)}})}
-                className="w-full border rounded-lg px-4 py-2 text-sm outline-none" />
+                className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Max Bookings/Day</label>
               <input type="number" value={s.max_bookings_per_day || 50}
                 onChange={e => setSettings({...settings, settings: {...s, max_bookings_per_day: parseInt(e.target.value)}})}
-                className="w-full border rounded-lg px-4 py-2 text-sm outline-none" />
+                className="w-full border rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
             </div>
           </div>
           <div className="flex items-center gap-3">

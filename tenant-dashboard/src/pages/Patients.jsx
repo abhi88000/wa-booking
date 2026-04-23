@@ -118,7 +118,7 @@ export default function Patients() {
   );
 
   const PatientCard = ({ p }) => (
-    <div className="p-4 active:bg-gray-50" onClick={() => viewDetail(p)}>
+    <div className="p-4 active:bg-gray-50" onClick={() => viewDetail(p)} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && viewDetail(p)}>
       <div className="flex justify-between items-start">
         <div>
           <p className="font-medium text-gray-900">{p.name || 'Unknown'}</p>
@@ -163,7 +163,7 @@ export default function Patients() {
       {/* Search + Sort Bar */}
       <div className="flex flex-col sm:flex-row gap-2 mb-4">
         <div className="relative flex-1">
-          <svg className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           <input placeholder="Search by name or phone..." value={search}
@@ -171,11 +171,11 @@ export default function Patients() {
             className="w-full border border-gray-200 rounded-lg pl-9 pr-4 py-2 text-sm outline-none focus:border-slate-400" />
           {search && (
             <button onClick={() => setSearch('')}
-              className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 text-sm">&times;</button>
+              className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600 text-sm" aria-label="Clear search">&times;</button>
           )}
         </div>
         <select value={sort} onChange={e => setSort(e.target.value)}
-          className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none sm:w-44">
+          className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400 sm:w-44">
           <option value="recent">Newest First</option>
           <option value="name">Name A-Z</option>
           <option value="visits">Most Visits</option>
@@ -185,7 +185,7 @@ export default function Patients() {
 
       {/* Add/Edit Modal */}
       {showAdd && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" role="dialog" aria-modal="true" aria-label={editing ? 'Edit Patient' : 'Add Patient'}>
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-lg font-semibold mb-4">{editing ? 'Edit Patient' : 'Add Patient'}</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
@@ -220,12 +220,12 @@ export default function Patients() {
 
       {/* Patient Detail Drawer */}
       {detail && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex justify-end" onClick={() => { setDetail(null); setDetailData(null); }}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex justify-end" onClick={() => { setDetail(null); setDetailData(null); }} role="dialog" aria-modal="true" aria-label="Patient details">
           <div className="bg-white w-full sm:w-[420px] h-full overflow-y-auto" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b flex justify-between items-center">
               <h2 className="text-lg font-semibold">{detail.name || 'Patient'}</h2>
               <button onClick={() => { setDetail(null); setDetailData(null); }}
-                className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+                className="text-gray-400 hover:text-gray-600 text-xl" aria-label="Close">&times;</button>
             </div>
             <div className="p-6">
               <div className="space-y-3 mb-6">
@@ -292,7 +292,7 @@ export default function Patients() {
         {loading ? <div className="p-8 text-center text-gray-500">Loading...</div> : (
           <>
             {/* Desktop */}
-            <table className="w-full text-sm hidden sm:table">
+            <table className="w-full text-sm hidden sm:table" aria-label="Patients">
               <thead className="bg-gray-50 text-gray-600 text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Name</th>

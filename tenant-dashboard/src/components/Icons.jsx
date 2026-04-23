@@ -102,7 +102,7 @@ const icons = {
 
 export default function Icon({ name, className = 'w-4 h-4', ...props }) {
   return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" {...props}>
+    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true" {...props}>
       {icons[name] || icons.helpCircle}
     </svg>
   );

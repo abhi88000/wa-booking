@@ -128,7 +128,7 @@ export default function Appointments() {
         </button>
         {rest.length > 0 && (
           <div className="relative group">
-            <button className="text-gray-400 hover:text-gray-600 px-1.5 py-1.5 rounded-md hover:bg-gray-100 text-sm leading-none">•••</button>
+            <button className="text-gray-400 hover:text-gray-600 px-1.5 py-1.5 rounded-md hover:bg-gray-100 text-sm leading-none" aria-label="More actions">•••</button>
             <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-20 min-w-[120px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
               {rest.map(item => (
                 <button key={item.label} onClick={item.onClick}
@@ -149,7 +149,7 @@ export default function Appointments() {
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Appointments ({total})</h1>
         <div className="flex gap-2">
           <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none">
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400">
             <option value="">All Status</option>
             <option value="pending">Pending</option>
             <option value="confirmed">Confirmed</option>
@@ -169,11 +169,12 @@ export default function Appointments() {
             + Book Appointment
           </button>
           <button onClick={() => setCompact(c => !c)} title={compact ? 'Comfortable view' : 'Compact view'}
+            aria-label={compact ? 'Switch to comfortable view' : 'Switch to compact view'}
             className="border border-gray-200 rounded-lg px-2.5 py-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition">
             {compact ? (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
             ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 5h16M4 10h16M4 15h16M4 20h16"/></svg>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 10h16M4 15h16M4 20h16"/></svg>
             )}
           </button>
         </div>
@@ -191,7 +192,7 @@ export default function Appointments() {
             <div className="inline-block w-6 h-6 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" aria-label="Appointments">
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Patient</th>
@@ -446,11 +447,11 @@ function CreateAppointmentModal({ doctors, services, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 overflow-y-auto py-8">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 overflow-y-auto py-8" role="dialog" aria-modal="true" aria-label="Book Appointment">
       <div className="bg-white rounded-lg p-6 w-full max-w-lg my-auto">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Book Appointment</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl" aria-label="Close">&times;</button>
         </div>
         <form onSubmit={handleSubmit} className="space-y-3">
           {/* Patient Search */}
@@ -572,7 +573,7 @@ function CancelModal({ appointment, onClose, onDone }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" role="dialog" aria-modal="true" aria-label="Cancel Appointment">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
         <h2 className="text-base font-semibold text-gray-900 mb-1">Cancel Appointment</h2>
         <p className="text-sm text-gray-500 mb-4">
@@ -647,7 +648,7 @@ function RescheduleModal({ appointment, doctors, onClose, onDone }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" role="dialog" aria-modal="true" aria-label="Reschedule Appointment">
       <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
         <h2 className="text-base font-semibold text-gray-900 mb-1">Reschedule Appointment</h2>
         <p className="text-sm text-gray-500 mb-4">
@@ -759,7 +760,7 @@ function FollowUpModal({ appointment, onClose, onDone }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" role="dialog" aria-modal="true" aria-label="Schedule Follow-Up">
       <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
         <h2 className="text-base font-semibold text-gray-900 mb-1">Schedule Follow-Up</h2>
         <p className="text-sm text-gray-500 mb-4">

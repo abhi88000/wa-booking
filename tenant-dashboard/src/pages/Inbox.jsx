@@ -103,6 +103,8 @@ export default function Inbox() {
             conversations.map(c => (
               <div key={c.patient_id}
                 onClick={() => setSelected(c.patient_id)}
+                role="button" tabIndex={0}
+                onKeyDown={e => e.key === 'Enter' && setSelected(c.patient_id)}
                 className={`px-4 py-3 cursor-pointer border-b border-gray-50 hover:bg-gray-50 transition
                   ${selected === c.patient_id ? 'bg-slate-50' : ''}`}>
                 <div className="flex justify-between items-start">
@@ -138,12 +140,12 @@ export default function Inbox() {
           <>
             {/* Chat header */}
             <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3">
-              <button onClick={() => setSelected(null)} className="sm:hidden text-gray-400 hover:text-gray-600">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <button onClick={() => setSelected(null)} className="sm:hidden text-gray-400 hover:text-gray-600" aria-label="Back to conversations">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-sm font-medium text-slate-600">
+              <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-sm font-medium text-slate-600" aria-hidden="true">
                 {(patient?.name || '?')[0].toUpperCase()}
               </div>
               <div>
@@ -180,6 +182,7 @@ export default function Inbox() {
                 <input value={reply} onChange={e => setReply(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSend()}
                   placeholder="Type a reply..."
+                  aria-label="Reply message"
                   className="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm outline-none focus:border-slate-400" />
                 <button onClick={handleSend} disabled={!reply.trim() || sending}
                   className="px-4 py-2 bg-slate-800 text-white text-sm font-medium rounded-xl hover:bg-slate-700 disabled:opacity-40 transition">

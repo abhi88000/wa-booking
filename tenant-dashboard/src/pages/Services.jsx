@@ -63,7 +63,7 @@ export default function Services() {
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" role="dialog" aria-modal="true" aria-label={editing ? 'Edit Service' : 'Add Service'}>
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-lg font-semibold mb-4">{editing ? 'Edit Service' : 'Add Service'}</h2>
             <form onSubmit={handleSubmit} className="space-y-3">
@@ -101,7 +101,7 @@ export default function Services() {
         {loading ? <div className="p-8 text-center text-gray-500">Loading...</div> : (
           <>
             {/* Desktop Table */}
-            <table className="w-full text-sm hidden sm:table">
+            <table className="w-full text-sm hidden sm:table" aria-label="Services">
               <thead className="bg-gray-50 text-gray-600 text-left">
                 <tr>
                   <th className="px-4 py-3 font-medium">Name</th>

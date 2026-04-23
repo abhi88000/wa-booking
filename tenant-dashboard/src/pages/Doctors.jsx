@@ -85,7 +85,7 @@ export default function Doctors() {
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Doctors</h1>
         <div className="flex flex-wrap gap-2">
           <select value={filter} onChange={e => setFilter(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none">
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:border-slate-400">
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
             <option value="all">All</option>
@@ -99,7 +99,7 @@ export default function Doctors() {
 
       {/* Add/Edit Modal */}
       {showAdd && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4" role="dialog" aria-modal="true" aria-label={editingDoc ? 'Edit Doctor' : 'Add Doctor'}>
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-lg font-semibold mb-4">{editingDoc ? 'Edit Doctor' : 'Add Doctor'}</h2>
             <form onSubmit={handleSubmit} className="space-y-3">

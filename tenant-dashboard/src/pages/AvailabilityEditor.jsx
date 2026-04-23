@@ -143,11 +143,11 @@ export default function AvailabilityEditor({ doctorId, doctorName, doctorClinics
   const DAY_LABELS = { monday: 'Mon', tuesday: 'Tue', wednesday: 'Wed', thursday: 'Thu', friday: 'Fri', saturday: 'Sat', sunday: 'Sun' };
 
   return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4 py-4 overflow-y-auto">
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-4 py-4 overflow-y-auto" role="dialog" aria-modal="true" aria-label="Schedule editor">
       <div className="bg-white rounded-lg w-full max-w-xl my-auto">
         <div className="flex justify-between items-center p-5 border-b">
           <h2 className="text-lg font-semibold text-gray-900">{doctorName} — Schedule</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl" aria-label="Close">&times;</button>
         </div>
 
         <div className="p-5 space-y-5 max-h-[75vh] overflow-y-auto">
@@ -229,7 +229,7 @@ export default function AvailabilityEditor({ doctorId, doctorName, doctorClinics
             <div className="space-y-2">
               {schedule.map((s, i) => (
                 <div key={s.day} className="flex items-center gap-2">
-                  <button type="button" onClick={() => toggleDay(i)}
+                  <button type="button" onClick={() => toggleDay(i)} aria-pressed={s.enabled}
                     className={`w-12 text-xs py-1.5 rounded font-medium flex-shrink-0 ${s.enabled ? 'bg-slate-800 text-white' : 'bg-gray-100 text-gray-400'}`}>
                     {DAY_LABELS[s.day]}
                   </button>

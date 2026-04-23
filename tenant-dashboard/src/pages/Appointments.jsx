@@ -1,7 +1,25 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, Fragment } from 'react';
 import api from '../api';
 import { useClinic } from '../ClinicContext';
 import { fmtDate, fmt12 } from '../utils';
+
+function dateLabel(val) {
+  if (!val) return '';
+  const d = new Date(val);
+  const now = new Date();
+  const strip = (dt) => new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()).getTime();
+  const diff = strip(d) - strip(now);
+  const day = 86400000;
+  if (diff === 0) return 'Today';
+  if (diff === day) return 'Tomorrow';
+  if (diff === -day) return 'Yesterday';
+  return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
+}
+
+function dateKey(val) {
+  if (!val) return '';
+  return new Date(val).toISOString().split('T')[0];
+}
 
 export default function Appointments() {
   const [appointments, setAppointments] = useState([]);
@@ -17,6 +35,16 @@ export default function Appointments() {
   const [followUpTarget, setFollowUpTarget] = useState(null);
   const [hideCancelled, setHideCancelled] = useState(true);
   const { clinic } = useClinic();
+
+  const grouped = useMemo(() => {
+    const map = new Map();
+    for (const a of appointments) {
+      const key = dateKey(a.appointment_date);
+      if (!map.has(key)) map.set(key, { label: dateLabel(a.appointment_date), items: [] });
+      map.get(key).items.push(a);
+    }
+    return [...map.values()];
+  }, [appointments]);
 
   useEffect(() => { load(); loadMeta(); }, []);
   useEffect(() => { load(); loadMeta(); }, [page, statusFilter, hideCancelled, clinic]);
@@ -148,36 +176,48 @@ export default function Appointments() {
               <tr className="border-b border-gray-100">
                 <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Patient</th>
                 <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Doctor / Service</th>
-                <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">When</th>
+                <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Time</th>
                 <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
                 <th className="px-5 py-3.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {appointments.map((a, i) => (
-                <tr key={a.id} className={`group hover:bg-slate-50/60 transition ${i > 0 ? 'border-t border-gray-50' : ''}`}>
-                  <td className="px-5 py-4">
-                    <p className="font-medium text-gray-900 text-[13px]">{a.patient_name || '—'}</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5 font-mono">{a.patient_phone}</p>
-                  </td>
-                  <td className="px-5 py-4">
-                    <p className="text-gray-700 text-[13px]">{a.doctor_name}</p>
-                    {a.service_name && <p className="text-[11px] text-gray-400 mt-0.5">{a.service_name}</p>}
-                  </td>
-                  <td className="px-5 py-4">
-                    <p className="text-gray-900 text-[13px] font-medium">{fmtDate(a.appointment_date, true)}</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">{fmt12(a.start_time)}</p>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize ${STATUS_STYLE[a.status]}`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[a.status]}`} />
-                      {a.status?.replace('_', ' ')}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <ActionButtons a={a} />
-                  </td>
-                </tr>
+              {grouped.map((group) => (
+                <Fragment key={group.label}>
+                  <tr>
+                    <td colSpan="5" className="px-5 pt-5 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">{group.label}</span>
+                        <span className="text-[10px] text-gray-400 font-medium bg-gray-100 px-1.5 py-0.5 rounded-full">{group.items.length}</span>
+                        <div className="flex-1 h-px bg-gray-100 ml-1" />
+                      </div>
+                    </td>
+                  </tr>
+                  {group.items.map((a, i) => (
+                    <tr key={a.id} className={`group hover:bg-slate-50/60 transition ${i > 0 ? 'border-t border-gray-50' : ''}`}>
+                      <td className="px-5 py-3.5">
+                        <p className="font-medium text-gray-900 text-[13px]">{a.patient_name || '—'}</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5 font-mono">{a.patient_phone}</p>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <p className="text-gray-700 text-[13px]">{a.doctor_name}</p>
+                        {a.service_name && <p className="text-[11px] text-gray-400 mt-0.5">{a.service_name}</p>}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <p className="text-gray-900 text-[13px] font-medium">{fmt12(a.start_time)}</p>
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize ${STATUS_STYLE[a.status]}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[a.status]}`} />
+                          {a.status?.replace('_', ' ')}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-right">
+                        <ActionButtons a={a} />
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
               ))}
               {appointments.length === 0 && (
                 <tr>
@@ -193,35 +233,43 @@ export default function Appointments() {
       </div>
 
       {/* Mobile Cards */}
-      <div className="sm:hidden space-y-2.5">
+      <div className="sm:hidden space-y-1">
         {loading ? (
           <div className="p-12 text-center">
             <div className="inline-block w-6 h-6 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
           </div>
         ) :
-          appointments.map(a => (
-            <div key={a.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
-              <div className="flex justify-between items-start gap-3">
-                <div className="min-w-0">
-                  <p className="font-semibold text-gray-900 text-sm truncate">{a.patient_name || 'Patient'}</p>
-                  <p className="text-[11px] text-gray-400 font-mono mt-0.5">{a.patient_phone}</p>
-                </div>
-                <span className={`flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize ${STATUS_STYLE[a.status]}`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[a.status]}`} />
-                  {a.status?.replace('_', ' ')}
-                </span>
+          grouped.map(group => (
+            <div key={group.label}>
+              <div className="flex items-center gap-2 pt-4 pb-2 px-1">
+                <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">{group.label}</span>
+                <span className="text-[10px] text-gray-400 font-medium bg-gray-100 px-1.5 py-0.5 rounded-full">{group.items.length}</span>
+                <div className="flex-1 h-px bg-gray-100 ml-1" />
               </div>
-
-              <div className="mt-3 flex items-center gap-3 text-xs text-gray-500">
-                <span className="bg-gray-50 px-2 py-1 rounded text-gray-600 font-medium">
-                  {fmtDate(a.appointment_date, true)} · {fmt12(a.start_time)}
-                </span>
-              </div>
-              <div className="mt-2 text-xs text-gray-500">
-                <p>{a.doctor_name}{a.service_name ? ` · ${a.service_name}` : ''}</p>
-              </div>
-              <div className="mt-3 pt-3 border-t border-gray-50">
-                <ActionButtons a={a} />
+              <div className="space-y-2">
+                {group.items.map(a => (
+                  <div key={a.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-gray-900 text-sm truncate">{a.patient_name || 'Patient'}</p>
+                        <p className="text-[11px] text-gray-400 font-mono mt-0.5">{a.patient_phone}</p>
+                      </div>
+                      <span className={`flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize ${STATUS_STYLE[a.status]}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[a.status]}`} />
+                        {a.status?.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                      <span className="font-medium text-gray-700">{fmt12(a.start_time)}</span>
+                      <span className="text-gray-300">·</span>
+                      <span>{a.doctor_name}</span>
+                      {a.service_name && <><span className="text-gray-300">·</span><span>{a.service_name}</span></>}
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-gray-50">
+                      <ActionButtons a={a} />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           ))

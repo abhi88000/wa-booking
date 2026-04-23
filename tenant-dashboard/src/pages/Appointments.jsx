@@ -46,63 +46,62 @@ export default function Appointments() {
     load();
   };
 
-  const STATUS_COLOR = {
-    pending: 'bg-yellow-100 text-yellow-700',
-    confirmed: 'bg-green-100 text-green-700',
-    completed: 'bg-blue-100 text-blue-700',
-    cancelled: 'bg-red-100 text-red-700',
-    no_show: 'bg-gray-200 text-gray-600',
-    rescheduled: 'bg-purple-100 text-purple-700',
+  const STATUS_STYLE = {
+    pending: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+    confirmed: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+    completed: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
+    cancelled: 'bg-red-50 text-red-600 ring-1 ring-red-200',
+    no_show: 'bg-gray-100 text-gray-500 ring-1 ring-gray-200',
+    rescheduled: 'bg-violet-50 text-violet-700 ring-1 ring-violet-200',
   };
 
-  const ActionButtons = ({ a }) => (
-    <div className="flex gap-1 flex-wrap">
-      {a.status === 'pending' && (
-        <button onClick={() => updateStatus(a.id, 'confirmed')}
-          className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded hover:bg-green-100">
-          Confirm
+  const STATUS_DOT = {
+    pending: 'bg-amber-400', confirmed: 'bg-emerald-400', completed: 'bg-sky-400',
+    cancelled: 'bg-red-400', no_show: 'bg-gray-400', rescheduled: 'bg-violet-400',
+  };
+
+  const ActionButtons = ({ a }) => {
+    const items = [];
+    if (a.status === 'pending') {
+      items.push({ label: 'Confirm', onClick: () => updateStatus(a.id, 'confirmed'), style: 'text-emerald-600 hover:bg-emerald-50' });
+    }
+    if (['pending', 'confirmed'].includes(a.status)) {
+      items.push({ label: 'Complete', onClick: () => updateStatus(a.id, 'completed'), style: 'text-sky-600 hover:bg-sky-50' });
+      items.push({ label: 'Reschedule', onClick: () => setRescheduleTarget(a), style: 'text-violet-600 hover:bg-violet-50' });
+      items.push({ label: 'Cancel', onClick: () => setCancelTarget(a), style: 'text-red-500 hover:bg-red-50' });
+      items.push({ label: 'No Show', onClick: () => updateStatus(a.id, 'no_show'), style: 'text-gray-500 hover:bg-gray-100' });
+    }
+    if (a.status === 'cancelled' || a.status === 'no_show') {
+      items.push({ label: 'Restore', onClick: () => updateStatus(a.id, 'confirmed'), style: 'text-emerald-600 hover:bg-emerald-50' });
+    }
+    if (a.status === 'completed') {
+      items.push({ label: 'Follow Up', onClick: () => setFollowUpTarget(a), style: 'text-indigo-600 hover:bg-indigo-50' });
+    }
+    if (items.length === 0) return null;
+    const primary = items[0];
+    const rest = items.slice(1);
+    return (
+      <div className="flex items-center gap-1">
+        <button onClick={primary.onClick}
+          className={`text-xs font-medium px-3 py-1.5 rounded-md transition ${primary.style}`}>
+          {primary.label}
         </button>
-      )}
-      {['pending', 'confirmed'].includes(a.status) && (
-        <>
-          <button onClick={() => updateStatus(a.id, 'completed')}
-            className="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100">
-            Complete
-          </button>
-          <button onClick={() => setRescheduleTarget(a)}
-            className="text-xs px-2 py-1 bg-purple-50 text-purple-600 rounded hover:bg-purple-100">
-            Reschedule
-          </button>
-          <button onClick={() => setCancelTarget(a)}
-            className="text-xs px-2 py-1 bg-red-50 text-red-600 rounded hover:bg-red-100">
-            Cancel
-          </button>
-          <button onClick={() => updateStatus(a.id, 'no_show')}
-            className="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded hover:bg-gray-200">
-            No Show
-          </button>
-        </>
-      )}
-      {a.status === 'cancelled' && (
-        <button onClick={() => updateStatus(a.id, 'confirmed')}
-          className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded hover:bg-green-100">
-          Restore
-        </button>
-      )}
-      {a.status === 'no_show' && (
-        <button onClick={() => updateStatus(a.id, 'confirmed')}
-          className="text-xs px-2 py-1 bg-green-50 text-green-600 rounded hover:bg-green-100">
-          Restore
-        </button>
-      )}
-      {a.status === 'completed' && (
-        <button onClick={() => setFollowUpTarget(a)}
-          className="text-xs px-2 py-1 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100">
-          Follow Up
-        </button>
-      )}
-    </div>
-  );
+        {rest.length > 0 && (
+          <div className="relative group">
+            <button className="text-gray-400 hover:text-gray-600 px-1.5 py-1.5 rounded-md hover:bg-gray-100 text-sm leading-none">•••</button>
+            <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg py-1 z-20 min-w-[120px] opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
+              {rest.map(item => (
+                <button key={item.label} onClick={item.onClick}
+                  className={`block w-full text-left text-xs px-3 py-2 transition ${item.style}`}>
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -138,44 +137,55 @@ export default function Appointments() {
       )}
 
       {/* Desktop Table */}
-      <div className="bg-white rounded-lg shadow-sm border overflow-hidden hidden sm:block">
-        {loading ? <div className="p-8 text-center text-gray-500">Loading...</div> : (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hidden sm:block">
+        {loading ? (
+          <div className="p-12 text-center">
+            <div className="inline-block w-6 h-6 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
+          </div>
+        ) : (
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-gray-600 text-left">
-              <tr>
-                <th className="px-4 py-3 font-medium">Patient</th>
-                <th className="px-4 py-3 font-medium">Doctor</th>
-                <th className="px-4 py-3 font-medium">Service</th>
-                <th className="px-4 py-3 font-medium">Date</th>
-                <th className="px-4 py-3 font-medium">Time</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Actions</th>
+            <thead>
+              <tr className="border-b border-gray-100">
+                <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Patient</th>
+                <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Doctor / Service</th>
+                <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">When</th>
+                <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="px-5 py-3.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
-              {appointments.map(a => (
-                <tr key={a.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{a.patient_name || '—'}</div>
-                    <div className="text-xs text-gray-400">{a.patient_phone}</div>
+            <tbody>
+              {appointments.map((a, i) => (
+                <tr key={a.id} className={`group hover:bg-slate-50/60 transition ${i > 0 ? 'border-t border-gray-50' : ''}`}>
+                  <td className="px-5 py-4">
+                    <p className="font-medium text-gray-900 text-[13px]">{a.patient_name || '—'}</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5 font-mono">{a.patient_phone}</p>
                   </td>
-                  <td className="px-4 py-3">{a.doctor_name}</td>
-                  <td className="px-4 py-3">{a.service_name || '—'}</td>
-                  <td className="px-4 py-3">{fmtDate(a.appointment_date)}</td>
-                  <td className="px-4 py-3">{fmt12(a.start_time)}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_COLOR[a.status]}`}>
+                  <td className="px-5 py-4">
+                    <p className="text-gray-700 text-[13px]">{a.doctor_name}</p>
+                    {a.service_name && <p className="text-[11px] text-gray-400 mt-0.5">{a.service_name}</p>}
+                  </td>
+                  <td className="px-5 py-4">
+                    <p className="text-gray-900 text-[13px] font-medium">{fmtDate(a.appointment_date, true)}</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">{fmt12(a.start_time)}</p>
+                  </td>
+                  <td className="px-5 py-4">
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize ${STATUS_STYLE[a.status]}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[a.status]}`} />
                       {a.status?.replace('_', ' ')}
                     </span>
-
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-5 py-4 text-right">
                     <ActionButtons a={a} />
                   </td>
                 </tr>
               ))}
               {appointments.length === 0 && (
-                <tr><td colSpan="7" className="px-4 py-8 text-center text-gray-400">No appointments found</td></tr>
+                <tr>
+                  <td colSpan="5" className="px-5 py-16 text-center">
+                    <p className="text-gray-400 text-sm">No appointments found</p>
+                    <p className="text-gray-300 text-xs mt-1">Try adjusting your filters</p>
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
@@ -183,45 +193,63 @@ export default function Appointments() {
       </div>
 
       {/* Mobile Cards */}
-      <div className="sm:hidden space-y-3">
-        {loading ? <div className="p-8 text-center text-gray-500">Loading...</div> :
+      <div className="sm:hidden space-y-2.5">
+        {loading ? (
+          <div className="p-12 text-center">
+            <div className="inline-block w-6 h-6 border-2 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
+          </div>
+        ) :
           appointments.map(a => (
-            <div key={a.id} className="bg-white rounded-lg shadow-sm border p-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-medium text-gray-900">{a.patient_name || 'Patient'}</p>
-                  <p className="text-xs text-gray-400">{a.patient_phone}</p>
+            <div key={a.id} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+              <div className="flex justify-between items-start gap-3">
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 text-sm truncate">{a.patient_name || 'Patient'}</p>
+                  <p className="text-[11px] text-gray-400 font-mono mt-0.5">{a.patient_phone}</p>
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLOR[a.status]}`}>
+                <span className={`flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold capitalize ${STATUS_STYLE[a.status]}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[a.status]}`} />
                   {a.status?.replace('_', ' ')}
                 </span>
               </div>
 
-              <div className="mt-2 text-sm text-gray-500 space-y-0.5">
-                <p>{a.doctor_name} {a.service_name ? `- ${a.service_name}` : ''}</p>
-                <p>{fmtDate(a.appointment_date)} at {fmt12(a.start_time)}</p>
+              <div className="mt-3 flex items-center gap-3 text-xs text-gray-500">
+                <span className="bg-gray-50 px-2 py-1 rounded text-gray-600 font-medium">
+                  {fmtDate(a.appointment_date, true)} · {fmt12(a.start_time)}
+                </span>
               </div>
-              {['pending', 'confirmed', 'completed'].includes(a.status) && (
-                <div className="mt-3">
-                  <ActionButtons a={a} />
-                </div>
-              )}
+              <div className="mt-2 text-xs text-gray-500">
+                <p>{a.doctor_name}{a.service_name ? ` · ${a.service_name}` : ''}</p>
+              </div>
+              <div className="mt-3 pt-3 border-t border-gray-50">
+                <ActionButtons a={a} />
+              </div>
             </div>
           ))
         }
         {!loading && appointments.length === 0 && (
-          <div className="text-center text-gray-400 py-8">No appointments found</div>
+          <div className="text-center py-12">
+            <p className="text-gray-400 text-sm">No appointments found</p>
+            <p className="text-gray-300 text-xs mt-1">Try adjusting your filters</p>
+          </div>
         )}
       </div>
 
       {/* Pagination */}
       {total > 20 && (
-        <div className="flex justify-center gap-2 mt-6">
-          <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-            className="px-4 py-2 text-sm border rounded-lg disabled:opacity-30 hover:bg-gray-50">Previous</button>
-          <span className="px-4 py-2 text-sm text-gray-500">Page {page}</span>
-          <button disabled={appointments.length < 20} onClick={() => setPage(p => p + 1)}
-            className="px-4 py-2 text-sm border rounded-lg disabled:opacity-30 hover:bg-gray-50">Next</button>
+        <div className="flex items-center justify-between mt-6 px-1">
+          <p className="text-xs text-gray-400">
+            {Math.min((page - 1) * 20 + 1, total)}–{Math.min(page * 20, total)} of {total}
+          </p>
+          <div className="flex gap-1.5">
+            <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
+              className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg disabled:opacity-30 hover:bg-gray-50 transition">
+              ← Prev
+            </button>
+            <button disabled={appointments.length < 20} onClick={() => setPage(p => p + 1)}
+              className="px-3 py-1.5 text-xs font-medium border border-gray-200 rounded-lg disabled:opacity-30 hover:bg-gray-50 transition">
+              Next →
+            </button>
+          </div>
         </div>
       )}
 

@@ -1,5 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '../api';
+import { useToast } from '../components/Toast';
+import Modal from '../components/Modal';
 
 export default function InviteCodes() {
   const [codes, setCodes] = useState([]);
@@ -7,54 +9,69 @@ export default function InviteCodes() {
   const [generating, setGenerating] = useState(false);
   const [note, setNote] = useState('');
   const [copied, setCopied] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const copyTimer = useRef(null);
+  const { success, error: showError } = useToast();
 
   const fetchCodes = async () => {
     try {
       const { data } = await api.getInviteCodes();
       setCodes(data);
-    } catch (err) {
-      // silenced
+    } catch {
+      showError('Failed to load invite codes');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchCodes(); }, []);
+  useEffect(() => { fetchCodes(); return () => clearTimeout(copyTimer.current); }, []);
 
   const handleGenerate = async () => {
     setGenerating(true);
     try {
       await api.createInviteCode({ note: note.trim() || undefined });
       setNote('');
+      success('Invite code generated');
       fetchCodes();
-    } catch (err) {
-      alert('Failed to generate code');
+    } catch {
+      showError('Failed to generate code');
     } finally {
       setGenerating(false);
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Deactivate this invite code?')) return;
+  const handleDelete = async () => {
+    const id = deleteTarget;
+    setDeleteTarget(null);
     try {
       await api.deleteInviteCode(id);
+      success('Invite code deleted');
       fetchCodes();
-    } catch (err) {
-      alert('Failed to delete code');
+    } catch {
+      showError('Failed to delete code');
     }
   };
 
-  const handleCopy = (code) => {
-    navigator.clipboard.writeText(code);
-    setCopied(code);
-    setTimeout(() => setCopied(null), 2000);
+  const handleCopy = async (code) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(code);
+      clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(null), 2000);
+    } catch {
+      showError('Failed to copy — clipboard not available');
+    }
   };
 
   const active = codes.filter(c => c.is_active && !c.used_by_tenant_id && (!c.expires_at || new Date(c.expires_at) > new Date()));
   const used = codes.filter(c => c.used_by_tenant_id);
   const inactive = codes.filter(c => !c.is_active || (c.expires_at && new Date(c.expires_at) <= new Date() && !c.used_by_tenant_id));
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-gray-400">Loading...</div>;
+  if (loading) return (
+    <div className="max-w-4xl mx-auto space-y-4">
+      {[1,2,3].map(i => <div key={i} className="bg-white rounded-lg border border-gray-200 h-20 animate-pulse" />)}
+    </div>
+  );
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -110,7 +127,7 @@ export default function InviteCodes() {
                     className="px-2.5 py-1 text-xs text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50">
                     {copied === c.code ? 'Copied!' : 'Copy'}
                   </button>
-                  <button onClick={() => handleDelete(c.id)}
+                  <button onClick={() => setDeleteTarget(c.id)}
                     className="px-2.5 py-1 text-xs text-red-500 hover:text-red-700 border border-gray-200 rounded-lg hover:bg-red-50">
                     Delete
                   </button>
@@ -160,6 +177,18 @@ export default function InviteCodes() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Invite Code">
+        <p className="text-sm text-gray-600 mb-4">Are you sure you want to deactivate this invite code? This cannot be undone.</p>
+        <div className="flex gap-2 justify-end">
+          <button onClick={() => setDeleteTarget(null)} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">Cancel</button>
+          <button onClick={handleDelete}
+            className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700">
+            Delete
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 }

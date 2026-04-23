@@ -15,7 +15,7 @@ api.interceptors.request.use(config => {
 api.interceptors.response.use(r => r, err => {
   if (err.response?.status === 401) {
     localStorage.removeItem('platform_token');
-    window.location.href = '/login';
+    window.location.href = '/';
   }
   return Promise.reject(err);
 });

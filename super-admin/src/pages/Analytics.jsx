@@ -1,19 +1,28 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../api';
+import { useToast } from '../components/Toast';
 
 export default function Analytics() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { error: showError } = useToast();
 
   useEffect(() => {
     api.getAnalytics()
       .then(({ data }) => setData(data))
-      .catch(() => {})
+      .catch(() => showError('Failed to load analytics'))
       .finally(() => setLoading(false));
-  }, []);
+  }, [showError]);
 
-  if (loading) return <div className="text-gray-500 text-center py-20">Loading analytics...</div>;
+  if (loading) return (
+    <div className="space-y-6">
+      <div className="h-7 w-40 bg-gray-200 rounded animate-pulse" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {[1,2].map(i => <div key={i} className="bg-white rounded-lg border border-gray-100 h-80 animate-pulse" />)}
+      </div>
+    </div>
+  );
   if (!data) return <div className="text-red-500 text-center py-20">Failed to load analytics</div>;
 
   return (

@@ -1,5 +1,6 @@
 ﻿import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
+import { ToastProvider } from './components/Toast';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Tenants from './pages/Tenants';
@@ -25,9 +26,10 @@ function App() {
 
   return (
     <BrowserRouter>
+      <ToastProvider>
       <div className="flex h-screen">
         <Sidebar onLogout={handleLogout} />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-50 ml-0 sm:ml-64 pt-18 sm:pt-6">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 bg-gray-50 ml-0 sm:ml-64 pt-16 sm:pt-6">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/tenants" element={<Tenants />} />
@@ -39,6 +41,7 @@ function App() {
           </Routes>
         </main>
       </div>
+      </ToastProvider>
     </BrowserRouter>
   );
 }
@@ -46,6 +49,7 @@ function App() {
 function Sidebar({ onLogout }) {
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const isActive = (to) => to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
   const links = [
     { to: '/', label: 'Dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
     { to: '/tenants', label: 'Tenants', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4' },
@@ -59,8 +63,8 @@ function Sidebar({ onLogout }) {
       {/* Mobile header */}
       <div className="fixed top-0 left-0 right-0 h-14 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:hidden z-30">
         <span className="font-semibold text-gray-900 text-sm">FutureZMinds</span>
-        <button onClick={() => setOpen(!open)} className="text-gray-500 p-1">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button onClick={() => setOpen(!open)} aria-label="Toggle menu" className="text-gray-500 p-1">
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             {open ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}
           </svg>
@@ -68,10 +72,10 @@ function Sidebar({ onLogout }) {
       </div>
 
       {/* Overlay */}
-      {open && <div className="fixed inset-0 bg-black/20 z-30 sm:hidden" onClick={() => setOpen(false)} />}
+      {open && <div className="fixed inset-0 bg-black/20 z-30 sm:hidden" role="presentation" onClick={() => setOpen(false)} />}
 
       {/* Sidebar */}
-      <aside className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 flex flex-col z-40 transition-transform
+      <aside aria-label="Main navigation" className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 flex flex-col z-40 transition-transform
         ${open ? 'translate-x-0' : '-translate-x-full'} sm:translate-x-0`}>
         <div className="p-5 border-b border-gray-100">
           <h1 className="text-base font-semibold text-gray-900">FutureZMinds</h1>
@@ -80,11 +84,12 @@ function Sidebar({ onLogout }) {
         <nav className="flex-1 p-3 space-y-0.5">
           {links.map(link => (
             <Link key={link.to} to={link.to} onClick={() => setOpen(false)}
+              aria-current={isActive(link.to) ? 'page' : undefined}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition text-sm
-                ${location.pathname === link.to 
+                ${isActive(link.to)
                   ? 'bg-gray-100 text-gray-900 font-medium' 
                   : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}>
-              <svg className="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+              <svg className="w-[18px] h-[18px] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5} aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" d={link.icon} />
               </svg>
               {link.label}

@@ -3,6 +3,7 @@
 // ============================================================
 // 7 routes: list, create, update, delete, get slots for a date,
 // get weekly availability, and update availability schedule.
+// Supports multi-clinic mapping: one doctor → many clinics.
 // Slot generation respects breaks, blocked dates, and existing bookings.
 
 const express = require('express');
@@ -13,12 +14,24 @@ const { requireRole } = require('../../middleware/auth');
 
 router.get('/doctors', async (req, res, next) => {
   try {
+    const { clinic } = req.query;
+    const clinicFilter = clinic && clinic !== 'all' ? clinic : null;
+
+    let where = 'd.tenant_id = $1';
+    const params = [req.tenantId];
+
+    if (clinicFilter) {
+      where += ` AND (EXISTS (SELECT 1 FROM doctor_clinics dc WHERE dc.doctor_id = d.id AND dc.clinic_label = $2) OR NOT EXISTS (SELECT 1 FROM doctor_clinics dc2 WHERE dc2.doctor_id = d.id))`;
+      params.push(clinicFilter);
+    }
+
     const { rows } = await pool.query(
       `SELECT d.*, 
-        (SELECT json_agg(json_build_object('day', da.day, 'start_time', da.start_time, 'end_time', da.end_time))
-         FROM doctor_availability da WHERE da.doctor_id = d.id AND da.is_active = true) as availability
-       FROM doctors d WHERE d.tenant_id = $1 ORDER BY d.name`,
-      [req.tenantId]
+        (SELECT json_agg(json_build_object('day', da.day, 'start_time', da.start_time, 'end_time', da.end_time, 'clinic_label', da.clinic_label))
+         FROM doctor_availability da WHERE da.doctor_id = d.id AND da.is_active = true) as availability,
+        (SELECT json_agg(dc.clinic_label) FROM doctor_clinics dc WHERE dc.doctor_id = d.id) as clinics
+       FROM doctors d WHERE ${where} ORDER BY d.name`,
+      params
     );
     res.json(rows);
   } catch (err) {
@@ -47,6 +60,7 @@ router.post('/doctors', requireRole('owner', 'admin'), async (req, res, next) =>
       consultationFee: Joi.number().default(0),
       slotDuration: Joi.number().default(30),
       clinic: Joi.string().allow('', null),
+      clinics: Joi.array().items(Joi.string()).default([]),
       availability: Joi.array().items(Joi.object({
         day: Joi.string().required(),
         startTime: Joi.string().required(),
@@ -57,15 +71,28 @@ router.post('/doctors', requireRole('owner', 'admin'), async (req, res, next) =>
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
 
+    // Normalize: accept both `clinic` (string) and `clinics` (array)
+    const clinicList = value.clinics.length > 0
+      ? value.clinics
+      : (value.clinic ? [value.clinic] : []);
+
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
 
       const { rows } = await client.query(
-        `INSERT INTO doctors (tenant_id, name, specialization, phone, email, consultation_fee, slot_duration, clinic)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-        [req.tenantId, value.name, value.specialization, value.phone, value.email, value.consultationFee, value.slotDuration, value.clinic || null]
+        `INSERT INTO doctors (tenant_id, name, specialization, phone, email, consultation_fee, slot_duration)
+         VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+        [req.tenantId, value.name, value.specialization, value.phone, value.email, value.consultationFee, value.slotDuration]
       );
+
+      // Insert clinic mappings
+      for (const cl of clinicList) {
+        await client.query(
+          `INSERT INTO doctor_clinics (tenant_id, doctor_id, clinic_label) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+          [req.tenantId, rows[0].id, cl]
+        );
+      }
 
       if (value.availability) {
         for (const avail of value.availability) {
@@ -78,6 +105,7 @@ router.post('/doctors', requireRole('owner', 'admin'), async (req, res, next) =>
       }
 
       await client.query('COMMIT');
+      rows[0].clinics = clinicList;
       res.status(201).json(rows[0]);
     } catch (txErr) {
       await client.query('ROLLBACK');
@@ -92,21 +120,53 @@ router.post('/doctors', requireRole('owner', 'admin'), async (req, res, next) =>
 
 router.put('/doctors/:id', requireRole('owner', 'admin'), async (req, res, next) => {
   try {
-    const { name, specialization, phone, email, consultationFee, slotDuration, isActive, clinic } = req.body;
-    const { rows } = await pool.query(
-      `UPDATE doctors SET 
-        name = COALESCE($1, name), specialization = COALESCE($2, specialization),
-        phone = COALESCE($3, phone), email = COALESCE($4, email),
-        consultation_fee = COALESCE($5, consultation_fee), 
-        slot_duration = COALESCE($6, slot_duration),
-        is_active = COALESCE($7, is_active),
-        clinic = COALESCE($8, clinic)
-       WHERE id = $9 AND tenant_id = $10 RETURNING *`,
-      [name, specialization, phone, email, consultationFee, slotDuration, isActive, clinic, req.params.id, req.tenantId]
-    );
+    const { name, specialization, phone, email, consultationFee, slotDuration, isActive, clinics: clinicList } = req.body;
 
-    if (rows.length === 0) return res.status(404).json({ error: 'Doctor not found' });
-    res.json(rows[0]);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const { rows } = await client.query(
+        `UPDATE doctors SET 
+          name = COALESCE($1, name), specialization = COALESCE($2, specialization),
+          phone = COALESCE($3, phone), email = COALESCE($4, email),
+          consultation_fee = COALESCE($5, consultation_fee), 
+          slot_duration = COALESCE($6, slot_duration),
+          is_active = COALESCE($7, is_active)
+         WHERE id = $8 AND tenant_id = $9 RETURNING *`,
+        [name, specialization, phone, email, consultationFee, slotDuration, isActive, req.params.id, req.tenantId]
+      );
+
+      if (rows.length === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ error: 'Doctor not found' });
+      }
+
+      // Update clinic mappings if provided
+      if (Array.isArray(clinicList)) {
+        await client.query(`DELETE FROM doctor_clinics WHERE doctor_id = $1`, [req.params.id]);
+        for (const cl of clinicList) {
+          if (cl) {
+            await client.query(
+              `INSERT INTO doctor_clinics (tenant_id, doctor_id, clinic_label) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+              [req.tenantId, req.params.id, cl]
+            );
+          }
+        }
+      }
+
+      await client.query('COMMIT');
+
+      // Return updated clinics
+      const { rows: dcRows } = await pool.query(`SELECT clinic_label FROM doctor_clinics WHERE doctor_id = $1`, [req.params.id]);
+      rows[0].clinics = dcRows.map(r => r.clinic_label);
+      res.json(rows[0]);
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     next(err);
   }

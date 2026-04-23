@@ -226,7 +226,8 @@ class BookingEngine {
       const { rows } = await pool.query(
         `SELECT id, name, specialization, consultation_fee 
          FROM doctors WHERE tenant_id = $1 AND is_active = true
-         AND (clinic = $2 OR clinic IS NULL)
+         AND (EXISTS (SELECT 1 FROM doctor_clinics dc WHERE dc.doctor_id = doctors.id AND dc.clinic_label = $2)
+              OR NOT EXISTS (SELECT 1 FROM doctor_clinics dc2 WHERE dc2.doctor_id = doctors.id))
          ORDER BY name`,
         [this.tenantId, clinicLabel]
       );

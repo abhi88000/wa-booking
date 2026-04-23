@@ -28,9 +28,9 @@ router.get('/appointments', async (req, res, next) => {
     else if (hideCancelled === 'true') { where += ` AND a.status != 'cancelled'`; }
     if (date) { where += ` AND a.appointment_date = $${idx++}`; params.push(date); }
     if (doctor_id) { where += ` AND a.doctor_id = $${idx++}`; params.push(doctor_id); }
-    if (clinic && clinic !== 'all') { where += ` AND (d.clinic = $${idx} OR d.clinic IS NULL)`; idx++; params.push(clinic); }
+    if (clinic && clinic !== 'all') { where += ` AND (EXISTS (SELECT 1 FROM doctor_clinics dc WHERE dc.doctor_id = a.doctor_id AND dc.clinic_label = $${idx}) OR NOT EXISTS (SELECT 1 FROM doctor_clinics dc2 WHERE dc2.doctor_id = a.doctor_id))`; idx++; params.push(clinic); }
 
-    const needsDoctorJoin = clinic && clinic !== 'all';
+    const needsDoctorJoin = false; // clinic filter now uses subquery, no join needed
 
     const [countResult, dataResult] = await Promise.all([
       pool.query(`SELECT COUNT(*) FROM appointments a ${needsDoctorJoin ? 'JOIN doctors d ON d.id = a.doctor_id' : ''} ${where}`, params),

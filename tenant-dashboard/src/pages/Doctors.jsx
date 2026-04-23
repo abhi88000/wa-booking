@@ -34,7 +34,7 @@ export default function Doctors() {
   const [editingDoc, setEditingDoc] = useState(null);
   const [editingAvail, setEditingAvail] = useState(null);
   const [filter, setFilter] = useState('active');
-  const [form, setForm] = useState({ name: '', specialization: '', phone: '', email: '', consultationFee: 0, slotDuration: 20, clinic: '' });
+  const [form, setForm] = useState({ name: '', specialization: '', phone: '', email: '', consultationFee: 0, slotDuration: 20, clinics: [] });
   const [clinics, setClinics] = useState([]);
   const { clinic: selectedClinic } = useClinic();
 
@@ -57,7 +57,7 @@ export default function Doctors() {
 
   const openAdd = () => {
     setEditingDoc(null);
-    setForm({ name: '', specialization: '', phone: '', email: '', consultationFee: 0, slotDuration: 20, clinic: '' });
+    setForm({ name: '', specialization: '', phone: '', email: '', consultationFee: 0, slotDuration: 20, clinics: [] });
     setShowAdd(true);
   };
 
@@ -68,7 +68,7 @@ export default function Doctors() {
       phone: doc.phone || '', email: doc.email || '',
       consultationFee: Number(doc.consultation_fee) || 0,
       slotDuration: doc.slot_duration || 20,
-      clinic: doc.clinic || ''
+      clinics: doc.clinics || (doc.clinic ? [doc.clinic] : [])
     });
     setShowAdd(true);
   };
@@ -132,14 +132,23 @@ export default function Doctors() {
               <input placeholder="Specialization" value={form.specialization} onChange={e => setForm({...form, specialization: e.target.value})}
                 className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400" />
               {clinics.length > 0 && (
-                <select value={form.clinic} onChange={e => setForm({...form, clinic: e.target.value})}
-                  className="w-full border border-gray-200 rounded-lg px-4 py-2 text-sm outline-none focus:border-slate-400 text-gray-700" required>
-                  <option value="">Select Clinic</option>
-                  {clinics.map((c, i) => {
-                    const label = c.address ? `${c.name} — ${c.address}` : c.name;
-                    return <option key={i} value={label}>{label}</option>;
-                  })}
-                </select>
+                <div>
+                  <label className="text-xs text-gray-500 mb-1 block">Assign to Clinics</label>
+                  <div className="space-y-1.5 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2">
+                    {clinics.map((c, i) => {
+                      const label = c.address ? `${c.name} — ${c.address}` : c.name;
+                      const checked = form.clinics.includes(label);
+                      return (
+                        <label key={i} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5">
+                          <input type="checkbox" checked={checked}
+                            onChange={() => setForm({...form, clinics: checked ? form.clinics.filter(cl => cl !== label) : [...form.clinics, label]})}
+                            className="rounded border-gray-300 text-slate-800 focus:ring-slate-500" />
+                          <span className="text-sm text-gray-700">{label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
               <div className="grid grid-cols-2 gap-3">
                 <input placeholder="Phone" value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
@@ -181,20 +190,26 @@ export default function Doctors() {
         {loading ? <div className="text-gray-500 col-span-3 text-center py-10">Loading...</div> :
           doctors
             .filter(doc => filter === 'all' ? true : filter === 'active' ? doc.is_active : !doc.is_active)
-            .filter(doc => selectedClinic === 'all' ? true : !doc.clinic || doc.clinic === selectedClinic)
+            .filter(doc => selectedClinic === 'all' ? true : !doc.clinics?.length || doc.clinics.includes(selectedClinic))
             .length === 0 ? (
             <div className="text-gray-400 col-span-3 text-center py-10 text-sm">No {filter} doctors found</div>
           ) :
           doctors
             .filter(doc => filter === 'all' ? true : filter === 'active' ? doc.is_active : !doc.is_active)
-            .filter(doc => selectedClinic === 'all' ? true : !doc.clinic || doc.clinic === selectedClinic)
+            .filter(doc => selectedClinic === 'all' ? true : !doc.clinics?.length || doc.clinics.includes(selectedClinic))
             .map(doc => (
             <div key={doc.id} className={`bg-white rounded-lg shadow-sm p-5 border ${!doc.is_active ? 'opacity-50' : ''}`}>
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="font-semibold text-gray-900">{doc.name}</h3>
                   <p className="text-sm text-gray-500">{doc.specialization || 'General'}</p>
-                  {doc.clinic && <p className="text-xs text-gray-400">{doc.clinic}</p>}
+                  {doc.clinics?.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {doc.clinics.map((cl, i) => (
+                        <span key={i} className="text-[10px] bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded font-medium">{cl}</span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <button onClick={() => toggleActive(doc)}
                   className={`text-xs px-2 py-1 rounded ${doc.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>

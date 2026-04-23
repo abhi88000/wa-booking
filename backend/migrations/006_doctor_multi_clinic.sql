@@ -43,58 +43,65 @@ WHERE clinic IS NOT NULL AND clinic != ''
 ON CONFLICT DO NOTHING;
 
 -- 5. Merge duplicate doctors (same name + phone + tenant, different clinic)
--- This CTE identifies groups of duplicates and picks the "keeper" (earliest created)
+-- Picks the earliest-created row as keeper, merges others into it
 DO $$
 DECLARE
-  grp RECORD;
+  keeper RECORD;
   dup RECORD;
 BEGIN
-  FOR grp IN
-    SELECT tenant_id, LOWER(TRIM(name)) as norm_name, phone,
-           MIN(id) as keeper_id
+  -- Find keepers: one per (tenant, name, phone) group — the earliest created
+  FOR keeper IN
+    SELECT DISTINCT ON (tenant_id, LOWER(TRIM(name)), phone)
+           id, tenant_id, LOWER(TRIM(name)) as norm_name, phone
     FROM doctors
     WHERE is_active = true AND phone IS NOT NULL AND phone != ''
-    GROUP BY tenant_id, LOWER(TRIM(name)), phone
-    HAVING COUNT(*) > 1
+      AND (tenant_id, LOWER(TRIM(name)), phone) IN (
+        SELECT tenant_id, LOWER(TRIM(name)), phone
+        FROM doctors WHERE is_active = true AND phone IS NOT NULL AND phone != ''
+        GROUP BY tenant_id, LOWER(TRIM(name)), phone
+        HAVING COUNT(*) > 1
+      )
+    ORDER BY tenant_id, LOWER(TRIM(name)), phone, created_at ASC
   LOOP
     -- For each duplicate (not the keeper)
     FOR dup IN
       SELECT id, clinic FROM doctors
-      WHERE tenant_id = grp.tenant_id
-        AND LOWER(TRIM(name)) = grp.norm_name
-        AND phone = grp.phone
-        AND id != grp.keeper_id
+      WHERE tenant_id = keeper.tenant_id
+        AND LOWER(TRIM(name)) = keeper.norm_name
+        AND phone = keeper.phone
+        AND id != keeper.id
+        AND is_active = true
     LOOP
       -- Move clinic mapping to keeper
       IF dup.clinic IS NOT NULL AND dup.clinic != '' THEN
         INSERT INTO doctor_clinics (tenant_id, doctor_id, clinic_label)
-        VALUES (grp.tenant_id, grp.keeper_id, dup.clinic)
+        VALUES (keeper.tenant_id, keeper.id, dup.clinic)
         ON CONFLICT DO NOTHING;
       END IF;
 
       -- Move availability to keeper (with clinic_label)
       UPDATE doctor_availability
-      SET doctor_id = grp.keeper_id, clinic_label = dup.clinic
+      SET doctor_id = keeper.id, clinic_label = dup.clinic
       WHERE doctor_id = dup.id
         AND NOT EXISTS (
           SELECT 1 FROM doctor_availability da2
-          WHERE da2.doctor_id = grp.keeper_id AND da2.day = doctor_availability.day
+          WHERE da2.doctor_id = keeper.id AND da2.day = doctor_availability.day
             AND COALESCE(da2.clinic_label, '') = COALESCE(dup.clinic, '')
         );
 
       -- Move appointments to keeper
-      UPDATE appointments SET doctor_id = grp.keeper_id WHERE doctor_id = dup.id;
+      UPDATE appointments SET doctor_id = keeper.id WHERE doctor_id = dup.id;
 
       -- Move doctor_services to keeper
       INSERT INTO doctor_services (tenant_id, doctor_id, service_id)
-      SELECT tenant_id, grp.keeper_id, service_id FROM doctor_services WHERE doctor_id = dup.id
+      SELECT tenant_id, keeper.id, service_id FROM doctor_services WHERE doctor_id = dup.id
       ON CONFLICT DO NOTHING;
 
       -- Move breaks to keeper
-      UPDATE doctor_breaks SET doctor_id = grp.keeper_id WHERE doctor_id = dup.id
+      UPDATE doctor_breaks SET doctor_id = keeper.id WHERE doctor_id = dup.id
         AND NOT EXISTS (
           SELECT 1 FROM doctor_breaks db2
-          WHERE db2.doctor_id = grp.keeper_id AND db2.break_date = doctor_breaks.break_date
+          WHERE db2.doctor_id = keeper.id AND db2.break_date = doctor_breaks.break_date
         );
 
       -- Remove duplicate's leftover data

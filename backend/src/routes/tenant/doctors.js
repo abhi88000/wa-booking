@@ -350,6 +350,27 @@ router.put('/doctors/:id/availability', requireRole('owner', 'admin'), async (re
       }
 
       if (availability) {
+        // Check for time overlaps at OTHER clinics for the same days
+        const enabledSlots = availability.filter(a => a.isActive !== false);
+        if (enabledSlots.length > 0 && clinicLabel) {
+          for (const a of enabledSlots) {
+            const { rows: conflicts } = await client.query(
+              `SELECT clinic_label, start_time, end_time FROM doctor_availability
+               WHERE doctor_id = $1 AND tenant_id = $2 AND day = $3
+               AND clinic_label IS DISTINCT FROM $4
+               AND start_time < $6::time AND end_time > $5::time`,
+              [doctorId, tenantId, a.day, clinicLabel, a.startTime, a.endTime]
+            );
+            if (conflicts.length > 0) {
+              await client.query('ROLLBACK');
+              const c = conflicts[0];
+              return res.status(409).json({
+                error: `Schedule conflict on ${a.day}: ${a.startTime}–${a.endTime} overlaps with ${c.clinic_label} (${c.start_time.substring(0,5)}–${c.end_time.substring(0,5)}). A doctor can't be at two clinics at the same time.`
+              });
+            }
+          }
+        }
+
         // Delete only for this clinic (or global if no clinicLabel)
         if (clinicLabel) {
           await client.query(
@@ -362,12 +383,11 @@ router.put('/doctors/:id/availability', requireRole('owner', 'admin'), async (re
             [doctorId, tenantId]
           );
         }
-        for (const a of availability) {
-          if (a.isActive !== false) {
-            await client.query(
-              `INSERT INTO doctor_availability (tenant_id, doctor_id, day, start_time, end_time, is_active, clinic_label)
-               VALUES ($1, $2, $3, $4, $5, true, $6)`,
-              [tenantId, doctorId, a.day, a.startTime, a.endTime, clinicLabel || null]
+        for (const a of enabledSlots) {
+          await client.query(
+            `INSERT INTO doctor_availability (tenant_id, doctor_id, day, start_time, end_time, is_active, clinic_label)
+             VALUES ($1, $2, $3, $4, $5, true, $6)`,
+            [tenantId, doctorId, a.day, a.startTime, a.endTime, clinicLabel || null]
             );
           }
         }

@@ -3,22 +3,33 @@ import api from '../api';
 import { useClinic } from '../ClinicContext';
 import { fmtDate, fmt12 } from '../utils';
 
-function dateLabel(val) {
-  if (!val) return '';
+function dateBucket(val) {
+  if (!val) return 'Other';
   const d = new Date(val);
   const now = new Date();
-  const strip = (dt) => new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()).getTime();
-  const diff = strip(d) - strip(now);
-  const day = 86400000;
+  const strip = (dt) => new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+  const today = strip(now);
+  const target = strip(d);
+  const diff = (target - today) / 86400000;
   if (diff === 0) return 'Today';
-  if (diff === day) return 'Tomorrow';
-  if (diff === -day) return 'Yesterday';
-  return d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined });
-}
-
-function dateKey(val) {
-  if (!val) return '';
-  return new Date(val).toISOString().split('T')[0];
+  if (diff === 1) return 'Tomorrow';
+  if (diff === -1) return 'Yesterday';
+  // Same week (Mon-Sun)
+  const dayOfWeek = today.getDay() || 7; // Mon=1
+  const weekStart = new Date(today); weekStart.setDate(today.getDate() - dayOfWeek + 1);
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 6);
+  if (target >= weekStart && target <= weekEnd) return 'This Week';
+  // Last week
+  const lastWeekStart = new Date(weekStart); lastWeekStart.setDate(weekStart.getDate() - 7);
+  if (target >= lastWeekStart && target < weekStart) return 'Last Week';
+  // This month
+  if (d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()) return 'This Month';
+  // Last month
+  const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  if (d.getMonth() === lastMonth.getMonth() && d.getFullYear() === lastMonth.getFullYear()) return 'Last Month';
+  // Future (next week+)
+  if (diff > 0) return 'Upcoming';
+  return 'Older';
 }
 
 export default function Appointments() {
@@ -34,14 +45,15 @@ export default function Appointments() {
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
   const [followUpTarget, setFollowUpTarget] = useState(null);
   const [hideCancelled, setHideCancelled] = useState(true);
+  const [compact, setCompact] = useState(true);
   const { clinic } = useClinic();
 
   const grouped = useMemo(() => {
     const map = new Map();
     for (const a of appointments) {
-      const key = dateKey(a.appointment_date);
-      if (!map.has(key)) map.set(key, { label: dateLabel(a.appointment_date), items: [] });
-      map.get(key).items.push(a);
+      const bucket = dateBucket(a.appointment_date);
+      if (!map.has(bucket)) map.set(bucket, { label: bucket, items: [] });
+      map.get(bucket).items.push(a);
     }
     return [...map.values()];
   }, [appointments]);
@@ -156,6 +168,14 @@ export default function Appointments() {
             className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm hover:bg-slate-900 whitespace-nowrap">
             + Book Appointment
           </button>
+          <button onClick={() => setCompact(c => !c)} title={compact ? 'Comfortable view' : 'Compact view'}
+            className="border border-gray-200 rounded-lg px-2.5 py-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition">
+            {compact ? (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+            ) : (
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 5h16M4 10h16M4 15h16M4 20h16"/></svg>
+            )}
+          </button>
         </div>
       </div>
 
@@ -174,20 +194,20 @@ export default function Appointments() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100">
-                <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Patient</th>
-                <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Doctor / Service</th>
-                <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Time</th>
-                <th className="px-5 py-3.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-                <th className="px-5 py-3.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Patient</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Doctor / Service</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">When</th>
+                <th className="px-5 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="px-5 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody>
               {grouped.map((group) => (
                 <Fragment key={group.label}>
                   <tr>
-                    <td colSpan="5" className="px-5 pt-5 pb-2">
+                    <td colSpan="5" className="px-5 pt-4 pb-1.5">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">{group.label}</span>
+                        <span className="text-[11px] font-bold text-gray-600 uppercase tracking-wide">{group.label}</span>
                         <span className="text-[10px] text-gray-400 font-medium bg-gray-100 px-1.5 py-0.5 rounded-full">{group.items.length}</span>
                         <div className="flex-1 h-px bg-gray-100 ml-1" />
                       </div>
@@ -195,24 +215,28 @@ export default function Appointments() {
                   </tr>
                   {group.items.map((a, i) => (
                     <tr key={a.id} className={`group hover:bg-slate-50/60 transition ${i > 0 ? 'border-t border-gray-50' : ''}`}>
-                      <td className="px-5 py-3.5">
+                      <td className={compact ? 'px-5 py-2' : 'px-5 py-3.5'}>
                         <p className="font-medium text-gray-900 text-[13px]">{a.patient_name || '—'}</p>
-                        <p className="text-[11px] text-gray-400 mt-0.5 font-mono">{a.patient_phone}</p>
+                        {!compact && <p className="text-[11px] text-gray-400 mt-0.5 font-mono">{a.patient_phone}</p>}
                       </td>
-                      <td className="px-5 py-3.5">
+                      <td className={compact ? 'px-5 py-2' : 'px-5 py-3.5'}>
                         <p className="text-gray-700 text-[13px]">{a.doctor_name}</p>
-                        {a.service_name && <p className="text-[11px] text-gray-400 mt-0.5">{a.service_name}</p>}
+                        {!compact && a.service_name && <p className="text-[11px] text-gray-400 mt-0.5">{a.service_name}</p>}
                       </td>
-                      <td className="px-5 py-3.5">
-                        <p className="text-gray-900 text-[13px] font-medium">{fmt12(a.start_time)}</p>
+                      <td className={compact ? 'px-5 py-2' : 'px-5 py-3.5'}>
+                        <p className="text-gray-700 text-[13px]">
+                          <span className="font-medium text-gray-900">{fmtDate(a.appointment_date, true)}</span>
+                          <span className="text-gray-400 mx-1">·</span>
+                          {fmt12(a.start_time)}
+                        </p>
                       </td>
-                      <td className="px-5 py-3.5">
+                      <td className={compact ? 'px-5 py-2' : 'px-5 py-3.5'}>
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize ${STATUS_STYLE[a.status]}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${STATUS_DOT[a.status]}`} />
                           {a.status?.replace('_', ' ')}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 text-right">
+                      <td className={`${compact ? 'px-5 py-2' : 'px-5 py-3.5'} text-right`}>
                         <ActionButtons a={a} />
                       </td>
                     </tr>

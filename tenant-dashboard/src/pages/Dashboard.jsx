@@ -3,13 +3,9 @@ import { Link } from 'react-router-dom';
 import api from '../api';
 import { useClinic } from '../ClinicContext';
 import Icon from '../components/Icons';
+import { fmt12 as formatTime } from '../utils';
 
 // ── Helpers ───────────────────────────────────────────────
-function formatTime(t) {
-  if (!t) return '';
-  const [h, m] = t.split(':').map(Number);
-  return `${h === 0 ? 12 : h > 12 ? h - 12 : h}:${String(m || 0).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
-}
 
 function formatDate(d) {
   if (!d) return '';

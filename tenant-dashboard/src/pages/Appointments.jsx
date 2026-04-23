@@ -27,14 +27,14 @@ export default function Appointments() {
       const { data } = await api.getAppointments({ page, status: statusFilter || undefined, limit: 20, clinic: clinic !== 'all' ? clinic : undefined, hideCancelled: hideCancelled && !statusFilter ? true : undefined });
       setAppointments(data.appointments);
       setTotal(data.total);
-    } catch (err) { setError('Failed to load'); }
+    } catch (err) { /* load error silenced */ }
     finally { setLoading(false); }
   };
   const loadMeta = async () => {
     try {
       const [d, s] = await Promise.all([api.getDoctors(), api.getServices()]);
       let activeDocs = d.data.filter(doc => doc.is_active);
-      if (clinic !== 'all') activeDocs = activeDocs.filter(doc => !doc.clinic || doc.clinic === clinic);
+      if (clinic !== 'all') activeDocs = activeDocs.filter(doc => !doc.clinics?.length || doc.clinics.includes(clinic));
       setDoctors(activeDocs);
       setServices(s.data.filter(svc => svc.is_active !== false));
     } catch (err) { /* load error handled silently */ }

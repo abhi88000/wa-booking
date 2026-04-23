@@ -19,13 +19,12 @@ router.get('/dashboard', async (req, res, next) => {
       (async () => {
         const p = clinicFilter ? [tid, clinicFilter] : [tid];
         const cf = clinicFilter ? 'AND (EXISTS (SELECT 1 FROM doctor_clinics dc WHERE dc.doctor_id = a.doctor_id AND dc.clinic_label = $2) OR NOT EXISTS (SELECT 1 FROM doctor_clinics dc2 WHERE dc2.doctor_id = a.doctor_id))' : '';
-        const dJoin = '';
-        const upcoming = await pool.query(`SELECT COUNT(*) FROM appointments a ${dJoin} WHERE a.tenant_id = $1 AND a.status = 'confirmed' AND a.appointment_date >= CURRENT_DATE ${cf}`, p);
-        const today = await pool.query(`SELECT COUNT(*) FROM appointments a ${dJoin} WHERE a.tenant_id = $1 AND a.appointment_date = CURRENT_DATE AND a.status NOT IN ('cancelled', 'rescheduled') ${cf}`, p);
+        const upcoming = await pool.query(`SELECT COUNT(*) FROM appointments a WHERE a.tenant_id = $1 AND a.status = 'confirmed' AND a.appointment_date >= CURRENT_DATE ${cf}`, p);
+        const today = await pool.query(`SELECT COUNT(*) FROM appointments a WHERE a.tenant_id = $1 AND a.appointment_date = CURRENT_DATE AND a.status NOT IN ('cancelled', 'rescheduled') ${cf}`, p);
         const patients = await pool.query(`SELECT COUNT(*) FROM patients WHERE tenant_id = $1`, [tid]);
         const dcf = clinicFilter ? 'AND (EXISTS (SELECT 1 FROM doctor_clinics dc WHERE dc.doctor_id = doctors.id AND dc.clinic_label = $2) OR NOT EXISTS (SELECT 1 FROM doctor_clinics dc2 WHERE dc2.doctor_id = doctors.id))' : '';
         const docs = await pool.query(`SELECT COUNT(*) FROM doctors WHERE tenant_id = $1 AND is_active = true ${dcf}`, clinicFilter ? [tid, clinicFilter] : [tid]);
-        const month = await pool.query(`SELECT COUNT(*) FROM appointments a ${dJoin} WHERE a.tenant_id = $1 AND EXTRACT(MONTH FROM a.created_at) = EXTRACT(MONTH FROM NOW()) ${cf}`, p);
+        const month = await pool.query(`SELECT COUNT(*) FROM appointments a WHERE a.tenant_id = $1 AND EXTRACT(MONTH FROM a.created_at) = EXTRACT(MONTH FROM NOW()) ${cf}`, p);
         return { rows: [{ upcoming: upcoming.rows[0].count, today: today.rows[0].count, total_patients: patients.rows[0].count, active_doctors: docs.rows[0].count, month_appointments: month.rows[0].count }] };
       })(),
       pool.query(`

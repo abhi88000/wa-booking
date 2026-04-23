@@ -59,7 +59,6 @@ router.post('/doctors', requireRole('owner', 'admin'), async (req, res, next) =>
       email: Joi.string().email(),
       consultationFee: Joi.number().default(0),
       slotDuration: Joi.number().default(30),
-      clinic: Joi.string().allow('', null),
       clinics: Joi.array().items(Joi.string()).default([]),
       availability: Joi.array().items(Joi.object({
         day: Joi.string().required(),
@@ -71,10 +70,8 @@ router.post('/doctors', requireRole('owner', 'admin'), async (req, res, next) =>
     const { error, value } = schema.validate(req.body);
     if (error) return res.status(400).json({ error: error.details[0].message });
 
-    // Normalize: accept both `clinic` (string) and `clinics` (array)
-    const clinicList = value.clinics.length > 0
-      ? value.clinics
-      : (value.clinic ? [value.clinic] : []);
+    // Normalize: clinics array
+    const clinicList = value.clinics;
 
     const client = await pool.connect();
     try {
@@ -120,7 +117,20 @@ router.post('/doctors', requireRole('owner', 'admin'), async (req, res, next) =>
 
 router.put('/doctors/:id', requireRole('owner', 'admin'), async (req, res, next) => {
   try {
-    const { name, specialization, phone, email, consultationFee, slotDuration, isActive, clinics: clinicList } = req.body;
+    const schema = Joi.object({
+      name: Joi.string(),
+      specialization: Joi.string().allow('', null),
+      phone: Joi.string().allow('', null),
+      email: Joi.string().email().allow('', null),
+      consultationFee: Joi.number(),
+      slotDuration: Joi.number(),
+      isActive: Joi.boolean(),
+      clinics: Joi.array().items(Joi.string())
+    });
+    const { error, value } = schema.validate(req.body, { stripUnknown: true });
+    if (error) return res.status(400).json({ error: error.details[0].message });
+
+    const { name, specialization, phone, email, consultationFee, slotDuration, isActive, clinics: clinicList } = value;
 
     const client = await pool.connect();
     try {
@@ -258,20 +268,22 @@ router.get('/doctors/:id/slots', async (req, res, next) => {
     const toTime = (m) => `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`;
 
     const slots = [];
-    let current = toMin(avail[0].start_time);
-    const end = toMin(avail[0].end_time);
+    for (const block of avail) {
+      let current = toMin(block.start_time);
+      const end = toMin(block.end_time);
 
-    while (current + duration <= end) {
-      const slotStart = toTime(current);
-      const slotEnd = toTime(current + duration);
+      while (current + duration <= end) {
+        const slotStart = toTime(current);
+        const slotEnd = toTime(current + duration);
 
-      const isBooked = booked.some(b => current < toMin(b.end_time) && (current + duration) > toMin(b.start_time));
-      const inBreak = breaks.some(b => current < toMin(b.end_time) && (current + duration) > toMin(b.start_time));
+        const isBooked = booked.some(b => current < toMin(b.end_time) && (current + duration) > toMin(b.start_time));
+        const inBreak = breaks.some(b => current < toMin(b.end_time) && (current + duration) > toMin(b.start_time));
 
-      if (!isBooked && !inBreak) {
-        slots.push({ startTime: slotStart, endTime: slotEnd });
+        if (!isBooked && !inBreak) {
+          slots.push({ startTime: slotStart, endTime: slotEnd });
+        }
+        current += duration;
       }
-      current += duration;
     }
 
     res.json({ slots, duration, day: dayName });

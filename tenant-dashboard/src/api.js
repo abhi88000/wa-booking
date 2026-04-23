@@ -61,9 +61,6 @@ export default {
   addPatient: (data) => api.post('/tenant/patients', data),
   updatePatient: (id, data) => api.put(`/tenant/patients/${id}`, data),
 
-  // Chat
-  getChat: (patientId) => api.get(`/tenant/chats/${patientId}`),
-
   // Conversations / Inbox
   getConversations: (params) => api.get('/tenant/conversations', { params }),
   getConversationMessages: (patientId, params) => api.get(`/tenant/conversations/${patientId}/messages`, { params }),

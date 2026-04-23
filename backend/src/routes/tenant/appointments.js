@@ -30,10 +30,8 @@ router.get('/appointments', async (req, res, next) => {
     if (doctor_id) { where += ` AND a.doctor_id = $${idx++}`; params.push(doctor_id); }
     if (clinic && clinic !== 'all') { where += ` AND (EXISTS (SELECT 1 FROM doctor_clinics dc WHERE dc.doctor_id = a.doctor_id AND dc.clinic_label = $${idx}) OR NOT EXISTS (SELECT 1 FROM doctor_clinics dc2 WHERE dc2.doctor_id = a.doctor_id))`; idx++; params.push(clinic); }
 
-    const needsDoctorJoin = false; // clinic filter now uses subquery, no join needed
-
     const [countResult, dataResult] = await Promise.all([
-      pool.query(`SELECT COUNT(*) FROM appointments a ${needsDoctorJoin ? 'JOIN doctors d ON d.id = a.doctor_id' : ''} ${where}`, params),
+      pool.query(`SELECT COUNT(*) FROM appointments a ${where}`, params),
       pool.query(`
         SELECT a.*, d.name as doctor_name, p.name as patient_name, p.phone as patient_phone,
                s.name as service_name

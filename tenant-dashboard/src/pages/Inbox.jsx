@@ -17,10 +17,15 @@ export default function Inbox() {
   useEffect(() => { if (selected) loadMessages(selected); }, [selected]);
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  // Auto-refresh conversations every 15s
+  // Auto-refresh conversations every 15s (pauses when tab hidden)
   useEffect(() => {
-    const interval = setInterval(() => loadConversations(true), 15000);
-    return () => clearInterval(interval);
+    let interval;
+    const start = () => { interval = setInterval(() => loadConversations(true), 15000); };
+    const stop = () => clearInterval(interval);
+    const onVisibility = () => { document.hidden ? stop() : start(); };
+    if (!document.hidden) start();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => { stop(); document.removeEventListener('visibilitychange', onVisibility); };
   }, [search]);
 
   async function loadConversations(silent = false) {

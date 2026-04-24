@@ -84,12 +84,20 @@ const STEP_TYPES = [
 ];
 
 // ── Helpers ────────────────────────────────────────────
+const TEMPLATE_LABELS = { appointment: 'Appointment Booking', feedback: 'Customer Feedback' };
+
 function friendlyName(id, idx, templateName) {
   if (id === 'start') return templateName ? `${templateName} — Start` : 'Start';
   if (/^screen_\d+$/.test(id)) return `Step ${idx + 1}`;
-  // named steps from templates
+  // Appended template start nodes like screen_feedback_start or screen_feedback_start_2
+  const tmplStart = id.match(/^screen_(\w+)_start(?:_\d+)?$/);
+  if (tmplStart) {
+    const label = TEMPLATE_LABELS[tmplStart[1]];
+    return label ? `${label} — Start` : `Step ${idx + 1}`;
+  }
+  // named steps from templates like screen_ask_rating
   if (id.startsWith('screen_')) {
-    const name = id.replace('screen_', '').replace(/_/g, ' ');
+    const name = id.replace('screen_', '').replace(/_(\d+)$/, '').replace(/_/g, ' ');
     return name.replace(/\b\w/g, l => l.toUpperCase());
   }
   return id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -422,14 +430,19 @@ export default function FlowBuilder() {
       return;
     }
 
-    // Append: add all template steps with clean prefixed IDs
-    const prefix = template.id.substring(0, 3); // e.g. 'fee', 'lea', 'ord'
-    const seq = Date.now().toString().slice(-4);
+    // Append: use original IDs, add numeric suffix only on conflict
+    const existingIds = new Set(Object.keys(flow));
     const idMap = {};
     templateNodes.forEach(id => {
-      // e.g. screen_ask_rating → screen_fee_ask_rating
-      const cleanId = id === 'start' ? `screen_${prefix}_start_${seq}` : id.replace('screen_', `screen_${prefix}_`);
-      idMap[id] = cleanId;
+      let newId = id === 'start' ? `screen_${template.id}_start` : id;
+      // If ID already exists in the flow, add a suffix
+      if (existingIds.has(newId)) {
+        let n = 2;
+        while (existingIds.has(`${newId}_${n}`)) n++;
+        newId = `${newId}_${n}`;
+      }
+      idMap[id] = newId;
+      existingIds.add(newId); // track so subsequent nodes don't clash
     });
 
     const newNodes = {};

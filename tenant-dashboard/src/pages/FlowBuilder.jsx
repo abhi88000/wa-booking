@@ -560,34 +560,24 @@ export default function FlowBuilder() {
               onUpdate={u => updateNode(nodeId, u)} onDelete={() => deleteNode(nodeId)} />
           ))}
 
-          {/* Add Step */}
-          <div className="mt-3">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              <button onClick={() => addNode('menu')}
-                className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all flex flex-col items-center gap-1">
-                <Icon name="messageSquare" className="w-5 h-5" />
-                Send Message
-                <p className="text-[10px] font-normal text-gray-400">Text + buttons</p>
-              </button>
-              <button onClick={() => addNode('input')}
-                className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50/30 transition-all flex flex-col items-center gap-1">
-                <Icon name="formInput" className="w-5 h-5" />
-                Ask Question
-                <p className="text-[10px] font-normal text-gray-400">Name, email, phone...</p>
-              </button>
-              <button onClick={() => addNode('condition')}
-                className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50/30 transition-all flex flex-col items-center gap-1">
-                <Icon name="gitBranch" className="w-5 h-5" />
-                Smart Route
-                <p className="text-[10px] font-normal text-gray-400">Go to different steps based on answer</p>
-              </button>
-              <button onClick={() => addNode('action')}
-                className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/30 transition-all flex flex-col items-center gap-1">
-                <Icon name="save" className="w-5 h-5" />
-                Action Step
-                <p className="text-[10px] font-normal text-gray-400">Save data, notify, or follow up</p>
-              </button>
-            </div>
+          {/* Add Step — compact toggle */}
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button onClick={() => addNode('menu')}
+              className="px-3 py-1.5 border border-dashed border-gray-200 rounded-lg text-xs font-medium text-gray-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all flex items-center gap-1.5">
+              <Icon name="messageSquare" className="w-3.5 h-3.5" /> + Message
+            </button>
+            <button onClick={() => addNode('input')}
+              className="px-3 py-1.5 border border-dashed border-gray-200 rounded-lg text-xs font-medium text-gray-500 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50/30 transition-all flex items-center gap-1.5">
+              <Icon name="formInput" className="w-3.5 h-3.5" /> + Question
+            </button>
+            <button onClick={() => addNode('condition')}
+              className="px-3 py-1.5 border border-dashed border-gray-200 rounded-lg text-xs font-medium text-gray-500 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50/30 transition-all flex items-center gap-1.5">
+              <Icon name="gitBranch" className="w-3.5 h-3.5" /> + Route
+            </button>
+            <button onClick={() => addNode('action')}
+              className="px-3 py-1.5 border border-dashed border-gray-200 rounded-lg text-xs font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/30 transition-all flex items-center gap-1.5">
+              <Icon name="save" className="w-3.5 h-3.5" /> + Action
+            </button>
           </div>
         </div>
 

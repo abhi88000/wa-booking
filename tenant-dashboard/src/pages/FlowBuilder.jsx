@@ -418,7 +418,6 @@ export default function FlowBuilder() {
 
   function pickTemplate(template) {
     const templateFlow = template.flow || getDefault();
-    const templateNodes = Object.keys(templateFlow).filter(k => k !== 'fallback');
 
     // If no existing flow, just set the template as the flow
     if (!flow || Object.keys(flow).filter(k => k !== 'fallback').length === 0) {
@@ -429,60 +428,32 @@ export default function FlowBuilder() {
       return;
     }
 
-    // Append: merge template buttons into existing start screen,
-    // and add only the sub-steps (not a duplicate start screen)
-    const existingIds = new Set(Object.keys(flow));
-    const templateStart = templateFlow.start || templateFlow[templateNodes[0]];
-    const subStepIds = templateNodes.filter(id => id !== 'start');
+    // Existing flow — ask user what to do
+    const choice = window.confirm(
+      'You already have a flow.\n\n' +
+      'OK = Replace with this template (current flow will be lost)\n' +
+      'Cancel = Add this template\'s buttons to your current start screen'
+    );
 
-    // Map sub-step IDs, adding suffix only on conflict
-    const idMap = {};
-    subStepIds.forEach(id => {
-      let newId = id;
-      if (existingIds.has(newId)) {
-        let n = 2;
-        while (existingIds.has(`${newId}_${n}`)) n++;
-        newId = `${newId}_${n}`;
-      }
-      idMap[id] = newId;
-      existingIds.add(newId);
-    });
-
-    // Add sub-steps with remapped references
-    const newNodes = {};
-    subStepIds.forEach(id => {
-      const node = JSON.parse(JSON.stringify(templateFlow[id]));
-      node._template = template.id;
-      if (node.next && idMap[node.next]) node.next = idMap[node.next];
-      if (node.else_next && idMap[node.else_next]) node.else_next = idMap[node.else_next];
-      if (node.buttons) {
-        node.buttons.forEach(btn => {
-          if (btn.next && idMap[btn.next]) btn.next = idMap[btn.next];
-        });
-      }
-      if (node.rules) {
-        node.rules.forEach(rule => {
-          if (rule.next && idMap[rule.next]) rule.next = idMap[rule.next];
-        });
-      }
-      newNodes[idMap[id]] = node;
-    });
-
-    // Merge template start's buttons into the existing start screen
-    const startBtns = (templateStart.buttons || []).map(btn => {
-      const b = { ...btn, id: `btn_${Date.now()}_${Math.random().toString(36).slice(2, 6)}` };
-      if (b.next && idMap[b.next]) b.next = idMap[b.next];
-      return b;
-    });
-    const existingStart = flow.start || flow[Object.keys(flow).filter(k => k !== 'fallback')[0]];
-    const mergedBtns = [...(existingStart.buttons || []), ...startBtns];
-
-    setFlow(prev => ({
-      ...prev,
-      start: { ...prev.start, buttons: mergedBtns },
-      ...newNodes
-    }));
-    setIsNewFlow(false);
+    if (choice) {
+      // Replace entire flow
+      setFlow(templateFlow);
+      setActiveTemplate(template.id);
+      setIsNewFlow(false);
+      setEditing(null);
+    } else {
+      // Merge: add template buttons into existing start screen
+      const templateStart = templateFlow.start || templateFlow[Object.keys(templateFlow).filter(k => k !== 'fallback')[0]];
+      const newBtns = (templateStart.buttons || []).map(btn => ({
+        ...btn,
+        id: `btn_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+      }));
+      setFlow(prev => ({
+        ...prev,
+        start: { ...prev.start, buttons: [...(prev.start?.buttons || []), ...newBtns] }
+      }));
+      setIsNewFlow(false);
+    }
   }
 
   function getDefault() {

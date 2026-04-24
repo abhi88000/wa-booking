@@ -40,42 +40,9 @@ const LABEL_HELP = {
 // ── Templates ──────────────────────────────────────────
 const TEMPLATES = [
   {
-    id: 'lead_capture',
-    name: 'Lead Capture',
-    desc: 'Collect name, email, and interest from potential customers',
-    icon: 'target',
-    industries: 'Real Estate, Education, Insurance',
-    actions: ['next', 'text', 'ai'],
-    flow: {
-      start: { message: 'Hi! 👋 Welcome. Let me help you get started.\n\nI just need a few details.', buttons: [{ id: 'go', label: 'Get Started', action: 'next', next: 'screen_ask_name' }] },
-      screen_ask_name: { type: 'input', message: 'What is your name?', input_type: 'text', variable: 'name', next: 'screen_ask_email' },
-      screen_ask_email: { type: 'input', message: 'Thanks {{name}}! What is your email address?', input_type: 'email', variable: 'email', next: 'screen_ask_interest' },
-      screen_ask_interest: { type: 'input', message: 'What are you interested in?', input_type: 'text', variable: 'interest', next: 'screen_save' },
-      screen_save: { type: 'action', action_type: 'save_record', record_type: 'lead', message: 'Thank you {{name}}! Our team will reach out to you at {{email}} shortly. 🙌', next: '' },
-      fallback: 'Please answer the question above, or type "menu" to start over.'
-    }
-  },
-  {
-    id: 'feedback',
-    name: 'Customer Feedback',
-    desc: 'Ask for a rating and collect comments after a service',
-    icon: 'star',
-    industries: 'Restaurants, Hotels, Salons',
-    actions: ['next', 'text'],
-    flow: {
-      start: { message: 'Hi! We\'d love to hear about your experience. It takes just 30 seconds.', buttons: [{ id: 'go', label: 'Give Feedback', action: 'next', next: 'screen_rating' }] },
-      screen_rating: { type: 'input', message: 'How would you rate us? (1 = Poor, 5 = Excellent)', input_type: 'rating', variable: 'rating', next: 'screen_check' },
-      screen_check: { type: 'condition', variable: 'rating', rules: [{ operator: 'greater_than', value: '3', next: 'screen_thanks' }], else_next: 'screen_improve' },
-      screen_improve: { type: 'input', message: 'We\'re sorry to hear that. What can we improve?', input_type: 'text', variable: 'feedback', next: 'screen_save_fb' },
-      screen_thanks: { type: 'input', message: 'Glad you liked it! 🎉 Any comments you\'d like to share?', input_type: 'text', variable: 'feedback', next: 'screen_save_fb' },
-      screen_save_fb: { type: 'action', action_type: 'save_record', record_type: 'feedback', message: 'Thank you for your feedback! We really appreciate it. 🙏', next: '' },
-      fallback: 'Please answer the question above.'
-    }
-  },
-  {
     id: 'appointment',
     name: 'Appointment Booking',
-    desc: 'Let customers book appointments directly on WhatsApp',
+    desc: 'Book, view, or cancel appointments on WhatsApp',
     icon: 'calendar',
     industries: 'Clinics, Salons, Gyms, Consultants',
     actions: ['booking_flow', 'booking_status', 'booking_cancel', 'next', 'text'],
@@ -83,45 +50,71 @@ const TEMPLATES = [
       start: { message: 'Welcome! How can I help you today?', buttons: [
         { id: 'book', label: 'Book Appointment', action: 'booking_flow' },
         { id: 'status', label: 'My Appointments', action: 'booking_status' },
-        { id: 'contact', label: 'Cancel / Reschedule', action: 'booking_cancel' }
+        { id: 'cancel', label: 'Cancel / Reschedule', action: 'booking_cancel' }
       ] },
       fallback: 'Sorry, I didn\'t understand. Please choose from the options above.'
     }
   },
   {
+    id: 'lead_capture',
+    name: 'Lead Capture',
+    desc: 'Collect customer details and save as a lead',
+    icon: 'target',
+    industries: 'Real Estate, Education, Insurance',
+    actions: ['next', 'text', 'ai'],
+    flow: {
+      start: { message: 'Hi! 👋 Welcome. How can we help you?', buttons: [
+        { id: 'go', label: 'Get Started', action: 'next', next: '' },
+        { id: 'info', label: 'Learn More', action: 'text', response: 'We offer [describe your services]. Want to get started?' },
+        { id: 'talk', label: 'Talk to Someone', action: 'ai' }
+      ] },
+      fallback: 'Please choose an option from the menu, or type "menu" to see options again.'
+    }
+  },
+  {
+    id: 'feedback',
+    name: 'Customer Feedback',
+    desc: 'Collect ratings and feedback after a service',
+    icon: 'star',
+    industries: 'Restaurants, Hotels, Salons',
+    actions: ['next', 'text'],
+    flow: {
+      start: { message: 'Hi! We\'d love to hear about your experience.', buttons: [
+        { id: 'go', label: 'Give Feedback', action: 'next', next: '' },
+        { id: 'skip', label: 'No Thanks', action: 'text', response: 'No problem! Have a great day. 😊' }
+      ] },
+      fallback: 'Please answer the question above.'
+    }
+  },
+  {
     id: 'faq',
     name: 'FAQ / Info Bot',
-    desc: 'Answer common questions with menu buttons',
+    desc: 'Answer common questions with quick reply buttons',
     icon: 'helpCircle',
     industries: 'Any business',
     actions: ['text', 'ai', 'next'],
     flow: {
       start: { message: 'Welcome! 👋 What would you like to know?', buttons: [
         { id: 'hours', label: 'Business Hours', action: 'text', response: 'We are open Mon-Sat, 9 AM to 6 PM.' },
-        { id: 'location', label: 'Our Location', action: 'text', response: 'We are located at [Your Address]. Google Maps: [link]' },
-        { id: 'pricing', label: 'Pricing', action: 'text', response: 'Check our pricing at [your-website.com/pricing]' },
-        { id: 'talk', label: 'Talk to a Human', action: 'ai' },
+        { id: 'location', label: 'Our Location', action: 'text', response: 'We are located at [Your Address].' },
+        { id: 'talk', label: 'Talk to a Human', action: 'ai' }
       ] },
-      fallback: 'I can help with common questions. Please choose from the menu above, or type "menu" to see options again.'
+      fallback: 'Please choose from the menu above, or type "menu" to see options again.'
     }
   },
   {
     id: 'order',
     name: 'Order / Inquiry',
-    desc: 'Collect product interest and contact details for follow-up',
+    desc: 'Collect product interest and process orders',
     icon: 'shoppingCart',
     industries: 'E-commerce, Wholesale, Services',
     actions: ['next', 'text', 'ai'],
     flow: {
-      start: { message: 'Hi! 👋 Welcome to our store.\n\nWhat are you looking for today?', buttons: [
-        { id: 'order', label: 'Place an Order', action: 'next', next: 'screen_product' },
+      start: { message: 'Hi! 👋 Welcome to our store.', buttons: [
+        { id: 'order', label: 'Place an Order', action: 'next', next: '' },
         { id: 'status', label: 'Order Status', action: 'text', response: 'Please share your order number and we\'ll check for you.' },
-        { id: 'help', label: 'Help', action: 'ai' },
+        { id: 'help', label: 'Help', action: 'ai' }
       ] },
-      screen_product: { type: 'input', message: 'What product or service are you interested in?', input_type: 'text', variable: 'product', next: 'screen_qty' },
-      screen_qty: { type: 'input', message: 'How many would you like?', input_type: 'number', variable: 'quantity', next: 'screen_contact' },
-      screen_contact: { type: 'input', message: 'Great! What\'s your name so we can process this?', input_type: 'text', variable: 'name', next: 'screen_save_order' },
-      screen_save_order: { type: 'action', action_type: 'save_record', record_type: 'order', message: 'Thanks {{name}}! Your inquiry for {{quantity}}x {{product}} has been received. We\'ll confirm availability shortly! 📦', next: '' },
       fallback: 'Please answer the question, or type "menu" to start over.'
     }
   },
@@ -483,36 +476,19 @@ export default function FlowBuilder() {
       return;
     }
 
-    // Append: remap template node IDs to avoid conflicts with existing flow
-    const suffix = '_' + Date.now();
-    const idMap = {};
-    templateNodes.forEach(id => { idMap[id] = id + suffix; });
-
-    const newNodes = {};
-    templateNodes.forEach(id => {
-      const node = JSON.parse(JSON.stringify(templateFlow[id]));
-      // Remap next references
-      if (node.next && idMap[node.next]) node.next = idMap[node.next];
-      if (node.else_next && idMap[node.else_next]) node.else_next = idMap[node.else_next];
-      if (node.buttons) {
-        node.buttons.forEach(btn => {
-          if (btn.next && idMap[btn.next]) btn.next = idMap[btn.next];
-        });
-      }
-      if (node.rules) {
-        node.rules.forEach(rule => {
-          if (rule.next && idMap[rule.next]) rule.next = idMap[rule.next];
-        });
-      }
-      newNodes[idMap[id]] = node;
-    });
-
-    setFlow(prev => ({ ...prev, ...newNodes }));
+    // Append: add the template's start screen as a new step
+    const templateStart = templateFlow.start || templateFlow[templateNodes[0]];
+    if (!templateStart) { setIsNewFlow(false); return; }
+    const newId = 'screen_' + Date.now();
+    const node = JSON.parse(JSON.stringify(templateStart));
+    // Clear button next references since they'd point to non-existent nodes
+    if (node.buttons) {
+      node.buttons.forEach(btn => { if (btn.action === 'next') btn.next = ''; });
+    }
+    setFlow(prev => ({ ...prev, [newId]: node }));
     setIsNewFlow(false);
-    // Auto-expand the first new node
-    const firstNewId = idMap[templateNodes[0]];
-    setEditing(firstNewId);
-    setPreview(firstNewId);
+    setEditing(newId);
+    setPreview(newId);
   }
 
   function getDefault() {

@@ -87,6 +87,13 @@ const TEMPLATE_LABELS = { appointment: 'Appointment Booking', feedback: 'Custome
 
 function friendlyName(id, idx, templateName) {
   if (id === 'start') return templateName ? `${templateName} — Start` : 'Start';
+  // Multi-flow start screens: flow_123_start → use templateName
+  if (/^flow_\d+_start$/.test(id)) return templateName ? `${templateName} — Start` : `Step ${idx + 1}`;
+  // Multi-flow sub-screens: flow_123_screenName → clean name
+  if (/^flow_\d+_/.test(id)) {
+    const name = id.replace(/^flow_\d+_/, '').replace(/_/g, ' ');
+    return name.replace(/\b\w/g, l => l.toUpperCase());
+  }
   if (/^screen_\d+$/.test(id)) return `Step ${idx + 1}`;
   // Appended template start nodes like screen_feedback_start or screen_feedback_start_2
   const tmplStart = id.match(/^screen_(\w+)_start(?:_\d+)?$/);
@@ -123,7 +130,7 @@ function getFlowGroups(flow) {
       return 0;
     });
     return { ...m, isStart: m.id === startFlowId, screenIds };
-  });
+  }).sort((a, b) => (a.isStart ? -1 : b.isStart ? 1 : 0));
 }
 
 // ── Getting Started Guide ──────────────────────────────
@@ -738,28 +745,7 @@ export default function FlowBuilder() {
                     onUpdate={u => updateNode(nodeId, u)} onDelete={() => deleteNode(nodeId)} />
                 )
               ))}
-              {/* Add Screen */}
-              <div className="border border-dashed border-gray-200 rounded-xl p-3 flex items-center gap-3 bg-gray-50/50 mt-1">
-                <span className="text-xs font-medium text-gray-400 shrink-0">Add screen:</span>
-                <div className="flex flex-wrap gap-2">
-                  <button onClick={() => addNode('menu', fg.id)}
-                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/50 transition-all flex items-center gap-1.5 shadow-sm">
-                    <Icon name="messageSquare" className="w-3.5 h-3.5" /> Message
-                  </button>
-                  <button onClick={() => addNode('input', fg.id)}
-                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50/50 transition-all flex items-center gap-1.5 shadow-sm">
-                    <Icon name="formInput" className="w-3.5 h-3.5" /> Question
-                  </button>
-                  <button onClick={() => addNode('condition', fg.id)}
-                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50/50 transition-all flex items-center gap-1.5 shadow-sm">
-                    <Icon name="gitBranch" className="w-3.5 h-3.5" /> Route
-                  </button>
-                  <button onClick={() => addNode('action', fg.id)}
-                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/50 transition-all flex items-center gap-1.5 shadow-sm">
-                    <Icon name="save" className="w-3.5 h-3.5" /> Action
-                  </button>
-                </div>
-              </div>
+
             </div>
           </div>
         );

@@ -95,7 +95,8 @@ Multi-tenant WhatsApp automation platform. Businesses sign up, connect their Wha
 │           ├── Services.jsx       # Service catalog CRUD
 │           ├── Patients.jsx       # Customer list with search + history
 │           ├── Inbox.jsx          # WhatsApp conversation inbox + manual reply
-│           ├── FlowBuilder.jsx    # Visual flow builder (drag-and-drop nodes)
+│           ├── FlowBuilder.jsx    # Visual flow builder (multi-flow, templates, cross-linking)
+│           ├── flowBuilderUtils.js # Flow validation + node cleanup helpers
 │           ├── Settings.jsx       # Business info, WhatsApp connection
 │           ├── Login.jsx          # Tenant login
 │           ├── Signup.jsx         # Tenant signup (invite code required)
@@ -218,7 +219,7 @@ Deployed on AWS EC2 with Nginx reverse proxy + Let's Encrypt SSL.
 ```bash
 # Deploy updates
 cd /home/ubuntu/wa-booking
-git pull origin feature/flow-engine
+git pull origin feature/configurable-whatsapp-flows
 docker compose -f docker-compose.saas.yml up -d --build backend cron-worker tenant-dashboard super-admin
 ```
 
@@ -229,23 +230,38 @@ See [docs/deployment.md](docs/deployment.md) for full Nginx config, SSL setup, a
 
 The visual flow builder lets business owners create custom WhatsApp conversation flows without code.
 
+**Multi-flow architecture:**
+- Each tenant can have **multiple flows** (e.g. Appointment Booking + Customer Feedback)
+- One flow is marked as the **Starting Flow** — the entry point when a customer messages
+- Flows can **link to each other** — a button in one flow can jump to a screen in another
+- Each flow is created from a **template** but is fully customizable (edit text, buttons, labels)
+- Add screens within each flow using Message / Question / Route / Action buttons
+- Data model: `_flows` array in `flow_config` JSONB tracks flow metadata; each screen has a `_flow` field
+
 **Node types:**
-- **Menu** — Send a message with up to 10 buttons. Each button routes to a different node.
+- **Menu** — Send a message with up to 10 buttons. Each button routes to a different node (including cross-flow).
 - **Input** — Collect user input (text, number, email, phone, date, rating, yes/no) and store in a variable.
 - **Condition** — Branch based on variable values (equals, contains, greater_than, etc.).
 - **Action** — Trigger side effects: save a record, notify admin, set a variable, send a follow-up, or start the booking engine.
 
-**Built-in actions:**
-- `save_record` — Save collected data as a tenant record
-- `notify_admin` — Send WhatsApp notification to business owner
+**Templates:**
+- **Appointment Booking** — Book, view, or cancel appointments (clinics, salons, gyms)
+- **Customer Feedback** — Collect ratings with emoji buttons (restaurants, hotels, salons)
+
+**Built-in button actions:**
+- `next` — Navigate to another screen (same flow or cross-flow)
+- `text` — Send a reply message
+- `ai` — Hand off to AI assistant
 - `booking_flow` — Start the appointment booking flow
 - `booking_status` — Show upcoming appointments
 - `booking_cancel` — Show cancellable appointments
+- `save_record` — Save collected data as a tenant record
+- `notify_admin` — Send WhatsApp notification to business owner
 
 
 ## Key Design Decisions
 
-- **Flow-first architecture** — Visual flow builder drives all WhatsApp interactions. Booking engine is a pluggable module, not hardcoded.
+- **Multi-flow architecture** — Visual flow builder supports multiple flows per tenant with cross-flow linking. Each flow starts from a template and is fully customizable. Booking engine is a pluggable module, not hardcoded.
 - **Multi-tenant shared schema** — All tenants share one database. Every table has `tenant_id`. RLS policies for extra isolation.
 - **Tenant config caching** — In-memory cache with 5min TTL avoids DB lookup on every webhook and API request. Auto-invalidated on settings changes.
 - **Domain-split routes** — 41 API endpoints organized into 10 domain files instead of one monolith. Each domain is independently maintainable.

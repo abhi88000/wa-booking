@@ -63,14 +63,13 @@ const TEMPLATES = [
     industries: 'Restaurants, Hotels, Salons',
     actions: ['next', 'text'],
     flow: {
-      start: { message: 'Hi! We\'d love to hear about your experience.', buttons: [
-        { id: 'go', label: 'Give Feedback', action: 'next', next: 'screen_ask_rating' },
-        { id: 'skip', label: 'No Thanks', action: 'text', response: 'No problem! Have a great day. 😊' }
+      start: { message: 'Hi! We\'d love to hear about your experience. How would you rate us?', buttons: [
+        { id: 'r5', label: '⭐ Excellent (5)', action: 'text', response: 'Thank you! We\'re glad you had a great experience. 🎉' },
+        { id: 'r4', label: '👍 Good (4)', action: 'text', response: 'Thanks! We appreciate your feedback. 😊' },
+        { id: 'r3', label: '😐 Average (3)', action: 'text', response: 'Thanks for the feedback. We\'ll work to improve!' },
+        { id: 'r2', label: '👎 Poor (1-2)', action: 'text', response: 'We\'re sorry to hear that. We\'ll do better. 🙏' }
       ] },
-      screen_ask_rating: { type: 'input', message: 'How would you rate us? (1-5)', input_type: 'number', variable: 'rating', next: 'screen_ask_comment' },
-      screen_ask_comment: { type: 'input', message: 'Any comments you\'d like to share?', input_type: 'text', variable: 'feedback', next: 'screen_save_feedback' },
-      screen_save_feedback: { type: 'action', action_type: 'save_record', record_type: 'feedback', message: 'Thank you for your feedback! 🙏', next: '' },
-      fallback: 'Please answer the question above.'
+      fallback: 'Please select a rating from the options above.'
     }
   },
 ];

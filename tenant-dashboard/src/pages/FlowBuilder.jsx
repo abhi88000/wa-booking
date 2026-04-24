@@ -471,20 +471,48 @@ export default function FlowBuilder() {
   }
 
   function pickTemplate(template) {
-    // If there's already a flow with content, confirm before replacing
-    if (flow && Object.keys(flow).filter(k => k !== 'fallback').length > 0) {
-      if (!window.confirm('This will replace your current flow with the selected template. Your unsaved changes will be lost. Continue?')) {
-        return;
+    const templateFlow = template.flow || getDefault();
+    const templateNodes = Object.keys(templateFlow).filter(k => k !== 'fallback');
+
+    // If no existing flow, just set the template as the flow
+    if (!flow || Object.keys(flow).filter(k => k !== 'fallback').length === 0) {
+      setFlow(templateFlow);
+      setActiveTemplate(template.id);
+      setIsNewFlow(false);
+      setEditing(null);
+      return;
+    }
+
+    // Append: remap template node IDs to avoid conflicts with existing flow
+    const suffix = '_' + Date.now();
+    const idMap = {};
+    templateNodes.forEach(id => { idMap[id] = id + suffix; });
+
+    const newNodes = {};
+    templateNodes.forEach(id => {
+      const node = JSON.parse(JSON.stringify(templateFlow[id]));
+      // Remap next references
+      if (node.next && idMap[node.next]) node.next = idMap[node.next];
+      if (node.else_next && idMap[node.else_next]) node.else_next = idMap[node.else_next];
+      if (node.buttons) {
+        node.buttons.forEach(btn => {
+          if (btn.next && idMap[btn.next]) btn.next = idMap[btn.next];
+        });
       }
-    }
-    if (template.flow) {
-      setFlow(template.flow);
-    } else {
-      setFlow(getDefault());
-    }
-    setActiveTemplate(template.id);
+      if (node.rules) {
+        node.rules.forEach(rule => {
+          if (rule.next && idMap[rule.next]) rule.next = idMap[rule.next];
+        });
+      }
+      newNodes[idMap[id]] = node;
+    });
+
+    setFlow(prev => ({ ...prev, ...newNodes }));
     setIsNewFlow(false);
-    setEditing(null);
+    // Auto-expand the first new node
+    const firstNewId = idMap[templateNodes[0]];
+    setEditing(firstNewId);
+    setPreview(firstNewId);
   }
 
   function getDefault() {

@@ -5,12 +5,12 @@ import { ACTION_TYPES, deleteNodeAndCleanup, validateFlowDraft } from './flowBui
 
 // ── Constants ──────────────────────────────────────────
 const BTN_ACTIONS = [
-  { value: 'next', label: 'Go to step', desc: 'Navigate to another step in the flow' },
-  { value: 'booking_flow', label: 'Start booking flow', desc: 'Guided booking: choose doctor → choose service → pick date → pick time → confirm' },
-  { value: 'booking_status', label: 'Show my bookings', desc: 'Customer sees their upcoming appointments' },
-  { value: 'booking_cancel', label: 'Cancel / Reschedule', desc: 'Customer picks a booking to cancel or reschedule' },
-  { value: 'text', label: 'Send a reply', desc: 'Bot sends a custom text message' },
-  { value: 'ai', label: 'AI assistant', desc: 'Free chat with AI — type "menu" to return' },
+  { value: 'next', label: 'Go to step' },
+  { value: 'booking_flow', label: 'Start booking flow' },
+  { value: 'booking_status', label: 'Show my bookings' },
+  { value: 'booking_cancel', label: 'Cancel / Reschedule' },
+  { value: 'text', label: 'Send a reply' },
+  { value: 'ai', label: 'AI assistant' },
 ];
 
 const INPUT_TYPES = [
@@ -154,41 +154,6 @@ function friendlyName(id, idx) {
     return name.replace(/\b\w/g, l => l.toUpperCase());
   }
   return id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-}
-
-// ── Booking Flow Compact Hint ───────────────────────────
-const FLOW_HINTS = {
-  booking_flow:   { icon: '📅', color: 'emerald', summary: (s, b) => `Choose ${s} → Choose Service → Pick Date → Pick Time → Confirm ${b}`, detail: (s) => `Customer picks a ${s.toLowerCase()}, service, date & time slot, then confirms. Auto-reminders sent before the ${s.toLowerCase()} visit.` },
-  booking_status: { icon: '🔍', color: 'blue',    summary: (s, b) => `Look Up ${b}s → Show List → Back to Menu`, detail: (s) => `Looks up all future bookings by phone number and displays ${s.toLowerCase()}, date, time, and status.` },
-  booking_cancel: { icon: '↩️', color: 'amber',   summary: (s, b) => `Show Active ${b}s → Pick One → Cancel or Reschedule`, detail: (s) => `Customer selects an active booking, then chooses to cancel it or pick a new date & time.` },
-};
-
-function FlowActionHint({ action, labels }) {
-  const hint = FLOW_HINTS[action];
-  if (!hint) return null;
-
-  const staff = labels?.staff || 'Doctor';
-  const booking = labels?.booking || 'Appointment';
-  const [expanded, setExpanded] = useState(false);
-
-  const bg = { emerald: 'bg-emerald-50', blue: 'bg-blue-50', amber: 'bg-amber-50' }[hint.color];
-  const border = { emerald: 'border-emerald-200', blue: 'border-blue-200', amber: 'border-amber-200' }[hint.color];
-  const text = { emerald: 'text-emerald-700', blue: 'text-blue-700', amber: 'text-amber-700' }[hint.color];
-
-  return (
-    <div className={`mt-1.5 ${bg} border ${border} rounded-lg px-3 py-2`}>
-      <button type="button" onClick={() => setExpanded(!expanded)}
-        className={`w-full flex items-center justify-between gap-2 text-left`}>
-        <span className={`text-[11px] ${text} font-medium`}>
-          {hint.icon} {hint.summary(staff, booking)}
-        </span>
-        <span className={`text-[10px] ${text} opacity-60 shrink-0`}>{expanded ? '▲' : 'ⓘ'}</span>
-      </button>
-      {expanded && (
-        <p className="text-[10px] text-gray-600 mt-1.5 leading-relaxed">{hint.detail(staff)}</p>
-      )}
-    </div>
-  );
 }
 
 // ── Getting Started Guide ──────────────────────────────
@@ -805,9 +770,6 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, a
                           className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
                           {visibleActions.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
                         </select>
-                        {BTN_ACTIONS.find(a => a.value === btn.action)?.desc && !['next','text'].includes(btn.action) && (
-                          <p className="text-[10px] text-gray-400 mt-0.5 ml-1">{BTN_ACTIONS.find(a => a.value === btn.action).desc}</p>
-                        )}
                         {btn.action === 'next' && (
                           <select value={btn.next || ''} onChange={e => updateBtn(idx, { next: e.target.value })}
                             className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white mt-1.5">
@@ -821,9 +783,6 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, a
                           <textarea value={btn.response || ''} onChange={e => updateBtn(idx, { response: e.target.value })}
                             placeholder="What should the bot reply?" rows={2}
                             className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none bg-white mt-1.5" />
-                        )}
-                        {['booking_flow','booking_status','booking_cancel'].includes(btn.action) && (
-                          <FlowActionHint action={btn.action} labels={labels} />
                         )}
                       </div>
                     </div>

@@ -498,6 +498,8 @@ export default function FlowBuilder() {
       action: { type: 'action', action_type: 'save_record', record_type: 'lead', message: '', next: '' },
     };
     setFlow(p => ({ ...p, [id]: defaults[type] || defaults.menu }));
+    setEditing(id);
+    setPreview(id);
   }
 
   function deleteNode(id) {
@@ -547,8 +549,28 @@ export default function FlowBuilder() {
 
       {/* Expanded step — full width with preview inside */}
       {editing && flow[editing] && (
-        <div className="mb-4">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
+        <div className="mb-4 bg-white rounded-xl border border-emerald-300 shadow-md ring-1 ring-emerald-100 overflow-hidden">
+          {/* Full-width header bar with collapse button at far right */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 cursor-pointer" onClick={() => setEditing(null)}>
+            <div className="flex items-center gap-3">
+              <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 bg-emerald-50">
+                <Icon name={flow[editing].type === 'menu' ? 'messageSquare' : flow[editing].type === 'input' ? 'formInput' : flow[editing].type === 'condition' ? 'gitBranch' : 'save'} className="w-3.5 h-3.5 text-gray-500" />
+              </div>
+              <p className="text-sm font-semibold text-gray-900">
+                {friendlyName(editing, nodeIds.indexOf(editing), templateName)}
+              </p>
+              {nodeIds.indexOf(editing) === 0
+                ? <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500 text-white">Start</span>
+                : <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                    flow[editing].type === 'menu' ? 'bg-blue-50 text-blue-600' : flow[editing].type === 'input' ? 'bg-purple-50 text-purple-600' : flow[editing].type === 'condition' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-600'
+                  }`}>{flow[editing].type === 'menu' ? 'Message' : flow[editing].type === 'input' ? 'Question' : flow[editing].type === 'condition' ? 'Route' : 'Action'}</span>
+              }
+            </div>
+            <button className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100 transition">
+              <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 p-4">
             <ScreenCard key={editing} nodeId={editing} node={flow[editing]} step={nodeIds.indexOf(editing) + 1}
               allNodes={nodeIds} flow={flow} open={true} delay={0}
               labels={labels} allowedActions={TEMPLATES.find(t => t.id === activeTemplate)?.actions || null}
@@ -576,24 +598,27 @@ export default function FlowBuilder() {
           )
         ))}
 
-        {/* Add Step — compact pills */}
-        <div className="mt-2 flex flex-wrap gap-2">
-          <button onClick={() => addNode('menu')}
-            className="px-3 py-1.5 border border-dashed border-gray-200 rounded-lg text-xs font-medium text-gray-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all flex items-center gap-1.5">
-            <Icon name="messageSquare" className="w-3.5 h-3.5" /> + Message
-          </button>
-          <button onClick={() => addNode('input')}
-            className="px-3 py-1.5 border border-dashed border-gray-200 rounded-lg text-xs font-medium text-gray-500 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50/30 transition-all flex items-center gap-1.5">
-            <Icon name="formInput" className="w-3.5 h-3.5" /> + Question
-          </button>
-          <button onClick={() => addNode('condition')}
-            className="px-3 py-1.5 border border-dashed border-gray-200 rounded-lg text-xs font-medium text-gray-500 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50/30 transition-all flex items-center gap-1.5">
-            <Icon name="gitBranch" className="w-3.5 h-3.5" /> + Route
-          </button>
-          <button onClick={() => addNode('action')}
-            className="px-3 py-1.5 border border-dashed border-gray-200 rounded-lg text-xs font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/30 transition-all flex items-center gap-1.5">
-            <Icon name="save" className="w-3.5 h-3.5" /> + Action
-          </button>
+        {/* Add Step */}
+        <div className="border border-dashed border-gray-200 rounded-xl p-3 flex items-center gap-3 bg-gray-50/50">
+          <span className="text-xs font-medium text-gray-400 shrink-0">Add step:</span>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={() => addNode('menu')}
+              className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/50 transition-all flex items-center gap-1.5 shadow-sm">
+              <Icon name="messageSquare" className="w-3.5 h-3.5" /> Message
+            </button>
+            <button onClick={() => addNode('input')}
+              className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50/50 transition-all flex items-center gap-1.5 shadow-sm">
+              <Icon name="formInput" className="w-3.5 h-3.5" /> Question
+            </button>
+            <button onClick={() => addNode('condition')}
+              className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50/50 transition-all flex items-center gap-1.5 shadow-sm">
+              <Icon name="gitBranch" className="w-3.5 h-3.5" /> Route
+            </button>
+            <button onClick={() => addNode('action')}
+              className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/50 transition-all flex items-center gap-1.5 shadow-sm">
+              <Icon name="save" className="w-3.5 h-3.5" /> Action
+            </button>
+          </div>
         </div>
       </div>
 

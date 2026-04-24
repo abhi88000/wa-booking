@@ -31,7 +31,10 @@ function hasText(value) {
 }
 
 function getNodeIds(flow) {
-  return Object.keys(flow || {}).filter(key => key !== 'fallback');
+  return Object.keys(flow || {}).filter(key =>
+    key !== 'fallback' && key !== '_flows' && key !== '_startFlow' &&
+    typeof flow[key] === 'object' && !Array.isArray(flow[key])
+  );
 }
 
 function recordEdge(edges, fromNode, toNode) {
@@ -39,9 +42,9 @@ function recordEdge(edges, fromNode, toNode) {
   edges.get(fromNode).push(toNode);
 }
 
-function findReachableNodes(edges) {
+function findReachableNodes(edges, startNodes = ['start']) {
   const visited = new Set();
-  const queue = ['start'];
+  const queue = [...startNodes];
 
   while (queue.length > 0) {
     const nodeId = queue.shift();
@@ -204,7 +207,9 @@ export function validateFlowDraft(flow) {
     return errors;
   }
 
-  const reachableNodes = findReachableNodes(edges);
+  // Start reachability from all flow-start screens (multi-flow support)
+  const startScreens = nodeIds.filter(id => id === 'start' || id.endsWith('_start'));
+  const reachableNodes = findReachableNodes(edges, startScreens.length > 0 ? startScreens : ['start']);
   const disconnectedNodes = nodeIds.filter(nodeId => !reachableNodes.has(nodeId));
   if (disconnectedNodes.length > 0) {
     errors.push(`These steps are disconnected from the start step: ${disconnectedNodes.join(', ')}`);

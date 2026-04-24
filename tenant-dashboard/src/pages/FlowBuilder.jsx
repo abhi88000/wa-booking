@@ -102,6 +102,30 @@ function friendlyName(id, idx, templateName) {
   return id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
+// ── Flow Grouping Helper ──────────────────────────────
+function getFlowGroups(flow) {
+  if (!flow) return [];
+  const meta = flow._flows;
+  const startFlowId = flow._startFlow;
+  if (!meta) {
+    const screenIds = Object.keys(flow).filter(k => k !== 'fallback' && typeof flow[k] === 'object');
+    return [{ id: 'flow_1', template: null, name: 'Main Flow', isStart: true, screenIds }];
+  }
+  return meta.map(m => {
+    const screenIds = Object.keys(flow).filter(k =>
+      typeof flow[k] === 'object' && flow[k]._flow === m.id
+    );
+    screenIds.sort((a, b) => {
+      if (a === 'start') return -1;
+      if (b === 'start') return 1;
+      if (a.endsWith('_start')) return -1;
+      if (b.endsWith('_start')) return 1;
+      return 0;
+    });
+    return { ...m, isStart: m.id === startFlowId, screenIds };
+  });
+}
+
 // ── Getting Started Guide ──────────────────────────────
 function GettingStarted({ collapsed, onToggle }) {
   return (
@@ -182,7 +206,7 @@ function Preview({ flow, screen, onTap, labels, templateName }) {
   const btns = node.buttons || [];
   const nodeType = node.type || 'menu';
   const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-  const nodeIds = Object.keys(flow).filter(k => k !== 'fallback');
+  const nodeIds = Object.keys(flow).filter(k => k !== 'fallback' && k !== '_flows' && k !== '_startFlow' && typeof flow[k] === 'object' && !Array.isArray(flow[k]));
   const screenIdx = nodeIds.indexOf(screen);
 
   return (
@@ -391,7 +415,7 @@ export default function FlowBuilder() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [isNewFlow, setIsNewFlow] = useState(false);
-  const [activeTemplate, setActiveTemplate] = useState(null);
+  const [showFlowPicker, setShowFlowPicker] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => { load(); }, []);
@@ -400,14 +424,22 @@ export default function FlowBuilder() {
     try {
       const { data } = await api.getFlowConfig();
       if (data.flow_config) {
-        setFlow(data.flow_config);
-        // Detect template from existing flow actions
-        const usedActions = new Set();
-        Object.values(data.flow_config).forEach(n => {
-          (n.buttons || []).forEach(b => b.action && usedActions.add(b.action));
-        });
-        const match = TEMPLATES.find(t => t.actions && t.actions.some(a => usedActions.has(a) && !['next','text'].includes(a)));
-        if (match) setActiveTemplate(match.id);
+        const fc = data.flow_config;
+        // Backward compat: add _flows metadata if missing
+        if (!fc._flows) {
+          const flowId = 'flow_1';
+          Object.keys(fc).forEach(k => {
+            if (k !== 'fallback' && typeof fc[k] === 'object') fc[k]._flow = flowId;
+          });
+          const usedActions = new Set();
+          Object.values(fc).forEach(n => {
+            if (typeof n === 'object') (n.buttons || []).forEach(b => b.action && usedActions.add(b.action));
+          });
+          const match = TEMPLATES.find(t => t.actions && t.actions.some(a => usedActions.has(a) && !['next','text'].includes(a)));
+          fc._flows = [{ id: flowId, template: match?.id || null, name: match?.name || 'Main Flow' }];
+          fc._startFlow = flowId;
+        }
+        setFlow(fc);
       } else {
         setIsNewFlow(true);
       }
@@ -417,9 +449,17 @@ export default function FlowBuilder() {
   }
 
   function pickTemplate(template) {
-    const templateFlow = template.flow || getDefault();
-    setFlow(templateFlow);
-    setActiveTemplate(template.id);
+    const flowId = `flow_${Date.now()}`;
+    const srcFlow = template.flow || getDefault();
+    const newFlow = { fallback: srcFlow.fallback || '' };
+    Object.entries(srcFlow).forEach(([id, val]) => {
+      if (id !== 'fallback' && typeof val === 'object') {
+        newFlow[id] = { ...val, _flow: flowId };
+      }
+    });
+    newFlow._flows = [{ id: flowId, template: template.id, name: template.name }];
+    newFlow._startFlow = flowId;
+    setFlow(newFlow);
     setIsNewFlow(false);
     setEditing(null);
   }
@@ -454,7 +494,7 @@ export default function FlowBuilder() {
     finally { setSaving(false); }
   }
 
-  function addNode(type = 'menu') {
+  function addNode(type = 'menu', flowId) {
     const id = `screen_${Date.now()}`;
     const defaults = {
       menu: { message: '', buttons: [] },
@@ -462,9 +502,114 @@ export default function FlowBuilder() {
       condition: { type: 'condition', variable: '', rules: [], else_next: '' },
       action: { type: 'action', action_type: 'save_record', record_type: 'lead', message: '', next: '' },
     };
-    setFlow(p => ({ ...p, [id]: defaults[type] || defaults.menu }));
+    const newNode = { ...(defaults[type] || defaults.menu) };
+    if (flowId) newNode._flow = flowId;
+    setFlow(p => ({ ...p, [id]: newNode }));
     setEditing(id);
     setPreview(id);
+  }
+
+  function addNewFlow(template) {
+    const flowId = `flow_${Date.now()}`;
+    const srcFlow = template.flow;
+    if (!srcFlow) return;
+    setFlow(prev => {
+      const updated = { ...prev };
+      Object.entries(srcFlow).forEach(([id, val]) => {
+        if (id === 'fallback' || typeof val !== 'object') return;
+        const newId = id === 'start' ? `${flowId}_start` : `${flowId}_${id}`;
+        const remapped = { ...val, _flow: flowId };
+        if (remapped.buttons) {
+          remapped.buttons = remapped.buttons.map(b => ({
+            ...b,
+            next: b.next && srcFlow[b.next] ? (b.next === 'start' ? `${flowId}_start` : `${flowId}_${b.next}`) : b.next
+          }));
+        }
+        if (remapped.next && srcFlow[remapped.next]) remapped.next = remapped.next === 'start' ? `${flowId}_start` : `${flowId}_${remapped.next}`;
+        if (remapped.else_next && srcFlow[remapped.else_next]) remapped.else_next = remapped.else_next === 'start' ? `${flowId}_start` : `${flowId}_${remapped.else_next}`;
+        if (remapped.rules) remapped.rules = remapped.rules.map(r => ({
+          ...r, next: r.next && srcFlow[r.next] ? (r.next === 'start' ? `${flowId}_start` : `${flowId}_${r.next}`) : r.next
+        }));
+        updated[newId] = remapped;
+      });
+      updated._flows = [...(prev._flows || []), { id: flowId, template: template.id, name: template.name }];
+      if (!updated._startFlow) updated._startFlow = flowId;
+      return updated;
+    });
+    setShowFlowPicker(false);
+  }
+
+  function deleteFlow(flowId) {
+    setFlow(prev => {
+      const updated = { ...prev };
+      Object.keys(updated).forEach(k => {
+        if (typeof updated[k] === 'object' && updated[k]._flow === flowId) delete updated[k];
+      });
+      updated._flows = (updated._flows || []).filter(f => f.id !== flowId);
+      if (updated._startFlow === flowId && updated._flows.length > 0) {
+        const newStart = updated._flows[0].id;
+        const newStartScreen = Object.keys(updated).find(k =>
+          typeof updated[k] === 'object' && updated[k]._flow === newStart && (k.endsWith('_start') || k === 'start')
+        );
+        if (newStartScreen && newStartScreen !== 'start') {
+          updated.start = { ...updated[newStartScreen] };
+          delete updated[newStartScreen];
+          Object.keys(updated).forEach(k => {
+            const node = updated[k];
+            if (typeof node !== 'object' || Array.isArray(node)) return;
+            if (node.buttons) node.buttons = node.buttons.map(b => ({ ...b, next: b.next === newStartScreen ? 'start' : b.next }));
+            if (node.next === newStartScreen) node.next = 'start';
+            if (node.else_next === newStartScreen) node.else_next = 'start';
+            if (node.rules) node.rules = node.rules.map(r => ({ ...r, next: r.next === newStartScreen ? 'start' : r.next }));
+          });
+        }
+        updated._startFlow = newStart;
+      }
+      // Clean broken refs
+      Object.keys(updated).forEach(k => {
+        const node = updated[k];
+        if (typeof node !== 'object' || Array.isArray(node)) return;
+        if (node.buttons) node.buttons = node.buttons.map(b => ({ ...b, next: (b.next && !updated[b.next]) ? '' : b.next }));
+        if (node.next && !updated[node.next]) node.next = '';
+        if (node.else_next && !updated[node.else_next]) node.else_next = '';
+        if (node.rules) node.rules = node.rules.map(r => ({ ...r, next: (r.next && !updated[r.next]) ? '' : r.next }));
+      });
+      return updated;
+    });
+    setEditing(null);
+    setPreview('start');
+  }
+
+  function setStartFlow(flowId) {
+    setFlow(prev => {
+      const updated = { ...prev };
+      const currentStartFlow = updated._startFlow;
+      const newFlowStartScreen = Object.keys(updated).find(k =>
+        typeof updated[k] === 'object' && updated[k]._flow === flowId && (k === 'start' || k.endsWith('_start'))
+      );
+      if (!newFlowStartScreen || newFlowStartScreen === 'start') {
+        updated._startFlow = flowId;
+        return updated;
+      }
+      const oldStartNode = updated.start;
+      const newStartNode = updated[newFlowStartScreen];
+      const oldFlowStartId = `${currentStartFlow}_start`;
+      updated[oldFlowStartId] = { ...oldStartNode };
+      delete updated.start;
+      updated.start = { ...newStartNode };
+      delete updated[newFlowStartScreen];
+      Object.keys(updated).forEach(k => {
+        const node = updated[k];
+        if (typeof node !== 'object' || Array.isArray(node)) return;
+        const remap = (id) => id === 'start' ? oldFlowStartId : id === newFlowStartScreen ? 'start' : id;
+        if (node.buttons) node.buttons = node.buttons.map(b => ({ ...b, next: b.next ? remap(b.next) : b.next }));
+        if (node.next) node.next = remap(node.next);
+        if (node.else_next) node.else_next = remap(node.else_next);
+        if (node.rules) node.rules = node.rules.map(r => ({ ...r, next: r.next ? remap(r.next) : r.next }));
+      });
+      updated._startFlow = flowId;
+      return updated;
+    });
   }
 
   function deleteNode(id) {
@@ -478,9 +623,10 @@ export default function FlowBuilder() {
     setFlow(p => ({ ...p, [id]: { ...p[id], ...u } }));
   }
 
-  const nodeIds = flow ? Object.keys(flow).filter(k => k !== 'fallback') : [];
+  const flowGroups = flow ? getFlowGroups(flow) : [];
+  const allNodeIds = flow ? Object.keys(flow).filter(k => k !== 'fallback' && k !== '_flows' && k !== '_startFlow' && typeof flow[k] === 'object' && !Array.isArray(flow[k])) : [];
   const fallback = flow?.fallback || '';
-  const templateName = TEMPLATES.find(t => t.id === activeTemplate)?.name || null;
+  const getFlowForScreen = (screenId) => flowGroups.find(fg => fg.screenIds.includes(screenId));
 
   if (loading) return (
     <div className="flex items-center justify-center py-32">
@@ -509,7 +655,11 @@ export default function FlowBuilder() {
       {saved && <div className="mb-4 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 animate-slideDown">Flow saved! Your WhatsApp bot is now updated.</div>}
 
       {/* Expanded step — full width with preview inside */}
-      {editing && flow[editing] && (
+      {editing && flow[editing] && (() => {
+        const editFg = getFlowForScreen(editing);
+        const editFlowName = editFg?.name || null;
+        const editIdx = editFg ? editFg.screenIds.indexOf(editing) : allNodeIds.indexOf(editing);
+        return (
         <div className="mb-4 bg-white rounded-xl border border-emerald-300 shadow-md ring-1 ring-emerald-100 overflow-hidden">
           {/* Full-width header bar with collapse button at far right */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 cursor-pointer" onClick={() => setEditing(null)}>
@@ -518,9 +668,9 @@ export default function FlowBuilder() {
                 <Icon name={flow[editing].type === 'menu' ? 'messageSquare' : flow[editing].type === 'input' ? 'formInput' : flow[editing].type === 'condition' ? 'gitBranch' : 'save'} className="w-3.5 h-3.5 text-gray-500" />
               </div>
               <p className="text-sm font-semibold text-gray-900">
-                {friendlyName(editing, nodeIds.indexOf(editing), templateName)}
+                {friendlyName(editing, editIdx, editFlowName)}
               </p>
-              {nodeIds.indexOf(editing) === 0
+              {editIdx === 0
                 ? <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500 text-white">Start</span>
                 : <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
                     flow[editing].type === 'menu' ? 'bg-blue-50 text-blue-600' : flow[editing].type === 'input' ? 'bg-purple-50 text-purple-600' : flow[editing].type === 'condition' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-600'
@@ -532,38 +682,95 @@ export default function FlowBuilder() {
             </button>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 p-4">
-            <ScreenCard key={editing} nodeId={editing} node={flow[editing]} step={nodeIds.indexOf(editing) + 1}
-              allNodes={nodeIds} flow={flow} open={true} delay={0}
-              labels={labels} allowedActions={(() => { const t = flow[editing]?._template || activeTemplate; return TEMPLATES.find(x => x.id === t)?.actions || null; })()}
-              templateName={templateName} embedded={true}
+            <ScreenCard key={editing} nodeId={editing} node={flow[editing]} step={editIdx + 1}
+              allNodes={allNodeIds} flow={flow} open={true} delay={0}
+              labels={labels} allowedActions={(() => { const tpl = editFg?.template; return TEMPLATES.find(x => x.id === tpl)?.actions || null; })()}
+              templateName={editFlowName} embedded={true}
               onToggle={() => { setEditing(null); }}
               onUpdate={u => updateNode(editing, u)} onDelete={() => deleteNode(editing)} />
             <div className="lg:sticky lg:top-20 lg:self-start space-y-3">
-              <Preview flow={flow} screen={editing} onTap={setPreview} labels={labels} templateName={templateName} />
-              <FlowMap flow={flow} nodeIds={nodeIds} templateName={templateName} onJump={(id) => { setEditing(editing === id ? null : id); setPreview(id); }} />
+              <Preview flow={flow} screen={editing} onTap={setPreview} labels={labels} templateName={editFlowName} />
+              <FlowMap flow={flow} nodeIds={editFg?.screenIds || allNodeIds} templateName={editFlowName} onJump={(id) => { setEditing(editing === id ? null : id); setPreview(id); }} />
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
-      {/* Collapsed step list */}
+      {/* Flow Groups */}
+      {flowGroups.map(fg => {
+        const tpl = TEMPLATES.find(t => t.id === fg.template);
+        return (
+          <div key={fg.id} className="mb-4 rounded-xl border border-gray-200 overflow-hidden">
+            {/* Flow Header */}
+            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <Icon name={tpl?.icon || 'messageSquare'} className="w-5 h-5 text-gray-500" />
+                <span className="text-sm font-bold text-gray-900">{fg.name}</span>
+                {fg.isStart && (
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-500 text-white">Starting Flow</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {!fg.isStart && (
+                  <button onClick={() => setStartFlow(fg.id)}
+                    className="text-[10px] font-medium text-emerald-600 hover:text-emerald-700 px-2 py-1 rounded hover:bg-emerald-50 transition">
+                    Set as Start
+                  </button>
+                )}
+                {flowGroups.length > 1 && (
+                  <button onClick={() => deleteFlow(fg.id)}
+                    className="text-[10px] font-medium text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50 transition">
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+            {/* Screens */}
+            <div className="p-2">
+              {fg.screenIds.map((nodeId, idx) => (
+                nodeId === editing ? null : (
+                  <ScreenCard key={nodeId} nodeId={nodeId} node={flow[nodeId]} step={idx + 1}
+                    allNodes={allNodeIds} flow={flow} open={false} delay={0}
+                    labels={labels} allowedActions={tpl?.actions || null}
+                    templateName={fg.name}
+                    onToggle={() => { setEditing(editing === nodeId ? null : nodeId); setPreview(nodeId); }}
+                    onUpdate={u => updateNode(nodeId, u)} onDelete={() => deleteNode(nodeId)} />
+                )
+              ))}
+              {/* Add Screen */}
+              <div className="border border-dashed border-gray-200 rounded-xl p-3 flex items-center gap-3 bg-gray-50/50 mt-1">
+                <span className="text-xs font-medium text-gray-400 shrink-0">Add screen:</span>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => addNode('menu', fg.id)}
+                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/50 transition-all flex items-center gap-1.5 shadow-sm">
+                    <Icon name="messageSquare" className="w-3.5 h-3.5" /> Message
+                  </button>
+                  <button onClick={() => addNode('input', fg.id)}
+                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50/50 transition-all flex items-center gap-1.5 shadow-sm">
+                    <Icon name="formInput" className="w-3.5 h-3.5" /> Question
+                  </button>
+                  <button onClick={() => addNode('condition', fg.id)}
+                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50/50 transition-all flex items-center gap-1.5 shadow-sm">
+                    <Icon name="gitBranch" className="w-3.5 h-3.5" /> Route
+                  </button>
+                  <button onClick={() => addNode('action', fg.id)}
+                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/50 transition-all flex items-center gap-1.5 shadow-sm">
+                    <Icon name="save" className="w-3.5 h-3.5" /> Action
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+
+      {/* Add a new flow */}
       <div className="mb-4">
-        {nodeIds.map((nodeId, idx) => (
-          nodeId === editing ? null : (
-            <ScreenCard key={nodeId} nodeId={nodeId} node={flow[nodeId]} step={idx + 1}
-              allNodes={nodeIds} flow={flow} open={false} delay={0}
-              labels={labels} allowedActions={(() => { const t = flow[nodeId]?._template || activeTemplate; return TEMPLATES.find(x => x.id === t)?.actions || null; })()}
-              templateName={templateName}
-              onToggle={() => { setEditing(editing === nodeId ? null : nodeId); setPreview(nodeId); }}
-              onUpdate={u => updateNode(nodeId, u)} onDelete={() => deleteNode(nodeId)} />
-          )
-        ))}
-
-        {/* Switch Template */}
-        <button onClick={() => setIsNewFlow(true)}
-          className="w-full border border-dashed border-gray-200 rounded-xl p-3 flex items-center justify-center gap-2 bg-gray-50/50 hover:border-emerald-400 hover:bg-emerald-50/30 transition-all group">
-          <Icon name="clipboard" className="w-4 h-4 text-gray-400 group-hover:text-emerald-600" />
-          <span className="text-sm font-medium text-gray-500 group-hover:text-emerald-600">Use a different template</span>
+        <button onClick={() => setShowFlowPicker(true)}
+          className="w-full border border-dashed border-emerald-200 rounded-xl p-4 flex items-center justify-center gap-2 bg-emerald-50/30 hover:border-emerald-400 hover:bg-emerald-50/60 transition-all group">
+          <svg className="w-5 h-5 text-emerald-400 group-hover:text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
+          <span className="text-sm font-semibold text-emerald-600 group-hover:text-emerald-700">Add a new flow</span>
         </button>
       </div>
 
@@ -598,6 +805,34 @@ export default function FlowBuilder() {
           </div>
         )}
       </div>
+
+      {/* Flow Picker Modal */}
+      {showFlowPicker && (
+        <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-4" onClick={() => setShowFlowPicker(false)}>
+          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[80vh] overflow-y-auto p-6 shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-bold text-gray-900">Add a new flow</h2>
+              <button onClick={() => setShowFlowPicker(false)} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-gray-100 transition">
+                <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">Pick a template to create a new flow. You can customize everything after.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {TEMPLATES.map(t => (
+                <button key={t.id} onClick={() => addNewFlow(t)}
+                  className="text-left bg-white rounded-xl border border-gray-100 shadow-sm p-4 hover:border-emerald-300 hover:shadow-md transition-all duration-200 group">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon name={t.icon} className="w-6 h-6 text-gray-500 group-hover:text-emerald-600 transition" />
+                    <h3 className="text-sm font-bold text-gray-900 group-hover:text-emerald-700 transition">{t.name}</h3>
+                  </div>
+                  <p className="text-xs text-gray-600 mb-2">{t.desc}</p>
+                  <p className="text-[10px] text-gray-400">Works for: {t.industries}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -632,8 +867,14 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, a
     onUpdate({ rules: (node.rules || []).filter((_, j) => j !== i) });
   }
 
-  const allVariables = Object.values(flow).filter(n => typeof n === 'object' && n?.type === 'input' && n?.variable).map(n => n.variable);
+  const allVariables = Object.values(flow).filter(n => typeof n === 'object' && !Array.isArray(n) && n?.type === 'input' && n?.variable).map(n => n.variable);
   const name = friendlyName(nodeId, allNodes.indexOf(nodeId), templateName);
+
+  // Flow groups for cross-flow linking
+  const flowGroupsLocal = flow?._flows ? flow._flows.map(m => ({
+    ...m,
+    screenIds: Object.keys(flow).filter(k => typeof flow[k] === 'object' && !Array.isArray(flow[k]) && flow[k]._flow === m.id)
+  })) : [{ id: 'default', name: templateName || 'Flow', screenIds: allNodes }];
 
   const typeBadge = nodeType === 'input' ? 'bg-purple-50 text-purple-600'
     : nodeType === 'condition' ? 'bg-amber-50 text-amber-600'
@@ -667,9 +908,19 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, a
       <select value={value || ''} onChange={e => onChange(e.target.value)}
         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
         <option value="">Pick the next step...</option>
-        {allNodes.filter(n => n !== nodeId).map(n => (
-          <option key={n} value={n}>{friendlyName(n, allNodes.indexOf(n), templateName)}</option>
-        ))}
+        {flowGroupsLocal.length <= 1 ? (
+          allNodes.filter(n => n !== nodeId).map(n => (
+            <option key={n} value={n}>{friendlyName(n, allNodes.indexOf(n), flowGroupsLocal[0]?.name)}</option>
+          ))
+        ) : (
+          flowGroupsLocal.map(fg => (
+            <optgroup key={fg.id} label={fg.name}>
+              {fg.screenIds.filter(n => n !== nodeId).map(n => (
+                <option key={n} value={n}>{friendlyName(n, fg.screenIds.indexOf(n), fg.name)}</option>
+              ))}
+            </optgroup>
+          ))
+        )}
       </select>
       {helpText && <p className="text-[10px] text-gray-400 mt-0.5">{helpText}</p>}
     </div>
@@ -938,9 +1189,19 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, a
                           <select value={btn.next || ''} onChange={e => updateBtn(idx, { next: e.target.value })}
                             className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white mt-1.5">
                             <option value="">Where should this button lead to?</option>
-                            {allNodes.filter(n => n !== nodeId).map(n => (
-                              <option key={n} value={n}>{friendlyName(n, allNodes.indexOf(n), templateName)}</option>
-                            ))}
+                            {flowGroupsLocal.length <= 1 ? (
+                              allNodes.filter(n => n !== nodeId).map(n => (
+                                <option key={n} value={n}>{friendlyName(n, allNodes.indexOf(n), flowGroupsLocal[0]?.name)}</option>
+                              ))
+                            ) : (
+                              flowGroupsLocal.map(fg => (
+                                <optgroup key={fg.id} label={fg.name}>
+                                  {fg.screenIds.filter(n => n !== nodeId).map(n => (
+                                    <option key={n} value={n}>{friendlyName(n, fg.screenIds.indexOf(n), fg.name)}</option>
+                                  ))}
+                                </optgroup>
+                              ))
+                            )}
                           </select>
                         )}
                         {btn.action === 'text' && (
@@ -1032,9 +1293,19 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, a
                         <select value={rule.next || ''} onChange={e => updateRule(idx, { next: e.target.value })}
                           className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-amber-400 bg-white">
                           <option value="">Pick a step...</option>
-                          {allNodes.filter(n => n !== nodeId).map(n => (
-                            <option key={n} value={n}>{friendlyName(n, allNodes.indexOf(n), templateName)}</option>
-                          ))}
+                          {flowGroupsLocal.length <= 1 ? (
+                            allNodes.filter(n => n !== nodeId).map(n => (
+                              <option key={n} value={n}>{friendlyName(n, allNodes.indexOf(n), flowGroupsLocal[0]?.name)}</option>
+                            ))
+                          ) : (
+                            flowGroupsLocal.map(fg => (
+                              <optgroup key={fg.id} label={fg.name}>
+                                {fg.screenIds.filter(n => n !== nodeId).map(n => (
+                                  <option key={n} value={n}>{friendlyName(n, fg.screenIds.indexOf(n), fg.name)}</option>
+                                ))}
+                              </optgroup>
+                            ))
+                          )}
                         </select>
                         <button onClick={() => removeRule(idx)} className="text-xs text-red-400 hover:text-red-600 shrink-0">Remove</button>
                       </div>

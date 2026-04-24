@@ -426,6 +426,7 @@ export default function FlowBuilder() {
   const [showGuide, setShowGuide] = useState(false);
   const [isNewFlow, setIsNewFlow] = useState(false);
   const [activeTemplate, setActiveTemplate] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => { load(); }, []);
 
@@ -526,7 +527,7 @@ export default function FlowBuilder() {
   if (isNewFlow || !flow) return <TemplatePicker onPick={pickTemplate} />;
 
   return (
-    <div className="animate-fadeIn max-w-5xl min-w-0">
+    <div className="animate-fadeIn max-w-6xl min-w-0">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
         <div>
@@ -552,82 +553,102 @@ export default function FlowBuilder() {
       {/* Getting Started Guide */}
       <GettingStarted collapsed={!showGuide} onToggle={() => setShowGuide(!showGuide)} />
 
-      {/* Preview + Map */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
-        <Preview flow={flow} screen={preview} onTap={setPreview} labels={labels} />
-        <FlowMap flow={flow} nodeIds={nodeIds} onJump={(id) => { setEditing(editing === id ? null : id); setPreview(id); }} />
-      </div>
+      {/* Main Layout: Steps (primary) + Preview (sidebar) */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 mb-4">
 
-      {/* Labels + Fallback */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-4">
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 animate-slideUp" style={{ animationDelay: '180ms' }}>
-          <h2 className="text-sm font-bold text-gray-900 mb-3">Business Labels</h2>
-          <div className="space-y-3">
-            {Object.entries(LABEL_HELP).map(([key, h]) => (
-              <div key={key}>
-                <label className="text-xs font-medium text-gray-600 mb-1 block">{h.title}</label>
-                <input value={labels[key] || ''} onChange={e => setLabels(p => ({ ...p, [key]: e.target.value }))}
-                  placeholder={h.example.split(', ')[0]}
-                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100 transition" />
-                <p className="text-[10px] text-gray-400 mt-0.5">{h.desc}</p>
-              </div>
-            ))}
+        {/* LEFT — Bot Steps (PRIMARY) */}
+        <div>
+          <div className="mb-3 animate-slideUp" style={{ animationDelay: '120ms' }}>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold text-gray-900">Your Bot's Steps</h2>
+              <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{nodeIds.length} steps</span>
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5">Each step is one message in the conversation. Tap to edit.</p>
+          </div>
+
+          {nodeIds.map((nodeId, idx) => (
+            <ScreenCard key={nodeId} nodeId={nodeId} node={flow[nodeId]} step={idx + 1}
+              allNodes={nodeIds} flow={flow} open={editing === nodeId} delay={180 + idx * 60}
+              labels={labels} allowedActions={TEMPLATES.find(t => t.id === activeTemplate)?.actions || null}
+              onToggle={() => { setEditing(editing === nodeId ? null : nodeId); setPreview(nodeId); }}
+              onUpdate={u => updateNode(nodeId, u)} onDelete={() => deleteNode(nodeId)} />
+          ))}
+
+          {/* Add Step */}
+          <div className="mt-3 animate-slideUp" style={{ animationDelay: `${240 + nodeIds.length * 60}ms` }}>
+            <p className="text-xs font-semibold text-gray-600 mb-2">Add a new step:</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button onClick={() => addNode('menu')}
+                className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all flex flex-col items-center gap-1">
+                <Icon name="messageSquare" className="w-5 h-5" />
+                Send Message
+                <p className="text-[10px] font-normal text-gray-400">Text + buttons</p>
+              </button>
+              <button onClick={() => addNode('input')}
+                className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50/30 transition-all flex flex-col items-center gap-1">
+                <Icon name="formInput" className="w-5 h-5" />
+                Ask Question
+                <p className="text-[10px] font-normal text-gray-400">Name, email, phone...</p>
+              </button>
+              <button onClick={() => addNode('condition')}
+                className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50/30 transition-all flex flex-col items-center gap-1">
+                <Icon name="gitBranch" className="w-5 h-5" />
+                Smart Route
+                <p className="text-[10px] font-normal text-gray-400">Go to different steps based on answer</p>
+              </button>
+              <button onClick={() => addNode('action')}
+                className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/30 transition-all flex flex-col items-center gap-1">
+                <Icon name="save" className="w-5 h-5" />
+                Action Step
+                <p className="text-[10px] font-normal text-gray-400">Save data, notify, or follow up</p>
+              </button>
+            </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-4 animate-slideUp" style={{ animationDelay: '240ms' }}>
-          <h2 className="text-sm font-bold text-gray-900 mb-1">Fallback Message</h2>
-          <p className="text-xs text-gray-500 mb-3">Sent when customer types something instead of tapping a button</p>
-          <textarea value={fallback} onChange={e => setFlow(p => ({ ...p, fallback: e.target.value }))} rows={3}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100 transition resize-none" />
+
+        {/* RIGHT — Live Preview + Flow Map (sticky sidebar) */}
+        <div className="lg:sticky lg:top-20 lg:self-start space-y-3">
+          <Preview flow={flow} screen={preview} onTap={setPreview} labels={labels} />
+          <FlowMap flow={flow} nodeIds={nodeIds} onJump={(id) => { setEditing(editing === id ? null : id); setPreview(id); }} />
         </div>
       </div>
 
-      {/* Steps */}
-      <div className="mb-3 animate-slideUp" style={{ animationDelay: '300ms' }}>
-        <div className="flex items-center gap-2">
-          <h2 className="text-sm font-bold text-gray-900">Your Bot's Steps</h2>
-          <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">{nodeIds.length} steps</span>
-        </div>
-        <p className="text-xs text-gray-500 mt-0.5">Each step is one message in the conversation. Tap to edit. Drag the order by adding/removing.</p>
-      </div>
-
-      {nodeIds.map((nodeId, idx) => (
-        <ScreenCard key={nodeId} nodeId={nodeId} node={flow[nodeId]} step={idx + 1}
-          allNodes={nodeIds} flow={flow} open={editing === nodeId} delay={360 + idx * 60}
-          labels={labels} allowedActions={TEMPLATES.find(t => t.id === activeTemplate)?.actions || null}
-          onToggle={() => { setEditing(editing === nodeId ? null : nodeId); setPreview(nodeId); }}
-          onUpdate={u => updateNode(nodeId, u)} onDelete={() => deleteNode(nodeId)} />
-      ))}
-
-      {/* Add Step */}
-      <div className="mt-3 animate-slideUp" style={{ animationDelay: `${360 + nodeIds.length * 60}ms` }}>
-        <p className="text-xs font-semibold text-gray-600 mb-2">Add a new step:</p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <button onClick={() => addNode('menu')}
-            className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all flex flex-col items-center gap-1">
-            <Icon name="messageSquare" className="w-5 h-5" />
-            Send Message
-            <p className="text-[10px] font-normal text-gray-400">Text + buttons</p>
-          </button>
-          <button onClick={() => addNode('input')}
-            className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50/30 transition-all flex flex-col items-center gap-1">
-            <Icon name="formInput" className="w-5 h-5" />
-            Ask Question
-            <p className="text-[10px] font-normal text-gray-400">Name, email, phone...</p>
-          </button>
-          <button onClick={() => addNode('condition')}
-            className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50/30 transition-all flex flex-col items-center gap-1">
-            <Icon name="gitBranch" className="w-5 h-5" />
-            Smart Route
-            <p className="text-[10px] font-normal text-gray-400">Go to different steps based on answer</p>
-          </button>
-          <button onClick={() => addNode('action')}
-            className="py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/30 transition-all flex flex-col items-center gap-1">
-            <Icon name="save" className="w-5 h-5" />
-            Action Step
-            <p className="text-[10px] font-normal text-gray-400">Save data, notify, or follow up</p>
-          </button>
-        </div>
+      {/* Settings (collapsible) — Labels + Fallback */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-4 animate-slideUp" style={{ animationDelay: '300ms' }}>
+        <button onClick={() => setShowSettings(!showSettings)}
+          className="w-full flex items-center justify-between px-4 py-3 text-left">
+          <div className="flex items-center gap-2">
+            <Icon name="settings" className="w-4 h-4 text-gray-400" />
+            <span className="text-sm font-bold text-gray-900">Settings</span>
+            <span className="text-[10px] text-gray-400">Labels, fallback message</span>
+          </div>
+          <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${showSettings ? 'rotate-180' : ''}`}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        {showSettings && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 px-4 pb-4">
+            <div>
+              <h3 className="text-xs font-semibold text-gray-700 mb-2">Business Labels</h3>
+              <div className="space-y-3">
+                {Object.entries(LABEL_HELP).map(([key, h]) => (
+                  <div key={key}>
+                    <label className="text-xs font-medium text-gray-600 mb-1 block">{h.title}</label>
+                    <input value={labels[key] || ''} onChange={e => setLabels(p => ({ ...p, [key]: e.target.value }))}
+                      placeholder={h.example.split(', ')[0]}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100 transition" />
+                    <p className="text-[10px] text-gray-400 mt-0.5">{h.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h3 className="text-xs font-semibold text-gray-700 mb-2">Fallback Message</h3>
+              <p className="text-[10px] text-gray-400 mb-2">Sent when customer types something instead of tapping a button</p>
+              <textarea value={fallback} onChange={e => setFlow(p => ({ ...p, fallback: e.target.value }))} rows={3}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-100 transition resize-none" />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

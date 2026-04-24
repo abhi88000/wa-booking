@@ -579,11 +579,6 @@ export default function FlowBuilder() {
               className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/50 transition-all flex items-center gap-1.5 shadow-sm">
               <Icon name="save" className="w-3.5 h-3.5" /> Action
             </button>
-            <div className="w-px h-6 bg-gray-200 mx-1" />
-            <button onClick={() => setIsNewFlow(true)}
-              className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/50 transition-all flex items-center gap-1.5 shadow-sm">
-              <Icon name="clipboard" className="w-3.5 h-3.5" /> Use Template
-            </button>
           </div>
         </div>
       </div>

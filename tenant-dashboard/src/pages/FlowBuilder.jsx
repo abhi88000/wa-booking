@@ -471,6 +471,12 @@ export default function FlowBuilder() {
   }
 
   function pickTemplate(template) {
+    // If there's already a flow with content, confirm before replacing
+    if (flow && Object.keys(flow).filter(k => k !== 'fallback').length > 0) {
+      if (!window.confirm('This will replace your current flow with the selected template. Your unsaved changes will be lost. Continue?')) {
+        return;
+      }
+    }
     if (template.flow) {
       setFlow(template.flow);
     } else {
@@ -478,6 +484,7 @@ export default function FlowBuilder() {
     }
     setActiveTemplate(template.id);
     setIsNewFlow(false);
+    setEditing(null);
   }
 
   function getDefault() {

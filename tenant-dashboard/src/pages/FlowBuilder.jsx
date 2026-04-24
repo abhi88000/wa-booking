@@ -58,31 +58,36 @@ const TEMPLATES = [
   {
     id: 'lead_capture',
     name: 'Lead Capture',
-    desc: 'Collect customer details and save as a lead',
+    desc: 'Collect name, email, and interest from potential customers',
     icon: 'target',
     industries: 'Real Estate, Education, Insurance',
     actions: ['next', 'text', 'ai'],
     flow: {
       start: { message: 'Hi! 👋 Welcome. How can we help you?', buttons: [
-        { id: 'go', label: 'Get Started', action: 'next', next: '' },
-        { id: 'info', label: 'Learn More', action: 'text', response: 'We offer [describe your services]. Want to get started?' },
+        { id: 'go', label: 'Get Started', action: 'next', next: 'screen_ask_name' },
         { id: 'talk', label: 'Talk to Someone', action: 'ai' }
       ] },
-      fallback: 'Please choose an option from the menu, or type "menu" to see options again.'
+      screen_ask_name: { type: 'input', message: 'What is your name?', input_type: 'name', variable: 'name', next: 'screen_ask_email' },
+      screen_ask_email: { type: 'input', message: 'Thanks {{name}}! What is your email?', input_type: 'email', variable: 'email', next: 'screen_save_lead' },
+      screen_save_lead: { type: 'action', action_type: 'save_record', record_type: 'lead', message: 'Thank you {{name}}! Our team will reach out shortly. 🙌', next: '' },
+      fallback: 'Please answer the question above.'
     }
   },
   {
     id: 'feedback',
     name: 'Customer Feedback',
-    desc: 'Collect ratings and feedback after a service',
+    desc: 'Collect ratings and comments after a service',
     icon: 'star',
     industries: 'Restaurants, Hotels, Salons',
     actions: ['next', 'text'],
     flow: {
       start: { message: 'Hi! We\'d love to hear about your experience.', buttons: [
-        { id: 'go', label: 'Give Feedback', action: 'next', next: '' },
+        { id: 'go', label: 'Give Feedback', action: 'next', next: 'screen_ask_rating' },
         { id: 'skip', label: 'No Thanks', action: 'text', response: 'No problem! Have a great day. 😊' }
       ] },
+      screen_ask_rating: { type: 'input', message: 'How would you rate us? (1-5)', input_type: 'number', variable: 'rating', next: 'screen_ask_comment' },
+      screen_ask_comment: { type: 'input', message: 'Any comments you\'d like to share?', input_type: 'text', variable: 'feedback', next: 'screen_save_feedback' },
+      screen_save_feedback: { type: 'action', action_type: 'save_record', record_type: 'feedback', message: 'Thank you for your feedback! 🙏', next: '' },
       fallback: 'Please answer the question above.'
     }
   },
@@ -99,23 +104,26 @@ const TEMPLATES = [
         { id: 'location', label: 'Our Location', action: 'text', response: 'We are located at [Your Address].' },
         { id: 'talk', label: 'Talk to a Human', action: 'ai' }
       ] },
-      fallback: 'Please choose from the menu above, or type "menu" to see options again.'
+      fallback: 'Please choose from the menu above.'
     }
   },
   {
     id: 'order',
     name: 'Order / Inquiry',
-    desc: 'Collect product interest and process orders',
+    desc: 'Collect product interest and contact details',
     icon: 'shoppingCart',
     industries: 'E-commerce, Wholesale, Services',
     actions: ['next', 'text', 'ai'],
     flow: {
       start: { message: 'Hi! 👋 Welcome to our store.', buttons: [
-        { id: 'order', label: 'Place an Order', action: 'next', next: '' },
-        { id: 'status', label: 'Order Status', action: 'text', response: 'Please share your order number and we\'ll check for you.' },
+        { id: 'order', label: 'Place an Order', action: 'next', next: 'screen_ask_product' },
+        { id: 'status', label: 'Order Status', action: 'text', response: 'Please share your order number.' },
         { id: 'help', label: 'Help', action: 'ai' }
       ] },
-      fallback: 'Please answer the question, or type "menu" to start over.'
+      screen_ask_product: { type: 'input', message: 'What product are you interested in?', input_type: 'text', variable: 'product', next: 'screen_ask_name' },
+      screen_ask_name: { type: 'input', message: 'What is your name?', input_type: 'name', variable: 'name', next: 'screen_save_order' },
+      screen_save_order: { type: 'action', action_type: 'save_record', record_type: 'order', message: 'Thanks {{name}}! Your inquiry for {{product}} has been received. 📦', next: '' },
+      fallback: 'Please answer the question above.'
     }
   },
   {
@@ -476,18 +484,36 @@ export default function FlowBuilder() {
       return;
     }
 
-    // Append: add the template's start screen as a new step
-    const templateStart = templateFlow.start || templateFlow[templateNodes[0]];
-    if (!templateStart) { setIsNewFlow(false); return; }
-    const newId = 'screen_' + Date.now();
-    const node = JSON.parse(JSON.stringify(templateStart));
-    // Clear button next references since they'd point to non-existent nodes
-    if (node.buttons) {
-      node.buttons.forEach(btn => { if (btn.action === 'next') btn.next = ''; });
-    }
-    // Tag the node with its source template so button actions are filtered correctly
-    node._template = template.id;
-    setFlow(prev => ({ ...prev, [newId]: node }));
+    // Append: add all template steps with clean prefixed IDs
+    const prefix = template.id.substring(0, 3); // e.g. 'fee', 'lea', 'ord'
+    const seq = Date.now().toString().slice(-4);
+    const idMap = {};
+    templateNodes.forEach(id => {
+      // e.g. screen_ask_rating → screen_fee_ask_rating
+      const cleanId = id === 'start' ? `screen_${prefix}_start_${seq}` : id.replace('screen_', `screen_${prefix}_`);
+      idMap[id] = cleanId;
+    });
+
+    const newNodes = {};
+    templateNodes.forEach(id => {
+      const node = JSON.parse(JSON.stringify(templateFlow[id]));
+      node._template = template.id;
+      if (node.next && idMap[node.next]) node.next = idMap[node.next];
+      if (node.else_next && idMap[node.else_next]) node.else_next = idMap[node.else_next];
+      if (node.buttons) {
+        node.buttons.forEach(btn => {
+          if (btn.next && idMap[btn.next]) btn.next = idMap[btn.next];
+        });
+      }
+      if (node.rules) {
+        node.rules.forEach(rule => {
+          if (rule.next && idMap[rule.next]) rule.next = idMap[rule.next];
+        });
+      }
+      newNodes[idMap[id]] = node;
+    });
+
+    setFlow(prev => ({ ...prev, ...newNodes }));
     setIsNewFlow(false);
   }
 

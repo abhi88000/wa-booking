@@ -553,10 +553,6 @@ export default function FlowBuilder() {
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-lg sm:text-xl font-extrabold text-gray-900 tracking-tight">Flow Builder</h1>
         <div className="flex gap-2">
-          <button onClick={() => { setIsNewFlow(true); }}
-            className="px-4 py-2.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition flex items-center gap-1.5">
-            <Icon name="clipboard" className="w-3.5 h-3.5" /> Templates
-          </button>
           <button onClick={save} disabled={saving}
             className="px-6 py-2.5 text-white text-sm font-semibold rounded-xl disabled:opacity-50 transition-all duration-300 hover:shadow-lg hover:shadow-emerald-200 active:scale-[0.98]"
             style={{ background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)' }}>
@@ -638,6 +634,12 @@ export default function FlowBuilder() {
             <button onClick={() => addNode('action')}
               className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/50 transition-all flex items-center gap-1.5 shadow-sm">
               <Icon name="save" className="w-3.5 h-3.5" /> Action
+            </button>
+            <div className="w-px h-6 bg-gray-200 mx-1" />
+            <button onClick={() => setIsNewFlow(true)}
+              className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/50 transition-all flex items-center gap-1.5 shadow-sm">
+              <Icon name="clipboard" className="w-3.5 h-3.5" /> Use Template
+            </button>
             </button>
           </div>
         </div>

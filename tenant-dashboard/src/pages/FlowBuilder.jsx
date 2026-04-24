@@ -418,42 +418,10 @@ export default function FlowBuilder() {
 
   function pickTemplate(template) {
     const templateFlow = template.flow || getDefault();
-
-    // If no existing flow, just set the template as the flow
-    if (!flow || Object.keys(flow).filter(k => k !== 'fallback').length === 0) {
-      setFlow(templateFlow);
-      setActiveTemplate(template.id);
-      setIsNewFlow(false);
-      setEditing(null);
-      return;
-    }
-
-    // Existing flow — ask user what to do
-    const choice = window.confirm(
-      'You already have a flow.\n\n' +
-      'OK = Replace with this template (current flow will be lost)\n' +
-      'Cancel = Add this template\'s buttons to your current start screen'
-    );
-
-    if (choice) {
-      // Replace entire flow
-      setFlow(templateFlow);
-      setActiveTemplate(template.id);
-      setIsNewFlow(false);
-      setEditing(null);
-    } else {
-      // Merge: add template buttons into existing start screen
-      const templateStart = templateFlow.start || templateFlow[Object.keys(templateFlow).filter(k => k !== 'fallback')[0]];
-      const newBtns = (templateStart.buttons || []).map(btn => ({
-        ...btn,
-        id: `btn_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
-      }));
-      setFlow(prev => ({
-        ...prev,
-        start: { ...prev.start, buttons: [...(prev.start?.buttons || []), ...newBtns] }
-      }));
-      setIsNewFlow(false);
-    }
+    setFlow(templateFlow);
+    setActiveTemplate(template.id);
+    setIsNewFlow(false);
+    setEditing(null);
   }
 
   function getDefault() {

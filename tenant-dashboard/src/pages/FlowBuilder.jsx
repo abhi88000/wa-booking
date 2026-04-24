@@ -231,6 +231,7 @@ function TemplatePicker({ onPick }) {
 function Preview({ flow, screen, onTap, labels, templateName }) {
   const node = flow?.[screen];
   const [booking, setBooking] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
   if (!node) return null;
   const btns = node.buttons || [];
   const nodeType = node.type || 'menu';
@@ -293,9 +294,29 @@ function Preview({ flow, screen, onTap, labels, templateName }) {
                   )}
                 </div>
                 {btns.length > 3 && (
-                  <div className="mt-2 bg-white rounded-lg shadow-sm text-center py-1.5 text-[12px] text-[#00a5f4] font-medium max-w-[250px]">
-                    View Options ({btns.length})
-                  </div>
+                  <>
+                    <div className="mt-2 bg-white rounded-lg shadow-sm text-center py-2 text-[12px] text-[#00a5f4] font-medium max-w-[250px] cursor-pointer hover:bg-blue-50/50 transition flex items-center justify-center gap-1" onClick={() => setListOpen(!listOpen)}>
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16"/></svg>
+                      View Options
+                    </div>
+                    {listOpen && (
+                      <div className="mt-1 bg-white rounded-lg shadow-md border border-gray-200 max-w-[250px] overflow-hidden animate-slideDown">
+                        <div className="bg-[#075e54] px-3 py-1.5 flex items-center justify-between">
+                          <span className="text-white text-[11px] font-medium">Select an option</span>
+                          <button onClick={() => setListOpen(false)} className="text-white/70 text-[10px] hover:text-white">✕</button>
+                        </div>
+                        {btns.map((b, i) => (
+                          <button key={i} onClick={() => {
+                            setListOpen(false);
+                            if (b.action === 'next' && b.next && flow[b.next]) onTap(b.next);
+                            if (['booking_flow', 'booking_status', 'booking_cancel'].includes(b.action)) setBooking(b.action);
+                          }} className={`block w-full text-left px-3 py-2 text-[12px] text-gray-800 hover:bg-emerald-50 transition ${i < btns.length - 1 ? 'border-b border-gray-100' : ''}`}>
+                            <span className="text-[#00a5f4]">●</span> {b.label || '(no label)'}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 )}
                 {nodeType === 'input' && (
                   <div className="mt-2 max-w-[250px]">
@@ -776,7 +797,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, a
                   Reply Buttons <span className="font-normal text-gray-400">— what can the customer tap?</span>
                 </label>
                 {btns.length > 3 && (
-                  <p className="text-[10px] text-amber-600 bg-amber-50 px-2 py-1 rounded mb-2">WhatsApp shows max 3 buttons. Extra ones appear as a list menu.</p>
+                  <p className="text-[10px] text-amber-600 bg-amber-50 px-2 py-1 rounded mb-2">If more than 3 buttons are added, WhatsApp will show a single list menu button instead of individual buttons.</p>
                 )}
                 <div className="space-y-2">
                   {btns.map((btn, idx) => (

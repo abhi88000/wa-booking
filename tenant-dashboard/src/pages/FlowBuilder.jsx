@@ -45,6 +45,7 @@ const TEMPLATES = [
     desc: 'Collect name, email, and interest from potential customers',
     icon: 'target',
     industries: 'Real Estate, Education, Insurance',
+    actions: ['next', 'text', 'ai'],
     flow: {
       start: { message: 'Hi! 👋 Welcome. Let me help you get started.\n\nI just need a few details.', buttons: [{ id: 'go', label: 'Get Started', action: 'next', next: 'screen_ask_name' }] },
       screen_ask_name: { type: 'input', message: 'What is your name?', input_type: 'text', variable: 'name', next: 'screen_ask_email' },
@@ -60,6 +61,7 @@ const TEMPLATES = [
     desc: 'Ask for a rating and collect comments after a service',
     icon: 'star',
     industries: 'Restaurants, Hotels, Salons',
+    actions: ['next', 'text'],
     flow: {
       start: { message: 'Hi! We\'d love to hear about your experience. It takes just 30 seconds.', buttons: [{ id: 'go', label: 'Give Feedback', action: 'next', next: 'screen_rating' }] },
       screen_rating: { type: 'input', message: 'How would you rate us? (1 = Poor, 5 = Excellent)', input_type: 'rating', variable: 'rating', next: 'screen_check' },
@@ -76,6 +78,7 @@ const TEMPLATES = [
     desc: 'Let customers book appointments directly on WhatsApp',
     icon: 'calendar',
     industries: 'Clinics, Salons, Gyms, Consultants',
+    actions: ['booking_flow', 'booking_status', 'booking_cancel', 'next', 'text'],
     flow: {
       start: { message: 'Welcome! How can I help you today?', buttons: [
         { id: 'book', label: 'Book Appointment', action: 'booking_flow' },
@@ -91,6 +94,7 @@ const TEMPLATES = [
     desc: 'Answer common questions with menu buttons',
     icon: 'helpCircle',
     industries: 'Any business',
+    actions: ['text', 'ai', 'next'],
     flow: {
       start: { message: 'Welcome! 👋 What would you like to know?', buttons: [
         { id: 'hours', label: 'Business Hours', action: 'text', response: 'We are open Mon-Sat, 9 AM to 6 PM.' },
@@ -107,6 +111,7 @@ const TEMPLATES = [
     desc: 'Collect product interest and contact details for follow-up',
     icon: 'shoppingCart',
     industries: 'E-commerce, Wholesale, Services',
+    actions: ['next', 'text', 'ai'],
     flow: {
       start: { message: 'Hi! 👋 Welcome to our store.\n\nWhat are you looking for today?', buttons: [
         { id: 'order', label: 'Place an Order', action: 'next', next: 'screen_product' },
@@ -126,6 +131,7 @@ const TEMPLATES = [
     desc: 'Build your own custom flow step by step',
     icon: 'edit',
     industries: 'Custom',
+    actions: null,
     flow: null
   },
 ];
@@ -454,6 +460,7 @@ export default function FlowBuilder() {
   const [error, setError] = useState('');
   const [showGuide, setShowGuide] = useState(false);
   const [isNewFlow, setIsNewFlow] = useState(false);
+  const [activeTemplate, setActiveTemplate] = useState(null);
 
   useEffect(() => { load(); }, []);
 
@@ -462,6 +469,13 @@ export default function FlowBuilder() {
       const { data } = await api.getFlowConfig();
       if (data.flow_config) {
         setFlow(data.flow_config);
+        // Detect template from existing flow actions
+        const usedActions = new Set();
+        Object.values(data.flow_config).forEach(n => {
+          (n.buttons || []).forEach(b => b.action && usedActions.add(b.action));
+        });
+        const match = TEMPLATES.find(t => t.actions && t.actions.some(a => usedActions.has(a) && !['next','text'].includes(a)));
+        if (match) setActiveTemplate(match.id);
       } else {
         setIsNewFlow(true);
       }
@@ -476,6 +490,7 @@ export default function FlowBuilder() {
     } else {
       setFlow(getDefault());
     }
+    setActiveTemplate(template.id);
     setIsNewFlow(false);
     setShowGuide(true);
   }
@@ -614,7 +629,7 @@ export default function FlowBuilder() {
       {nodeIds.map((nodeId, idx) => (
         <ScreenCard key={nodeId} nodeId={nodeId} node={flow[nodeId]} step={idx + 1}
           allNodes={nodeIds} flow={flow} open={editing === nodeId} delay={360 + idx * 60}
-          labels={labels}
+          labels={labels} allowedActions={TEMPLATES.find(t => t.id === activeTemplate)?.actions || null}
           onToggle={() => { setEditing(editing === nodeId ? null : nodeId); setPreview(nodeId); }}
           onUpdate={u => updateNode(nodeId, u)} onDelete={() => deleteNode(nodeId)} />
       ))}
@@ -654,7 +669,8 @@ export default function FlowBuilder() {
 }
 
 // ── Step Card ──────────────────────────────────────────
-function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, onToggle, onUpdate, onDelete }) {
+function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, allowedActions, onToggle, onUpdate, onDelete }) {
+  const visibleActions = allowedActions ? BTN_ACTIONS.filter(a => allowedActions.includes(a.value)) : BTN_ACTIONS;
   const isStart = nodeId === 'start';
   const btns = node.buttons || [];
   const nodeType = node.type || 'menu';
@@ -787,7 +803,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, o
                       <div className="ml-5">
                         <select value={btn.action} onChange={e => updateBtn(idx, { action: e.target.value })}
                           className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
-                          {BTN_ACTIONS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                          {visibleActions.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
                         </select>
                         {BTN_ACTIONS.find(a => a.value === btn.action)?.desc && !['next','text'].includes(btn.action) && (
                           <p className="text-[10px] text-gray-400 mt-0.5 ml-1">{BTN_ACTIONS.find(a => a.value === btn.action).desc}</p>

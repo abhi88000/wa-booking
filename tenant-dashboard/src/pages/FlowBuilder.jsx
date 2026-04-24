@@ -546,59 +546,55 @@ export default function FlowBuilder() {
       {error && <div className="mb-4 text-sm font-medium text-red-700 bg-red-50 border border-red-100 rounded-xl px-4 py-3 animate-slideDown">{error}</div>}
       {saved && <div className="mb-4 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 animate-slideDown">Flow saved! Your WhatsApp bot is now updated.</div>}
 
-      {/* Expanded step — full width canvas */}
+      {/* Expanded step — full width with preview inside */}
       {editing && flow[editing] && (
         <div className="mb-4">
-          <ScreenCard key={editing} nodeId={editing} node={flow[editing]} step={nodeIds.indexOf(editing) + 1}
-            allNodes={nodeIds} flow={flow} open={true} delay={0}
-            labels={labels} allowedActions={TEMPLATES.find(t => t.id === activeTemplate)?.actions || null}
-            templateName={templateName}
-            onToggle={() => { setEditing(null); }}
-            onUpdate={u => updateNode(editing, u)} onDelete={() => deleteNode(editing)} />
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4">
+            <ScreenCard key={editing} nodeId={editing} node={flow[editing]} step={nodeIds.indexOf(editing) + 1}
+              allNodes={nodeIds} flow={flow} open={true} delay={0}
+              labels={labels} allowedActions={TEMPLATES.find(t => t.id === activeTemplate)?.actions || null}
+              templateName={templateName}
+              onToggle={() => { setEditing(null); }}
+              onUpdate={u => updateNode(editing, u)} onDelete={() => deleteNode(editing)} />
+            <div className="lg:sticky lg:top-20 lg:self-start space-y-3">
+              <Preview flow={flow} screen={editing} onTap={setPreview} labels={labels} templateName={templateName} />
+              <FlowMap flow={flow} nodeIds={nodeIds} templateName={templateName} onJump={(id) => { setEditing(editing === id ? null : id); setPreview(id); }} />
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Main Layout: Collapsed steps + Preview sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 mb-4">
+      {/* Collapsed step list */}
+      <div className="mb-4">
+        {nodeIds.map((nodeId, idx) => (
+          nodeId === editing ? null : (
+            <ScreenCard key={nodeId} nodeId={nodeId} node={flow[nodeId]} step={idx + 1}
+              allNodes={nodeIds} flow={flow} open={false} delay={0}
+              labels={labels} allowedActions={TEMPLATES.find(t => t.id === activeTemplate)?.actions || null}
+              templateName={templateName}
+              onToggle={() => { setEditing(editing === nodeId ? null : nodeId); setPreview(nodeId); }}
+              onUpdate={u => updateNode(nodeId, u)} onDelete={() => deleteNode(nodeId)} />
+          )
+        ))}
 
-        {/* LEFT — Collapsed step list */}
-        <div>
-          {nodeIds.map((nodeId, idx) => (
-            nodeId === editing ? null : (
-              <ScreenCard key={nodeId} nodeId={nodeId} node={flow[nodeId]} step={idx + 1}
-                allNodes={nodeIds} flow={flow} open={false} delay={0}
-                labels={labels} allowedActions={TEMPLATES.find(t => t.id === activeTemplate)?.actions || null}
-                templateName={templateName}
-                onToggle={() => { setEditing(editing === nodeId ? null : nodeId); setPreview(nodeId); }}
-                onUpdate={u => updateNode(nodeId, u)} onDelete={() => deleteNode(nodeId)} />
-            )
-          ))}
-
-          {/* Add Step — compact pills */}
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button onClick={() => addNode('menu')}
-              className="px-3 py-1.5 border border-dashed border-gray-200 rounded-lg text-xs font-medium text-gray-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all flex items-center gap-1.5">
-              <Icon name="messageSquare" className="w-3.5 h-3.5" /> + Message
-            </button>
-            <button onClick={() => addNode('input')}
-              className="px-3 py-1.5 border border-dashed border-gray-200 rounded-lg text-xs font-medium text-gray-500 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50/30 transition-all flex items-center gap-1.5">
-              <Icon name="formInput" className="w-3.5 h-3.5" /> + Question
-            </button>
-            <button onClick={() => addNode('condition')}
-              className="px-3 py-1.5 border border-dashed border-gray-200 rounded-lg text-xs font-medium text-gray-500 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50/30 transition-all flex items-center gap-1.5">
-              <Icon name="gitBranch" className="w-3.5 h-3.5" /> + Route
-            </button>
-            <button onClick={() => addNode('action')}
-              className="px-3 py-1.5 border border-dashed border-gray-200 rounded-lg text-xs font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/30 transition-all flex items-center gap-1.5">
-              <Icon name="save" className="w-3.5 h-3.5" /> + Action
-            </button>
-          </div>
-        </div>
-
-        {/* RIGHT — Live Preview + Flow Map (sticky sidebar) */}
-        <div className="lg:sticky lg:top-20 lg:self-start space-y-3">
-          <Preview flow={flow} screen={preview} onTap={setPreview} labels={labels} templateName={templateName} />
-          <FlowMap flow={flow} nodeIds={nodeIds} templateName={templateName} onJump={(id) => { setEditing(editing === id ? null : id); setPreview(id); }} />
+        {/* Add Step — compact pills */}
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button onClick={() => addNode('menu')}
+            className="px-3 py-1.5 border border-dashed border-gray-200 rounded-lg text-xs font-medium text-gray-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all flex items-center gap-1.5">
+            <Icon name="messageSquare" className="w-3.5 h-3.5" /> + Message
+          </button>
+          <button onClick={() => addNode('input')}
+            className="px-3 py-1.5 border border-dashed border-gray-200 rounded-lg text-xs font-medium text-gray-500 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50/30 transition-all flex items-center gap-1.5">
+            <Icon name="formInput" className="w-3.5 h-3.5" /> + Question
+          </button>
+          <button onClick={() => addNode('condition')}
+            className="px-3 py-1.5 border border-dashed border-gray-200 rounded-lg text-xs font-medium text-gray-500 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50/30 transition-all flex items-center gap-1.5">
+            <Icon name="gitBranch" className="w-3.5 h-3.5" /> + Route
+          </button>
+          <button onClick={() => addNode('action')}
+            className="px-3 py-1.5 border border-dashed border-gray-200 rounded-lg text-xs font-medium text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/30 transition-all flex items-center gap-1.5">
+            <Icon name="save" className="w-3.5 h-3.5" /> + Action
+          </button>
         </div>
       </div>
 

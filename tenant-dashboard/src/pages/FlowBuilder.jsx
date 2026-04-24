@@ -6,7 +6,7 @@ import { ACTION_TYPES, deleteNodeAndCleanup, validateFlowDraft } from './flowBui
 // ── Constants ──────────────────────────────────────────
 const BTN_ACTIONS = [
   { value: 'next', label: 'Go to step', desc: 'Navigate to another step in the flow' },
-  { value: 'booking_flow', label: 'Start booking flow', desc: 'Guided booking: doctor → service → date → time → confirm' },
+  { value: 'booking_flow', label: 'Start booking flow', desc: 'Guided booking: choose doctor → choose service → pick date → pick time → confirm' },
   { value: 'booking_status', label: 'Show my bookings', desc: 'Customer sees their upcoming appointments' },
   { value: 'booking_cancel', label: 'Cancel / Reschedule', desc: 'Customer picks a booking to cancel or reschedule' },
   { value: 'text', label: 'Send a reply', desc: 'Bot sends a custom text message' },
@@ -152,9 +152,9 @@ function friendlyName(id, idx) {
 
 // ── Booking Flow Compact Hint ───────────────────────────
 const FLOW_HINTS = {
-  booking_flow:   { icon: '📅', color: 'emerald', summary: (s, b) => `${s} → Service → Date → Time → Confirm ${b}`, detail: (s) => `Customer picks a ${s.toLowerCase()}, service, date & time slot, then confirms. Auto-reminders sent before the ${s.toLowerCase()} visit.` },
-  booking_status: { icon: '🔍', color: 'blue',    summary: (s, b) => `Shows upcoming ${b.toLowerCase()}s for this customer`, detail: (s) => `Looks up all future bookings by phone number and displays ${s.toLowerCase()}, date, time, and status.` },
-  booking_cancel: { icon: '↩️', color: 'amber',   summary: (s, b) => `Pick a ${b.toLowerCase()} → Cancel or Reschedule`, detail: (s) => `Customer selects an active booking, then chooses to cancel it or pick a new date & time.` },
+  booking_flow:   { icon: '📅', color: 'emerald', summary: (s, b) => `Choose ${s} → Choose Service → Pick Date → Pick Time → Confirm ${b}`, detail: (s) => `Customer picks a ${s.toLowerCase()}, service, date & time slot, then confirms. Auto-reminders sent before the ${s.toLowerCase()} visit.` },
+  booking_status: { icon: '🔍', color: 'blue',    summary: (s, b) => `Look Up ${b}s → Show List → Back to Menu`, detail: (s) => `Looks up all future bookings by phone number and displays ${s.toLowerCase()}, date, time, and status.` },
+  booking_cancel: { icon: '↩️', color: 'amber',   summary: (s, b) => `Show Active ${b}s → Pick One → Cancel or Reschedule`, detail: (s) => `Customer selects an active booking, then chooses to cancel it or pick a new date & time.` },
 };
 
 function FlowActionHint({ action, labels }) {

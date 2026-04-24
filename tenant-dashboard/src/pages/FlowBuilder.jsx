@@ -485,10 +485,10 @@ export default function FlowBuilder() {
     if (node.buttons) {
       node.buttons.forEach(btn => { if (btn.action === 'next') btn.next = ''; });
     }
+    // Tag the node with its source template so button actions are filtered correctly
+    node._template = template.id;
     setFlow(prev => ({ ...prev, [newId]: node }));
     setIsNewFlow(false);
-    setEditing(newId);
-    setPreview(newId);
   }
 
   function getDefault() {
@@ -601,7 +601,7 @@ export default function FlowBuilder() {
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 p-4">
             <ScreenCard key={editing} nodeId={editing} node={flow[editing]} step={nodeIds.indexOf(editing) + 1}
               allNodes={nodeIds} flow={flow} open={true} delay={0}
-              labels={labels} allowedActions={TEMPLATES.find(t => t.id === activeTemplate)?.actions || null}
+              labels={labels} allowedActions={(() => { const t = flow[editing]?._template || activeTemplate; return TEMPLATES.find(x => x.id === t)?.actions || null; })()}
               templateName={templateName} embedded={true}
               onToggle={() => { setEditing(null); }}
               onUpdate={u => updateNode(editing, u)} onDelete={() => deleteNode(editing)} />
@@ -619,7 +619,7 @@ export default function FlowBuilder() {
           nodeId === editing ? null : (
             <ScreenCard key={nodeId} nodeId={nodeId} node={flow[nodeId]} step={idx + 1}
               allNodes={nodeIds} flow={flow} open={false} delay={0}
-              labels={labels} allowedActions={TEMPLATES.find(t => t.id === activeTemplate)?.actions || null}
+              labels={labels} allowedActions={(() => { const t = flow[nodeId]?._template || activeTemplate; return TEMPLATES.find(x => x.id === t)?.actions || null; })()}
               templateName={templateName}
               onToggle={() => { setEditing(editing === nodeId ? null : nodeId); setPreview(nodeId); }}
               onUpdate={u => updateNode(nodeId, u)} onDelete={() => deleteNode(nodeId)} />

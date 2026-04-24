@@ -430,23 +430,28 @@ export default function FlowBuilder() {
       return;
     }
 
-    // Append: use original IDs, add numeric suffix only on conflict
+    // Append: merge template buttons into existing start screen,
+    // and add only the sub-steps (not a duplicate start screen)
     const existingIds = new Set(Object.keys(flow));
+    const templateStart = templateFlow.start || templateFlow[templateNodes[0]];
+    const subStepIds = templateNodes.filter(id => id !== 'start');
+
+    // Map sub-step IDs, adding suffix only on conflict
     const idMap = {};
-    templateNodes.forEach(id => {
-      let newId = id === 'start' ? `screen_${template.id}_start` : id;
-      // If ID already exists in the flow, add a suffix
+    subStepIds.forEach(id => {
+      let newId = id;
       if (existingIds.has(newId)) {
         let n = 2;
         while (existingIds.has(`${newId}_${n}`)) n++;
         newId = `${newId}_${n}`;
       }
       idMap[id] = newId;
-      existingIds.add(newId); // track so subsequent nodes don't clash
+      existingIds.add(newId);
     });
 
+    // Add sub-steps with remapped references
     const newNodes = {};
-    templateNodes.forEach(id => {
+    subStepIds.forEach(id => {
       const node = JSON.parse(JSON.stringify(templateFlow[id]));
       node._template = template.id;
       if (node.next && idMap[node.next]) node.next = idMap[node.next];
@@ -464,7 +469,20 @@ export default function FlowBuilder() {
       newNodes[idMap[id]] = node;
     });
 
-    setFlow(prev => ({ ...prev, ...newNodes }));
+    // Merge template start's buttons into the existing start screen
+    const startBtns = (templateStart.buttons || []).map(btn => {
+      const b = { ...btn, id: `btn_${Date.now()}_${Math.random().toString(36).slice(2, 6)}` };
+      if (b.next && idMap[b.next]) b.next = idMap[b.next];
+      return b;
+    });
+    const existingStart = flow.start || flow[Object.keys(flow).filter(k => k !== 'fallback')[0]];
+    const mergedBtns = [...(existingStart.buttons || []), ...startBtns];
+
+    setFlow(prev => ({
+      ...prev,
+      start: { ...prev.start, buttons: mergedBtns },
+      ...newNodes
+    }));
     setIsNewFlow(false);
   }
 

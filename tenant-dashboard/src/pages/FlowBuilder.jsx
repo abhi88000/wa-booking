@@ -546,21 +546,35 @@ export default function FlowBuilder() {
       {error && <div className="mb-4 text-sm font-medium text-red-700 bg-red-50 border border-red-100 rounded-xl px-4 py-3 animate-slideDown">{error}</div>}
       {saved && <div className="mb-4 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-4 py-3 animate-slideDown">Flow saved! Your WhatsApp bot is now updated.</div>}
 
-      {/* Main Layout: Steps (primary) + Preview (sidebar) */}
+      {/* Expanded step — full width canvas */}
+      {editing && flow[editing] && (
+        <div className="mb-4">
+          <ScreenCard key={editing} nodeId={editing} node={flow[editing]} step={nodeIds.indexOf(editing) + 1}
+            allNodes={nodeIds} flow={flow} open={true} delay={0}
+            labels={labels} allowedActions={TEMPLATES.find(t => t.id === activeTemplate)?.actions || null}
+            templateName={templateName}
+            onToggle={() => { setEditing(null); }}
+            onUpdate={u => updateNode(editing, u)} onDelete={() => deleteNode(editing)} />
+        </div>
+      )}
+
+      {/* Main Layout: Collapsed steps + Preview sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 mb-4">
 
-        {/* LEFT — Bot Steps (PRIMARY) */}
+        {/* LEFT — Collapsed step list */}
         <div>
           {nodeIds.map((nodeId, idx) => (
-            <ScreenCard key={nodeId} nodeId={nodeId} node={flow[nodeId]} step={idx + 1}
-              allNodes={nodeIds} flow={flow} open={editing === nodeId} delay={180 + idx * 60}
-              labels={labels} allowedActions={TEMPLATES.find(t => t.id === activeTemplate)?.actions || null}
-              templateName={templateName}
-              onToggle={() => { setEditing(editing === nodeId ? null : nodeId); setPreview(nodeId); }}
-              onUpdate={u => updateNode(nodeId, u)} onDelete={() => deleteNode(nodeId)} />
+            nodeId === editing ? null : (
+              <ScreenCard key={nodeId} nodeId={nodeId} node={flow[nodeId]} step={idx + 1}
+                allNodes={nodeIds} flow={flow} open={false} delay={0}
+                labels={labels} allowedActions={TEMPLATES.find(t => t.id === activeTemplate)?.actions || null}
+                templateName={templateName}
+                onToggle={() => { setEditing(editing === nodeId ? null : nodeId); setPreview(nodeId); }}
+                onUpdate={u => updateNode(nodeId, u)} onDelete={() => deleteNode(nodeId)} />
+            )
           ))}
 
-          {/* Add Step — compact toggle */}
+          {/* Add Step — compact pills */}
           <div className="mt-2 flex flex-wrap gap-2">
             <button onClick={() => addNode('menu')}
               className="px-3 py-1.5 border border-dashed border-gray-200 rounded-lg text-xs font-medium text-gray-500 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/30 transition-all flex items-center gap-1.5">

@@ -559,28 +559,12 @@ export default function FlowBuilder() {
           )
         ))}
 
-        {/* Add Step */}
-        <div className="border border-dashed border-gray-200 rounded-xl p-3 flex items-center gap-3 bg-gray-50/50">
-          <span className="text-xs font-medium text-gray-400 shrink-0">Add step:</span>
-          <div className="flex flex-wrap gap-2">
-            <button onClick={() => addNode('menu')}
-              className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/50 transition-all flex items-center gap-1.5 shadow-sm">
-              <Icon name="messageSquare" className="w-3.5 h-3.5" /> Message
-            </button>
-            <button onClick={() => addNode('input')}
-              className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-purple-400 hover:text-purple-600 hover:bg-purple-50/50 transition-all flex items-center gap-1.5 shadow-sm">
-              <Icon name="formInput" className="w-3.5 h-3.5" /> Question
-            </button>
-            <button onClick={() => addNode('condition')}
-              className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-amber-400 hover:text-amber-600 hover:bg-amber-50/50 transition-all flex items-center gap-1.5 shadow-sm">
-              <Icon name="gitBranch" className="w-3.5 h-3.5" /> Route
-            </button>
-            <button onClick={() => addNode('action')}
-              className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/50 transition-all flex items-center gap-1.5 shadow-sm">
-              <Icon name="save" className="w-3.5 h-3.5" /> Action
-            </button>
-          </div>
-        </div>
+        {/* Switch Template */}
+        <button onClick={() => setIsNewFlow(true)}
+          className="w-full border border-dashed border-gray-200 rounded-xl p-3 flex items-center justify-center gap-2 bg-gray-50/50 hover:border-emerald-400 hover:bg-emerald-50/30 transition-all group">
+          <Icon name="clipboard" className="w-4 h-4 text-gray-400 group-hover:text-emerald-600" />
+          <span className="text-sm font-medium text-gray-500 group-hover:text-emerald-600">Use a different template</span>
+        </button>
       </div>
 
       {/* Settings — Fallback only */}

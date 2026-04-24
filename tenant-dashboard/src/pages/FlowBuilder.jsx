@@ -56,24 +56,6 @@ const TEMPLATES = [
     }
   },
   {
-    id: 'lead_capture',
-    name: 'Lead Capture',
-    desc: 'Collect name, email, and interest from potential customers',
-    icon: 'target',
-    industries: 'Real Estate, Education, Insurance',
-    actions: ['next', 'text', 'ai'],
-    flow: {
-      start: { message: 'Hi! 👋 Welcome. How can we help you?', buttons: [
-        { id: 'go', label: 'Get Started', action: 'next', next: 'screen_ask_name' },
-        { id: 'talk', label: 'Talk to Someone', action: 'ai' }
-      ] },
-      screen_ask_name: { type: 'input', message: 'What is your name?', input_type: 'name', variable: 'name', next: 'screen_ask_email' },
-      screen_ask_email: { type: 'input', message: 'Thanks {{name}}! What is your email?', input_type: 'email', variable: 'email', next: 'screen_save_lead' },
-      screen_save_lead: { type: 'action', action_type: 'save_record', record_type: 'lead', message: 'Thank you {{name}}! Our team will reach out shortly. 🙌', next: '' },
-      fallback: 'Please answer the question above.'
-    }
-  },
-  {
     id: 'feedback',
     name: 'Customer Feedback',
     desc: 'Collect ratings and comments after a service',
@@ -90,50 +72,6 @@ const TEMPLATES = [
       screen_save_feedback: { type: 'action', action_type: 'save_record', record_type: 'feedback', message: 'Thank you for your feedback! 🙏', next: '' },
       fallback: 'Please answer the question above.'
     }
-  },
-  {
-    id: 'faq',
-    name: 'FAQ / Info Bot',
-    desc: 'Answer common questions with quick reply buttons',
-    icon: 'helpCircle',
-    industries: 'Any business',
-    actions: ['text', 'ai', 'next'],
-    flow: {
-      start: { message: 'Welcome! 👋 What would you like to know?', buttons: [
-        { id: 'hours', label: 'Business Hours', action: 'text', response: 'We are open Mon-Sat, 9 AM to 6 PM.' },
-        { id: 'location', label: 'Our Location', action: 'text', response: 'We are located at [Your Address].' },
-        { id: 'talk', label: 'Talk to a Human', action: 'ai' }
-      ] },
-      fallback: 'Please choose from the menu above.'
-    }
-  },
-  {
-    id: 'order',
-    name: 'Order / Inquiry',
-    desc: 'Collect product interest and contact details',
-    icon: 'shoppingCart',
-    industries: 'E-commerce, Wholesale, Services',
-    actions: ['next', 'text', 'ai'],
-    flow: {
-      start: { message: 'Hi! 👋 Welcome to our store.', buttons: [
-        { id: 'order', label: 'Place an Order', action: 'next', next: 'screen_ask_product' },
-        { id: 'status', label: 'Order Status', action: 'text', response: 'Please share your order number.' },
-        { id: 'help', label: 'Help', action: 'ai' }
-      ] },
-      screen_ask_product: { type: 'input', message: 'What product are you interested in?', input_type: 'text', variable: 'product', next: 'screen_ask_name' },
-      screen_ask_name: { type: 'input', message: 'What is your name?', input_type: 'name', variable: 'name', next: 'screen_save_order' },
-      screen_save_order: { type: 'action', action_type: 'save_record', record_type: 'order', message: 'Thanks {{name}}! Your inquiry for {{product}} has been received. 📦', next: '' },
-      fallback: 'Please answer the question above.'
-    }
-  },
-  {
-    id: 'blank',
-    name: 'Start from Scratch',
-    desc: 'Build your own custom flow step by step',
-    icon: 'edit',
-    industries: 'Custom',
-    actions: null,
-    flow: null
   },
 ];
 

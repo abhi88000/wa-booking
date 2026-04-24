@@ -595,7 +595,7 @@ export default function FlowBuilder() {
             <ScreenCard key={editing} nodeId={editing} node={flow[editing]} step={nodeIds.indexOf(editing) + 1}
               allNodes={nodeIds} flow={flow} open={true} delay={0}
               labels={labels} allowedActions={TEMPLATES.find(t => t.id === activeTemplate)?.actions || null}
-              templateName={templateName}
+              templateName={templateName} embedded={true}
               onToggle={() => { setEditing(null); }}
               onUpdate={u => updateNode(editing, u)} onDelete={() => deleteNode(editing)} />
             <div className="lg:sticky lg:top-20 lg:self-start space-y-3">
@@ -679,7 +679,7 @@ export default function FlowBuilder() {
 }
 
 // ── Step Card ──────────────────────────────────────────
-function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, allowedActions, templateName, onToggle, onUpdate, onDelete }) {
+function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, allowedActions, templateName, onToggle, onUpdate, onDelete, embedded }) {
   const visibleActions = allowedActions ? BTN_ACTIONS.filter(a => allowedActions.includes(a.value)) : BTN_ACTIONS;
   const isStart = nodeId === 'start';
   const btns = node.buttons || [];
@@ -750,6 +750,198 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, a
       {helpText && <p className="text-[10px] text-gray-400 mt-0.5">{helpText}</p>}
     </div>
   );
+
+  /* When embedded inside the expanded wrapper, render just the form — no header, no border */
+  if (embedded && open) {
+    return (
+      <div className="space-y-4 min-w-0">
+        {/* MENU NODE */}
+        {nodeType === 'menu' && (
+          <>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Bot Message</label>
+              <textarea value={node.message || ''} onChange={e => onUpdate({ message: e.target.value })} rows={3}
+                placeholder="What should the bot say? e.g. Hi! Welcome to our store. How can we help?"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none" />
+              <VariableButtons field="message" current={node.message} onChange={v => onUpdate({ message: v })} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-600 mb-1 block">
+                Reply Buttons <span className="font-normal text-gray-400">— what can the customer tap?</span>
+              </label>
+              {btns.length > 3 && (
+                <p className="text-[10px] text-amber-600 bg-amber-50 px-2 py-1 rounded mb-2">If more than 3 buttons are added, WhatsApp will show a single list menu button instead of individual buttons.</p>
+              )}
+              <div className="space-y-2">
+                {btns.map((btn, idx) => (
+                  <div key={idx} className="bg-gray-50 rounded-lg p-3 border border-gray-100">
+                    <div className="flex items-center gap-2 mb-2 min-w-0">
+                      <span className="text-[10px] font-bold text-gray-400 w-5 shrink-0">{idx + 1}.</span>
+                      <input value={btn.label} onChange={e => updateBtn(idx, { label: e.target.value })}
+                        placeholder="Button text" maxLength={20}
+                        className="flex-1 min-w-0 border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-800 outline-none focus:border-emerald-400 bg-white" />
+                      <div className="flex gap-1 shrink-0">
+                        {idx > 0 && <button onClick={() => moveBtn(idx, -1)} className="text-[10px] text-gray-400 hover:text-gray-600 px-1">↑</button>}
+                        {idx < btns.length - 1 && <button onClick={() => moveBtn(idx, 1)} className="text-[10px] text-gray-400 hover:text-gray-600 px-1">↓</button>}
+                        <button onClick={() => removeBtn(idx)} className="text-[10px] text-red-400 hover:text-red-600 px-1">✕</button>
+                      </div>
+                    </div>
+                    <div className="ml-5">
+                      <select value={btn.action} onChange={e => updateBtn(idx, { action: e.target.value })}
+                        className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
+                        {visibleActions.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                      </select>
+                      {btn.action === 'next' && (
+                        <div className="mt-2">
+                          <ScreenSelect value={btn.next} onChange={v => updateBtn(idx, { next: v })} label={null} helpText={null} />
+                        </div>
+                      )}
+                      {btn.action === 'text' && (
+                        <div className="mt-2">
+                          <textarea value={btn.response || ''} onChange={e => updateBtn(idx, { response: e.target.value })}
+                            placeholder="Type the reply text..." rows={2}
+                            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none bg-white" />
+                          <VariableButtons field="response" current={btn.response} onChange={v => updateBtn(idx, { response: v })} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <button onClick={addBtn}
+                className="mt-2 px-3 py-1.5 border border-dashed border-gray-200 rounded-lg text-xs font-medium text-gray-500 hover:border-emerald-400 hover:text-emerald-600 transition flex items-center gap-1">
+                + Add Button
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* INPUT NODE */}
+        {nodeType === 'input' && (
+          <>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Bot Question</label>
+              <textarea value={node.message || ''} onChange={e => onUpdate({ message: e.target.value })} rows={2}
+                placeholder="e.g. What's your name?"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none" />
+              <VariableButtons field="message" current={node.message} onChange={v => onUpdate({ message: v })} />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Expected answer type</label>
+                <select value={node.input_type || 'text'} onChange={e => onUpdate({ input_type: e.target.value })}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
+                  <option value="text">Text (anything)</option><option value="name">Name</option><option value="phone">Phone number</option>
+                  <option value="email">Email</option><option value="number">Number</option><option value="date">Date</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Save answer as</label>
+                <input value={node.variable || ''} onChange={e => onUpdate({ variable: e.target.value.replace(/[^a-z0-9_]/g, '') })}
+                  placeholder="e.g. customer_name"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400" />
+              </div>
+            </div>
+            <ScreenSelect value={node.next} onChange={v => onUpdate({ next: v })} label="After they answer, go to" helpText={null} />
+          </>
+        )}
+
+        {/* CONDITION NODE */}
+        {nodeType === 'condition' && (
+          <>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Which answer to check?</label>
+              <input value={node.variable || ''} onChange={e => onUpdate({ variable: e.target.value.replace(/[^a-z0-9_]/g, '') })}
+                placeholder="e.g. customer_name"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400" />
+            </div>
+            <ScreenSelect value={node.else_next} onChange={v => onUpdate({ else_next: v })} label="If nothing matches, go to" helpText={null} />
+          </>
+        )}
+
+        {/* ACTION NODE */}
+        {nodeType === 'action' && (
+          <>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">What should happen?</label>
+              <select value={actionType} onChange={e => onUpdate({ action_type: e.target.value })}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
+                {ACTION_TYPES.map(action => <option key={action.value} value={action.value}>{action.label}</option>)}
+              </select>
+              <p className="text-[10px] text-gray-400 mt-0.5">{actionMeta.hint}</p>
+            </div>
+            {actionType === 'save_record' && (
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">What kind of data is this?</label>
+                <input value={node.record_type || ''} onChange={e => onUpdate({ record_type: e.target.value.replace(/[^a-z0-9_]/g, '') })}
+                  placeholder="e.g. lead, order, feedback, inquiry, registration"
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400" />
+                <p className="text-[10px] text-gray-400 mt-0.5">This helps you organize saved entries in the dashboard.</p>
+              </div>
+            )}
+            {actionType === 'notify_admin' && (
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Notification message</label>
+                <textarea value={node.notify_message || ''} onChange={e => onUpdate({ notify_message: e.target.value })}
+                  placeholder="e.g. New lead from {{customer_name}} — {{phone}}" rows={2}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none" />
+                <VariableButtons field="notify_message" current={node.notify_message} onChange={v => onUpdate({ notify_message: v })} />
+              </div>
+            )}
+            {actionType === 'send_followup' && (
+              <>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Follow-up message</label>
+                  <textarea value={node.followup_message || ''} onChange={e => onUpdate({ followup_message: e.target.value })}
+                    placeholder="e.g. Hi {{customer_name}}, just checking in on your inquiry."
+                    rows={2}
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none" />
+                  <VariableButtons field="followup_message" current={node.followup_message} onChange={v => onUpdate({ followup_message: v })} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Delay in minutes</label>
+                  <input type="number" min="1" value={node.delay_minutes ?? ''} onChange={e => onUpdate({ delay_minutes: e.target.value })}
+                    placeholder="60"
+                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400" />
+                  <p className="text-[10px] text-gray-400 mt-0.5">How long to wait before the follow-up is sent.</p>
+                </div>
+              </>
+            )}
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Bot message after this action (optional)</label>
+              <textarea value={node.message || ''} onChange={e => onUpdate({ message: e.target.value })}
+                placeholder="e.g. Thanks {{name}}! We'll take it from here."
+                rows={2}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none" />
+              <VariableButtons field="message" current={node.message} onChange={v => onUpdate({ message: v })} />
+            </div>
+            <ScreenSelect value={node.next} onChange={v => onUpdate({ next: v })} label="After this action, go to" helpText="Leave empty to end this branch here." />
+          </>
+        )}
+
+        {/* Delete + Done */}
+        {!isStart && (
+          <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+            <button onClick={onDelete} className="text-xs font-medium text-red-400 hover:text-red-600 flex items-center gap-1">
+              <Icon name="trash" className="w-3.5 h-3.5" /> Delete this step
+            </button>
+            <button onClick={onToggle} className="px-4 py-1.5 text-xs font-semibold text-white rounded-lg transition"
+              style={{ background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)' }}>
+              Done
+            </button>
+          </div>
+        )}
+        {isStart && (
+          <div className="pt-3 border-t border-gray-100 flex justify-end">
+            <button onClick={onToggle} className="px-4 py-1.5 text-xs font-semibold text-white rounded-lg transition"
+              style={{ background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)' }}>
+              Done
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={`bg-white rounded-xl border mb-2.5 transition-all duration-200 animate-slideUp overflow-x-hidden

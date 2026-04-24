@@ -498,7 +498,6 @@ export default function FlowBuilder() {
       action: { type: 'action', action_type: 'save_record', record_type: 'lead', message: '', next: '' },
     };
     setFlow(p => ({ ...p, [id]: defaults[type] || defaults.menu }));
-    setEditing(id);
   }
 
   function deleteNode(id) {
@@ -965,9 +964,21 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, a
 
           {/* Delete */}
           {!isStart && (
-            <div className="pt-3 border-t border-gray-100">
+            <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
               <button onClick={onDelete} className="text-xs font-medium text-red-400 hover:text-red-600 flex items-center gap-1">
                 <Icon name="trash" className="w-3.5 h-3.5" /> Delete this step
+              </button>
+              <button onClick={onToggle} className="px-4 py-1.5 text-xs font-semibold text-white rounded-lg transition"
+                style={{ background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)' }}>
+                Done
+              </button>
+            </div>
+          )}
+          {isStart && (
+            <div className="pt-3 border-t border-gray-100 flex justify-end">
+              <button onClick={onToggle} className="px-4 py-1.5 text-xs font-semibold text-white rounded-lg transition"
+                style={{ background: 'linear-gradient(135deg, #25D366 0%, #128C7E 100%)' }}>
+                Done
               </button>
             </div>
           )}

@@ -145,8 +145,8 @@ const STEP_TYPES = [
 ];
 
 // ── Helpers ────────────────────────────────────────────
-function friendlyName(id, idx) {
-  if (id === 'start') return 'Welcome (Step 1)';
+function friendlyName(id, idx, templateName) {
+  if (id === 'start') return templateName ? `${templateName} — Start` : 'Start';
   if (/^screen_\d+$/.test(id)) return `Step ${idx + 1}`;
   // named steps from templates
   if (id.startsWith('screen_')) {
@@ -228,7 +228,7 @@ function TemplatePicker({ onPick }) {
     </div>
   );
 }
-function Preview({ flow, screen, onTap, labels }) {
+function Preview({ flow, screen, onTap, labels, templateName }) {
   const node = flow?.[screen];
   const [booking, setBooking] = useState(false);
   if (!node) return null;
@@ -246,7 +246,7 @@ function Preview({ flow, screen, onTap, labels }) {
           {screen !== 'start' && (
             <button onClick={() => onTap('start')} className="text-xs text-emerald-600 hover:text-emerald-700 font-medium">← Back to start</button>
           )}
-          <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded">{friendlyName(screen, screenIdx)}</span>
+          <span className="text-[10px] text-gray-400 bg-gray-50 px-2 py-0.5 rounded">{friendlyName(screen, screenIdx, templateName)}</span>
         </div>
       </div>
       <div className="px-4 pb-4">
@@ -356,7 +356,7 @@ function Preview({ flow, screen, onTap, labels }) {
 }
 
 // ── Flow Map ───────────────────────────────────────────
-function FlowMap({ flow, nodeIds, onJump }) {
+function FlowMap({ flow, nodeIds, templateName, onJump }) {
   return (
     <div className="bg-white rounded-xl border border-gray-100 shadow-sm animate-slideUp" style={{ animationDelay: '120ms' }}>
       <div className="px-4 pt-4 pb-2">
@@ -383,7 +383,7 @@ function FlowMap({ flow, nodeIds, onJump }) {
               </div>
               <div className="flex-1 min-w-0">
                 <button onClick={() => onJump(id)} className="text-sm font-medium text-gray-800 hover:text-emerald-600 transition text-left">
-                  {friendlyName(id, idx)}
+                  {friendlyName(id, idx, templateName)}
                 </button>
                 {nodeType !== 'menu' && (
                   <span className={`ml-2 text-[9px] font-bold ${typeColor}`}>
@@ -399,11 +399,11 @@ function FlowMap({ flow, nodeIds, onJump }) {
                       : b.action === 'booking_cancel' ? 'Cancel/Reschedule'
                       : b.action === 'text' ? 'Reply'
                       : b.action === 'ai' ? 'AI'
-                      : b.next ? friendlyName(b.next, nodeIds.indexOf(b.next)) : '?'}
+                      : b.next ? friendlyName(b.next, nodeIds.indexOf(b.next), templateName) : '?'}
                   </p>
                 ))}
-                {nodeType === 'input' && <p className="text-[11px] text-purple-400 mt-0.5">&rarr; {node.next ? friendlyName(node.next, nodeIds.indexOf(node.next)) : '?'}</p>}
-                {nodeType === 'action' && <p className="text-[11px] text-blue-400 mt-0.5">&rarr; {node.next ? friendlyName(node.next, nodeIds.indexOf(node.next)) : 'end'}</p>}
+                {nodeType === 'input' && <p className="text-[11px] text-purple-400 mt-0.5">&rarr; {node.next ? friendlyName(node.next, nodeIds.indexOf(node.next), templateName) : '?'}</p>}
+                {nodeType === 'action' && <p className="text-[11px] text-blue-400 mt-0.5">&rarr; {node.next ? friendlyName(node.next, nodeIds.indexOf(node.next), templateName) : 'end'}</p>}
               </div>
             </div>
           );
@@ -514,6 +514,7 @@ export default function FlowBuilder() {
 
   const nodeIds = flow ? Object.keys(flow).filter(k => k !== 'fallback') : [];
   const fallback = flow?.fallback || '';
+  const templateName = TEMPLATES.find(t => t.id === activeTemplate)?.name || null;
 
   if (loading) return (
     <div className="flex items-center justify-center py-32">
@@ -554,6 +555,7 @@ export default function FlowBuilder() {
             <ScreenCard key={nodeId} nodeId={nodeId} node={flow[nodeId]} step={idx + 1}
               allNodes={nodeIds} flow={flow} open={editing === nodeId} delay={180 + idx * 60}
               labels={labels} allowedActions={TEMPLATES.find(t => t.id === activeTemplate)?.actions || null}
+              templateName={templateName}
               onToggle={() => { setEditing(editing === nodeId ? null : nodeId); setPreview(nodeId); }}
               onUpdate={u => updateNode(nodeId, u)} onDelete={() => deleteNode(nodeId)} />
           ))}
@@ -591,8 +593,8 @@ export default function FlowBuilder() {
 
         {/* RIGHT — Live Preview + Flow Map (sticky sidebar) */}
         <div className="lg:sticky lg:top-20 lg:self-start space-y-3">
-          <Preview flow={flow} screen={preview} onTap={setPreview} labels={labels} />
-          <FlowMap flow={flow} nodeIds={nodeIds} onJump={(id) => { setEditing(editing === id ? null : id); setPreview(id); }} />
+          <Preview flow={flow} screen={preview} onTap={setPreview} labels={labels} templateName={templateName} />
+          <FlowMap flow={flow} nodeIds={nodeIds} templateName={templateName} onJump={(id) => { setEditing(editing === id ? null : id); setPreview(id); }} />
         </div>
       </div>
 
@@ -632,7 +634,7 @@ export default function FlowBuilder() {
 }
 
 // ── Step Card ──────────────────────────────────────────
-function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, allowedActions, onToggle, onUpdate, onDelete }) {
+function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, allowedActions, templateName, onToggle, onUpdate, onDelete }) {
   const visibleActions = allowedActions ? BTN_ACTIONS.filter(a => allowedActions.includes(a.value)) : BTN_ACTIONS;
   const isStart = nodeId === 'start';
   const btns = node.buttons || [];
@@ -662,7 +664,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, a
   }
 
   const allVariables = Object.values(flow).filter(n => typeof n === 'object' && n?.type === 'input' && n?.variable).map(n => n.variable);
-  const name = friendlyName(nodeId, allNodes.indexOf(nodeId));
+  const name = friendlyName(nodeId, allNodes.indexOf(nodeId), templateName);
 
   const typeBadge = nodeType === 'input' ? 'bg-purple-50 text-purple-600'
     : nodeType === 'condition' ? 'bg-amber-50 text-amber-600'
@@ -697,7 +699,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, a
         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
         <option value="">Pick the next step...</option>
         {allNodes.filter(n => n !== nodeId).map(n => (
-          <option key={n} value={n}>{friendlyName(n, allNodes.indexOf(n))}</option>
+          <option key={n} value={n}>{friendlyName(n, allNodes.indexOf(n), templateName)}</option>
         ))}
       </select>
       {helpText && <p className="text-[10px] text-gray-400 mt-0.5">{helpText}</p>}
@@ -719,7 +721,10 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, a
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <p className="text-sm font-semibold text-gray-900">{name}</p>
-              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${typeBadge}`}>{typeLabel}</span>
+              {isStart
+                ? <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500 text-white">Start</span>
+                : <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${typeBadge}`}>{typeLabel}</span>
+              }
             </div>
             <p className="text-xs text-gray-500 truncate max-w-[200px] sm:max-w-xs">{node.message?.substring(0, 55) || (nodeType === 'condition' ? 'Routes based on answers' : '')}</p>
           </div>
@@ -773,7 +778,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, a
                             className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white mt-1.5">
                             <option value="">Where should this button lead to?</option>
                             {allNodes.filter(n => n !== nodeId).map(n => (
-                              <option key={n} value={n}>{friendlyName(n, allNodes.indexOf(n))}</option>
+                              <option key={n} value={n}>{friendlyName(n, allNodes.indexOf(n), templateName)}</option>
                             ))}
                           </select>
                         )}
@@ -867,7 +872,7 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, a
                           className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 outline-none focus:border-amber-400 bg-white">
                           <option value="">Pick a step...</option>
                           {allNodes.filter(n => n !== nodeId).map(n => (
-                            <option key={n} value={n}>{friendlyName(n, allNodes.indexOf(n))}</option>
+                            <option key={n} value={n}>{friendlyName(n, allNodes.indexOf(n), templateName)}</option>
                           ))}
                         </select>
                         <button onClick={() => removeRule(idx)} className="text-xs text-red-400 hover:text-red-600 shrink-0">Remove</button>

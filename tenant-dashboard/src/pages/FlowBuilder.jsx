@@ -640,7 +640,6 @@ export default function FlowBuilder() {
               className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-600 hover:border-emerald-400 hover:text-emerald-600 hover:bg-emerald-50/50 transition-all flex items-center gap-1.5 shadow-sm">
               <Icon name="clipboard" className="w-3.5 h-3.5" /> Use Template
             </button>
-            </button>
           </div>
         </div>
       </div>

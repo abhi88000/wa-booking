@@ -150,6 +150,85 @@ function friendlyName(id, idx) {
   return id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
+// ── Booking Flow Inline Preview ────────────────────────
+function BookingFlowPreview({ type, labels }) {
+  const staff = labels?.staff || 'Doctor';
+  const booking = labels?.booking || 'Appointment';
+
+  const flows = {
+    book: {
+      color: 'emerald',
+      title: `New ${booking} Flow`,
+      subtitle: 'Your customer will go through these steps automatically:',
+      steps: [
+        { icon: '🏥', label: `Choose a Clinic`, detail: 'Only if you have multiple clinics — skipped automatically if just one', optional: true },
+        { icon: '👨‍⚕️', label: `Choose a ${staff}`, detail: `Shows your active ${staff.toLowerCase()}s with their photos and specialization` },
+        { icon: '📋', label: 'Choose a Service', detail: `Shows services offered by the selected ${staff.toLowerCase()} with duration & price` },
+        { icon: '📅', label: 'Pick a Date', detail: `Shows next 7 available dates based on ${staff.toLowerCase()}'s schedule` },
+        { icon: '🕐', label: 'Pick a Time Slot', detail: `Shows open slots for that date (already filters out booked ones)` },
+        { icon: '✅', label: `Confirm ${booking}`, detail: `Shows full summary — ${staff.toLowerCase()}, service, date, time — customer confirms or cancels` },
+        { icon: '🔔', label: 'Auto-reminders', detail: 'Sends WhatsApp reminder 24h and 1h before the appointment', optional: true },
+      ]
+    },
+    status: {
+      color: 'blue',
+      title: `View ${booking}s Flow`,
+      subtitle: 'Your customer sees their upcoming schedule:',
+      steps: [
+        { icon: '🔍', label: `Look Up ${booking}s`, detail: `Finds all upcoming ${booking.toLowerCase()}s for this phone number` },
+        { icon: '📋', label: 'Show List', detail: `Displays each ${booking.toLowerCase()} with ${staff.toLowerCase()}, date, time, and status` },
+        { icon: '↩️', label: 'Back to Menu', detail: 'Customer returns to the main menu after viewing' },
+      ]
+    },
+    cancel: {
+      color: 'amber',
+      title: `Cancel / Reschedule Flow`,
+      subtitle: 'Your customer can manage existing bookings:',
+      steps: [
+        { icon: '📋', label: `Show Active ${booking}s`, detail: `Lists all upcoming ${booking.toLowerCase()}s the customer can manage` },
+        { icon: '👆', label: `Pick a ${booking}`, detail: 'Customer selects which one to cancel or reschedule' },
+        { icon: '❓', label: 'Cancel or Reschedule?', detail: 'Customer chooses what they want to do' },
+        { icon: '❌', label: 'Cancel', detail: `Cancels the ${booking.toLowerCase()} and confirms`, optional: true },
+        { icon: '📅', label: 'Reschedule → New Date', detail: 'Pick a new date from available dates', optional: true },
+        { icon: '🕐', label: 'Reschedule → New Time', detail: 'Pick a new time slot, then confirms', optional: true },
+      ]
+    }
+  };
+
+  const flow = flows[type];
+  if (!flow) return null;
+
+  const borderColor = { emerald: 'border-emerald-100', blue: 'border-blue-100', amber: 'border-amber-100' }[flow.color];
+  const bgColor = { emerald: 'bg-emerald-50', blue: 'bg-blue-50', amber: 'bg-amber-50' }[flow.color];
+  const textColor = { emerald: 'text-emerald-700', blue: 'text-blue-700', amber: 'text-amber-700' }[flow.color];
+  const dotColor = { emerald: 'bg-emerald-400', blue: 'bg-blue-400', amber: 'bg-amber-400' }[flow.color];
+
+  return (
+    <div className={`mt-1.5 ${bgColor} border ${borderColor} rounded-lg px-3 py-2.5`}>
+      <p className={`text-[11px] ${textColor} font-semibold mb-0.5`}>{flow.title}</p>
+      <p className="text-[10px] text-gray-500 mb-2">{flow.subtitle}</p>
+      <div className="space-y-1">
+        {flow.steps.map((step, i) => (
+          <div key={i} className="flex items-start gap-2">
+            <div className="flex flex-col items-center pt-0.5 shrink-0">
+              <div className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+              {i < flow.steps.length - 1 && <div className={`w-px h-3 ${dotColor} opacity-30 mt-0.5`} />}
+            </div>
+            <div className="min-w-0">
+              <p className="text-[11px] text-gray-800 font-medium leading-tight">
+                <span className="mr-1">{step.icon}</span>
+                {step.label}
+                {step.optional && <span className="text-[9px] text-gray-400 font-normal ml-1">(auto)</span>}
+              </p>
+              <p className="text-[10px] text-gray-500 leading-tight">{step.detail}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Getting Started Guide ──────────────────────────────
 function GettingStarted({ collapsed, onToggle }) {
   return (
@@ -579,6 +658,7 @@ export default function FlowBuilder() {
       {nodeIds.map((nodeId, idx) => (
         <ScreenCard key={nodeId} nodeId={nodeId} node={flow[nodeId]} step={idx + 1}
           allNodes={nodeIds} flow={flow} open={editing === nodeId} delay={360 + idx * 60}
+          labels={labels}
           onToggle={() => { setEditing(editing === nodeId ? null : nodeId); setPreview(nodeId); }}
           onUpdate={u => updateNode(nodeId, u)} onDelete={() => deleteNode(nodeId)} />
       ))}
@@ -618,7 +698,7 @@ export default function FlowBuilder() {
 }
 
 // ── Step Card ──────────────────────────────────────────
-function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle, onUpdate, onDelete }) {
+function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, onToggle, onUpdate, onDelete }) {
   const isStart = nodeId === 'start';
   const btns = node.buttons || [];
   const nodeType = node.type || 'menu';
@@ -766,6 +846,21 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, onToggle,
                           <textarea value={btn.response || ''} onChange={e => updateBtn(idx, { response: e.target.value })}
                             placeholder="What should the bot reply?" rows={2}
                             className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-800 outline-none focus:border-emerald-400 resize-none bg-white mt-1.5" />
+                        )}
+                        {btn.action === 'booking_flow' && (
+                          <BookingFlowPreview type="book" labels={labels} />
+                        )}
+                        {btn.action === 'booking_status' && (
+                          <BookingFlowPreview type="status" labels={labels} />
+                        )}
+                        {btn.action === 'booking_cancel' && (
+                          <BookingFlowPreview type="cancel" labels={labels} />
+                        )}
+                        {btn.action === 'ai' && (
+                          <div className="mt-1.5 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
+                            <p className="text-[11px] text-indigo-700 font-medium mb-1">🤖 AI Assistant Mode</p>
+                            <p className="text-[10px] text-indigo-600">Customer enters a free conversation with AI. They can type "menu" anytime to come back.</p>
+                          </div>
                         )}
                       </div>
                     </div>

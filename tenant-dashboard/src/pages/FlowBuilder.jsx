@@ -6,12 +6,12 @@ import SYSTEM_MESSAGES, { getMessagesByCategory, CATEGORY_META } from './systemM
 
 // ── Constants ──────────────────────────────────────────
 const BTN_ACTIONS = [
-  { value: 'next', label: 'Go to step' },
-  { value: 'booking_flow', label: 'Start booking flow' },
-  { value: 'booking_status', label: 'Show my bookings' },
-  { value: 'booking_cancel', label: 'Cancel / Reschedule' },
-  { value: 'text', label: 'Send a reply' },
-  { value: 'ai', label: 'AI assistant' },
+  { value: 'next', label: 'Go to step', desc: 'Navigate to another step in your flow' },
+  { value: 'booking_flow', label: 'Start booking flow', desc: 'Opens doctor → service → date → time booking wizard' },
+  { value: 'booking_status', label: 'Show my bookings', desc: 'Shows upcoming appointments with cancel/reschedule options' },
+  { value: 'booking_cancel', label: 'Cancel / Reschedule', desc: 'Lets patient cancel or reschedule an appointment' },
+  { value: 'text', label: 'Send a reply', desc: 'Send a custom text message back' },
+  { value: 'ai', label: 'AI assistant', desc: 'Hand off to AI for smart responses' },
 ];
 
 const INPUT_TYPES = [
@@ -1092,6 +1092,12 @@ function ScreenCard({ nodeId, node, step, allNodes, flow, open, delay, labels, a
                         className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm text-gray-700 outline-none focus:border-emerald-400 bg-white">
                         {visibleActions.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
                       </select>
+                      {(() => {
+                        const actionMeta = visibleActions.find(a => a.value === btn.action);
+                        return actionMeta?.desc && btn.action !== 'next' && btn.action !== 'text' ? (
+                          <p className="text-[10px] text-gray-400 mt-1 ml-0.5 italic">{actionMeta.desc}</p>
+                        ) : null;
+                      })()}
                       {btn.action === 'next' && (
                         <div className="mt-2">
                           <ScreenSelect value={btn.next} onChange={v => updateBtn(idx, { next: v })} label={null} helpText={null} />

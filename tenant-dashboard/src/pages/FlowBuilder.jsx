@@ -801,6 +801,13 @@ export default function FlowBuilder() {
                       const previewText = (currentVal || msg.default).replace(
                         /\{\{(\w+)\}\}/g, (_, k) => SAMPLE_VARS[k] || `{{${k}}}`
                       );
+                      // Convert WhatsApp markdown to HTML for preview
+                      const previewHtml = previewText
+                        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                        .replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>')
+                        .replace(/_([^_\n]+)_/g, '<em>$1</em>')
+                        .replace(/~([^~\n]+)~/g, '<del>$1</del>')
+                        .replace(/\n/g, '<br/>');
                       return (
                         <div key={msg.id} className={`rounded-lg border p-3 ${msg.editable ? 'border-gray-100 bg-gray-50/50' : 'border-amber-100 bg-amber-50/30'}`}>
                           <div className="flex items-center justify-between mb-1">
@@ -876,7 +883,7 @@ export default function FlowBuilder() {
                               <div className="relative bg-[#e5ddd5] rounded-lg p-3 flex-1 min-h-[60px]"
                                 style={{ backgroundImage: 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFklEQVQYV2P8////fwYiAOOoQoKUAgBhUBn3gNJuEAAAAABJRU5ErkJggg==")', backgroundSize: '10px' }}>
                                 <div className="bg-white rounded-lg px-2.5 py-2 shadow-sm max-w-[95%] ml-auto">
-                                  <div className="text-[11px] text-gray-800 whitespace-pre-wrap leading-relaxed">{previewText}</div>
+                                  <div className="text-[11px] text-gray-800 leading-relaxed" dangerouslySetInnerHTML={{ __html: previewHtml }} />
                                   <div className="text-[9px] text-gray-400 text-right mt-1">10:30 AM ✓✓</div>
                                 </div>
                               </div>

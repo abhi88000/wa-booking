@@ -880,11 +880,11 @@ export default function FlowBuilder() {
                             {/* Right: WhatsApp-style Preview */}
                             <div className="flex flex-col">
                               <span className="text-[10px] text-gray-400 mb-1 font-medium">Preview</span>
-                              <div className="relative bg-[#e5ddd5] rounded-lg p-3 flex-1 min-h-[60px]"
-                                style={{ backgroundImage: 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFklEQVQYV2P8////fwYiAOOoQoKUAgBhUBn3gNJuEAAAAABJRU5ErkJggg==")', backgroundSize: '10px' }}>
-                                <div className="bg-white rounded-lg px-2.5 py-2 shadow-sm max-w-[95%] ml-auto">
-                                  <div className="text-[11px] text-gray-800 leading-relaxed" dangerouslySetInnerHTML={{ __html: previewHtml }} />
-                                  <div className="text-[9px] text-gray-400 text-right mt-1">10:30 AM ✓✓</div>
+                              <div className="relative bg-[#ECE5DD] rounded-lg p-3 flex-1 min-h-[60px]">
+                                <div className="bg-white rounded-lg px-3 py-2 shadow-sm max-w-[90%] relative">
+                                  <div className="absolute -left-1.5 top-2 w-3 h-3 bg-white rotate-45" />
+                                  <div className="text-[11px] text-gray-800 leading-relaxed relative" dangerouslySetInnerHTML={{ __html: previewHtml }} />
+                                  <div className="text-[9px] text-gray-400 text-right mt-1">10:30 AM <span className="text-blue-400">✓✓</span></div>
                                 </div>
                               </div>
                             </div>

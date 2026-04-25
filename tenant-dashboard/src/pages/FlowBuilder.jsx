@@ -64,10 +64,9 @@ const TEMPLATES = [
     actions: ['next', 'text'],
     flow: {
       start: { message: 'Hi! We\'d love to hear about your experience. How would you rate us?', buttons: [
-        { id: 'r5', label: '⭐ Excellent (5)', action: 'text', response: 'Thank you! We\'re glad you had a great experience. 🎉' },
-        { id: 'r4', label: '👍 Good (4)', action: 'text', response: 'Thanks! We appreciate your feedback. 😊' },
-        { id: 'r3', label: '😐 Average (3)', action: 'text', response: 'Thanks for the feedback. We\'ll work to improve!' },
-        { id: 'r2', label: '👎 Poor (1-2)', action: 'text', response: 'We\'re sorry to hear that. We\'ll do better. 🙏' }
+        { id: 'r5', label: '⭐ Excellent', action: 'text', response: 'Thank you! We\'re glad you had a great experience. 🎉' },
+        { id: 'r3', label: '😐 Average', action: 'text', response: 'Thanks for the feedback. We\'ll work to improve!' },
+        { id: 'r1', label: '👎 Poor', action: 'text', response: 'We\'re sorry to hear that. We\'ll do better. 🙏' }
       ] },
       fallback: 'Please select a rating from the options above.'
     }

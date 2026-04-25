@@ -791,6 +791,16 @@ export default function FlowBuilder() {
                     {msgs.map(msg => {
                       const currentVal = messageOverrides[msg.id] ?? '';
                       const isOverridden = currentVal && currentVal !== msg.default;
+                      const SAMPLE_VARS = {
+                        doctor_name: 'Dr. Sharma', date: '28 Apr 2026', time: '10:30 AM',
+                        location: 'Main Clinic, Sector 15', status: 'Confirmed',
+                        start_time: '10:30 AM', end_time: '11:00 AM',
+                        service_name: 'Root Canal', patient_name: 'Rahul Verma',
+                        business_name: this?.tenant?.business_name || 'Your Clinic'
+                      };
+                      const previewText = (currentVal || msg.default).replace(
+                        /\{\{(\w+)\}\}/g, (_, k) => SAMPLE_VARS[k] || `{{${k}}}`
+                      );
                       return (
                         <div key={msg.id} className={`rounded-lg border p-3 ${msg.editable ? 'border-gray-100 bg-gray-50/50' : 'border-amber-100 bg-amber-50/30'}`}>
                           <div className="flex items-center justify-between mb-1">
@@ -809,53 +819,69 @@ export default function FlowBuilder() {
                             )}
                           </div>
                           <p className="text-[10px] text-gray-500 mb-1.5">{msg.desc}</p>
-                          {msg.editable ? (
-                            <>
-                              <textarea
-                                value={currentVal || msg.default}
-                                onChange={e => setMessageOverrides(p => ({ ...p, [msg.id]: e.target.value }))}
-                                rows={Math.min(6, (currentVal || msg.default).split('\n').length + 1)}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 font-mono outline-none focus:border-emerald-400 transition resize-none bg-white leading-relaxed"
-                              />
-                              {msg.variables.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  <span className="text-[10px] text-gray-400 mr-1 pt-0.5">Variables:</span>
-                                  {msg.variables.map(v => (
-                                    <button key={v} type="button"
-                                      onClick={() => setMessageOverrides(p => ({
-                                        ...p,
-                                        [msg.id]: (p[msg.id] || msg.default) + `{{${v}}}`
-                                      }))}
-                                      className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded hover:bg-purple-100 transition font-medium cursor-pointer">
-                                      {'{{' + v + '}}'}
-                                    </button>
-                                  ))}
-                                </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            {/* Left: Edit / Template */}
+                            <div>
+                              {msg.editable ? (
+                                <>
+                                  <textarea
+                                    value={currentVal || msg.default}
+                                    onChange={e => setMessageOverrides(p => ({ ...p, [msg.id]: e.target.value }))}
+                                    rows={Math.min(6, (currentVal || msg.default).split('\n').length + 1)}
+                                    className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 font-mono outline-none focus:border-emerald-400 transition resize-none bg-white leading-relaxed"
+                                  />
+                                  {msg.variables.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      <span className="text-[10px] text-gray-400 mr-1 pt-0.5">Variables:</span>
+                                      {msg.variables.map(v => (
+                                        <button key={v} type="button"
+                                          onClick={() => setMessageOverrides(p => ({
+                                            ...p,
+                                            [msg.id]: (p[msg.id] || msg.default) + `{{${v}}}`
+                                          }))}
+                                          className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded hover:bg-purple-100 transition font-medium cursor-pointer">
+                                          {'{{' + v + '}}'}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <>
+                                  <div className="w-full border border-amber-200 rounded-lg px-3 py-2 text-xs text-gray-600 font-mono bg-amber-50/50 leading-relaxed whitespace-pre-wrap">
+                                    {msg.default}
+                                  </div>
+                                  {msg.note && (
+                                    <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
+                                      <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                      {msg.note}
+                                    </p>
+                                  )}
+                                  {msg.variables.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      <span className="text-[10px] text-gray-400 mr-1 pt-0.5">Variables:</span>
+                                      {msg.variables.map(v => (
+                                        <span key={v} className="text-[10px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded font-medium">
+                                          {'{{' + v + '}}'}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </>
                               )}
-                            </>
-                          ) : (
-                            <>
-                              <div className="w-full border border-amber-200 rounded-lg px-3 py-2 text-xs text-gray-600 font-mono bg-amber-50/50 leading-relaxed whitespace-pre-wrap">
-                                {msg.default}
+                            </div>
+                            {/* Right: WhatsApp-style Preview */}
+                            <div className="flex flex-col">
+                              <span className="text-[10px] text-gray-400 mb-1 font-medium">Preview</span>
+                              <div className="relative bg-[#e5ddd5] rounded-lg p-3 flex-1 min-h-[60px]"
+                                style={{ backgroundImage: 'url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFklEQVQYV2P8////fwYiAOOoQoKUAgBhUBn3gNJuEAAAAABJRU5ErkJggg==")', backgroundSize: '10px' }}>
+                                <div className="bg-white rounded-lg px-2.5 py-2 shadow-sm max-w-[95%] ml-auto">
+                                  <div className="text-[11px] text-gray-800 whitespace-pre-wrap leading-relaxed">{previewText}</div>
+                                  <div className="text-[9px] text-gray-400 text-right mt-1">10:30 AM ✓✓</div>
+                                </div>
                               </div>
-                              {msg.note && (
-                                <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
-                                  <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                  {msg.note}
-                                </p>
-                              )}
-                              {msg.variables.length > 0 && (
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  <span className="text-[10px] text-gray-400 mr-1 pt-0.5">Variables:</span>
-                                  {msg.variables.map(v => (
-                                    <span key={v} className="text-[10px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded font-medium">
-                                      {'{{' + v + '}}'}
-                                    </span>
-                                  ))}
-                                </div>
-                              )}
-                            </>
-                          )}
+                            </div>
+                          </div>
                         </div>
                       );
                     })}

@@ -21,18 +21,18 @@ class BookingEngine {
   // Get a system message, using tenant override or default
   msg(id, vars = {}) {
     const DEFAULTS = {
-      booking_confirmation: '✅ *Appointment {{status}}!*\n\n👨‍⚕️ {{doctor_name}}\n📅 {{date}}\n🕐 {{time}}\n{{location}}\nYou\'ll receive a reminder before your appointment.\nType "status" anytime to check your appointments.',
-      booking_summary: '📋 *Appointment Summary*\n\n👨‍⚕️ Doctor: {{doctor_name}}\n📝 Service: {{service_name}}\n📅 Date: {{date}}\n🕐 Time: {{start_time}} - {{end_time}}\n\nWould you like to confirm this appointment?',
-      doctor_notification: '📋 *New Appointment Booked*\n\nPatient: {{patient_name}}\n📅 {{date}}\n🕐 {{start_time}} - {{end_time}}\n📝 {{service_name}}\n\nStatus: {{status}}',
-      cancel_confirmation: '❌ *Appointment Cancelled*\n\n👨‍⚕️ {{doctor_name}}\n📅 {{date}} at {{time}}\n\nType "book" to schedule a new appointment.',
+      booking_confirmation: '✅ *Appointment {{status}}!*\n\n🧑‍💼 {{provider_name}}\n📅 {{date}}\n🕐 {{time}}\n{{location}}\nYou\'ll receive a reminder before your appointment.\nType "status" anytime to check your appointments.',
+      booking_summary: '📋 *Appointment Summary*\n\n🧑‍💼 Provider: {{provider_name}}\n📝 Service: {{service_name}}\n📅 Date: {{date}}\n🕐 Time: {{start_time}} - {{end_time}}\n\nWould you like to confirm this appointment?',
+      staff_notification: '📋 *New Appointment Booked*\n\nCustomer: {{patient_name}}\n📅 {{date}}\n🕐 {{start_time}} - {{end_time}}\n📝 {{service_name}}\n\nStatus: {{status}}',
+      cancel_confirmation: '❌ *Appointment Cancelled*\n\n🧑‍💼 {{provider_name}}\n📅 {{date}} at {{time}}\n\nType "book" to schedule a new appointment.',
       booking_cancelled_nav: 'Booking cancelled. Send "hi" to start over.',
-      reschedule_confirmation: '🔄 *Appointment Rescheduled!*\n\n👨‍⚕️ {{doctor_name}}\n📅 {{date}}\n🕐 {{time}}\n\nYou\'ll receive a reminder before your appointment.',
-      reschedule_accepted: '✅ *Reschedule Accepted*\n\n👨‍⚕️ {{doctor_name}}\n📅 {{date}} at {{time}}\n\nSee you there!',
+      reschedule_confirmation: '🔄 *Appointment Rescheduled!*\n\n🧑‍💼 {{provider_name}}\n📅 {{date}}\n🕐 {{time}}\n\nYou\'ll receive a reminder before your appointment.',
+      reschedule_accepted: '✅ *Reschedule Accepted*\n\n🧑‍💼 {{provider_name}}\n📅 {{date}} at {{time}}\n\nSee you there!',
       reschedule_declined: '❌ *Reschedule Declined*\n\nYour appointment has been cancelled.\nReply "book" to schedule a new appointment at a time that works for you.',
-      reschedule_declined_detail: '❌ *Reschedule Declined*\n\nYour appointment with {{doctor_name}} on {{date}} has been cancelled.\nReply "book" to schedule a new appointment at a time that works for you.',
+      reschedule_declined_detail: '❌ *Reschedule Declined*\n\nYour appointment with {{provider_name}} on {{date}} has been cancelled.\nReply "book" to schedule a new appointment at a time that works for you.',
       upcoming_appointments: '📋 *Your Upcoming Appointments*',
       no_appointments: 'You have no upcoming appointments.',
-      appointment_confirmed: '✅ *Appointment Confirmed*\n\n👨‍⚕️ {{doctor_name}}\n📅 {{date}} at {{time}}\n\nSee you there!',
+      appointment_confirmed: '✅ *Appointment Confirmed*\n\n🧑‍💼 {{provider_name}}\n📅 {{date}} at {{time}}\n\nSee you there!',
       help_menu: '🤖 *{{business_name}} - Help*\n\nHere\'s what I can do:\n\n📅 *Book* — Schedule a new appointment\n📋 *Status* — View your appointments\n❌ *Cancel* — Cancel an appointment\n🔄 *Reschedule* — Change appointment time\n\nJust type any of these words or tap the buttons!',
       error_message: 'Sorry, something went wrong. Please try again or type "hi" to start over.',
       go_back: 'OK, going back. Send "hi" to see the menu.',
@@ -724,7 +724,7 @@ class BookingEngine {
 
     // Show confirmation
     const summary = this.msg('booking_summary', {
-      doctor_name: state.doctorName,
+      provider_name: state.doctorName,
       service_name: state.serviceName,
       date: this.formatDate(state.appointmentDate),
       start_time: this.formatTime(time),
@@ -836,7 +836,7 @@ class BookingEngine {
           ? `\n📍 Location: ${this.tenant.settings.google_maps_url}\n` : '';
         await this.wa.sendText(this.phone, this.msg('booking_confirmation', {
           status: statusText,
-          doctor_name: state.doctorName,
+          provider_name: state.doctorName,
           date: this.formatDate(state.appointmentDate),
           time: this.formatTime(state.startTime),
           location: locationLine
@@ -894,7 +894,7 @@ class BookingEngine {
     );
 
     await this.wa.sendText(this.phone, this.msg('appointment_confirmed', {
-      doctor_name: a.doctor_name,
+      provider_name: a.doctor_name,
       date: this.formatDate(a.appointment_date),
       time: this.formatTime(a.start_time)
     }));
@@ -929,7 +929,7 @@ class BookingEngine {
 
       const a = rows[0];
       return await this.wa.sendText(this.phone, this.msg('reschedule_accepted', {
-        doctor_name: a.doctor_name,
+        provider_name: a.doctor_name,
         date: this.formatDate(a.appointment_date),
         time: this.formatTime(a.start_time)
       }));
@@ -991,7 +991,7 @@ class BookingEngine {
     );
 
     return await this.wa.sendText(this.phone, this.msg('reschedule_declined_detail', {
-      doctor_name: rows[0].doctor_name,
+      provider_name: rows[0].doctor_name,
       date: this.formatDate(rows[0].appointment_date)
     }));
   }
@@ -1161,7 +1161,7 @@ class BookingEngine {
 
     const a = rows[0];
     await this.wa.sendText(this.phone, this.msg('cancel_confirmation', {
-      doctor_name: a.doctor_name,
+      provider_name: a.doctor_name,
       date: this.formatDate(a.appointment_date),
       time: this.formatTime(a.start_time)
     }));
@@ -1321,7 +1321,7 @@ class BookingEngine {
       }
 
       await this.wa.sendText(this.phone, this.msg('reschedule_confirmation', {
-        doctor_name: state.doctorName,
+        provider_name: state.doctorName,
         date: this.formatDate(state.appointmentDate),
         time: this.formatTime(time)
       }));
@@ -1356,7 +1356,7 @@ class BookingEngine {
       const doctorPhone = rows[0]?.phone;
       if (!doctorPhone) return; // Doctor has no phone registered
 
-      await this.wa.sendText(doctorPhone, this.msg('doctor_notification', {
+      await this.wa.sendText(doctorPhone, this.msg('staff_notification', {
         patient_name: this.patient.name || this.phone,
         date: this.formatDate(state.appointmentDate),
         start_time: this.formatTime(state.startTime),

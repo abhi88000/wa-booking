@@ -11,10 +11,10 @@ const SYSTEM_MESSAGES = [
     label: 'Booking Confirmation',
     desc: 'Sent after a new appointment is confirmed',
     editable: true,
-    variables: ['doctor_name', 'date', 'time', 'location', 'status'],
+    variables: ['provider_name', 'date', 'time', 'location', 'status'],
     default:
       '✅ *Appointment {{status}}!*\n\n' +
-      '👨‍⚕️ {{doctor_name}}\n' +
+      '🧑‍💼 {{provider_name}}\n' +
       '📅 {{date}}\n' +
       '🕐 {{time}}\n' +
       '{{location}}\n' +
@@ -27,25 +27,25 @@ const SYSTEM_MESSAGES = [
     label: 'Booking Summary (before confirm)',
     desc: 'Shown right before the customer confirms',
     editable: true,
-    variables: ['doctor_name', 'service_name', 'date', 'start_time', 'end_time'],
+    variables: ['provider_name', 'service_name', 'date', 'start_time', 'end_time'],
     default:
       '📋 *Appointment Summary*\n\n' +
-      '👨‍⚕️ Doctor: {{doctor_name}}\n' +
+      '🧑‍💼 Provider: {{provider_name}}\n' +
       '📝 Service: {{service_name}}\n' +
       '📅 Date: {{date}}\n' +
       '🕐 Time: {{start_time}} - {{end_time}}\n\n' +
       'Would you like to confirm this appointment?',
   },
   {
-    id: 'doctor_notification',
+    id: 'staff_notification',
     category: 'Booking',
-    label: 'Doctor Notification (new booking)',
-    desc: 'Sent to the doctor/staff when a booking is made',
+    label: 'Staff Notification (new booking)',
+    desc: 'Sent to the staff/provider when a booking is made',
     editable: true,
     variables: ['patient_name', 'date', 'start_time', 'end_time', 'service_name', 'status'],
     default:
       '📋 *New Appointment Booked*\n\n' +
-      'Patient: {{patient_name}}\n' +
+      'Customer: {{patient_name}}\n' +
       '📅 {{date}}\n' +
       '🕐 {{start_time}} - {{end_time}}\n' +
       '📝 {{service_name}}\n\n' +
@@ -59,10 +59,10 @@ const SYSTEM_MESSAGES = [
     label: 'Cancellation Confirmation',
     desc: 'Sent when the customer cancels their appointment',
     editable: true,
-    variables: ['doctor_name', 'date', 'time'],
+    variables: ['provider_name', 'date', 'time'],
     default:
       '❌ *Appointment Cancelled*\n\n' +
-      '👨‍⚕️ {{doctor_name}}\n' +
+      '🧑‍💼 {{provider_name}}\n' +
       '📅 {{date}} at {{time}}\n\n' +
       'Type "book" to schedule a new appointment.',
   },
@@ -83,10 +83,10 @@ const SYSTEM_MESSAGES = [
     label: 'Reschedule Confirmation',
     desc: 'Sent after a successful reschedule',
     editable: true,
-    variables: ['doctor_name', 'date', 'time'],
+    variables: ['provider_name', 'date', 'time'],
     default:
       '🔄 *Appointment Rescheduled!*\n\n' +
-      '👨‍⚕️ {{doctor_name}}\n' +
+      '🧑‍💼 {{provider_name}}\n' +
       '📅 {{date}}\n' +
       '🕐 {{time}}\n\n' +
       'You\'ll receive a reminder before your appointment.',
@@ -95,12 +95,12 @@ const SYSTEM_MESSAGES = [
     id: 'reschedule_accepted',
     category: 'Reschedule',
     label: 'Reschedule Accepted',
-    desc: 'When patient accepts a clinic-initiated reschedule',
+    desc: 'When customer accepts a reschedule initiated by staff',
     editable: true,
-    variables: ['doctor_name', 'date', 'time'],
+    variables: ['provider_name', 'date', 'time'],
     default:
       '✅ *Reschedule Accepted*\n\n' +
-      '👨‍⚕️ {{doctor_name}}\n' +
+      '🧑‍💼 {{provider_name}}\n' +
       '📅 {{date}} at {{time}}\n\n' +
       'See you there!',
   },
@@ -108,7 +108,7 @@ const SYSTEM_MESSAGES = [
     id: 'reschedule_declined',
     category: 'Reschedule',
     label: 'Reschedule Declined',
-    desc: 'When patient declines a clinic-initiated reschedule',
+    desc: 'When customer declines a reschedule initiated by staff',
     editable: true,
     variables: [],
     default:
@@ -120,12 +120,12 @@ const SYSTEM_MESSAGES = [
     id: 'reschedule_declined_detail',
     category: 'Reschedule',
     label: 'Reschedule Declined (with details)',
-    desc: 'When patient declines and we have the appointment details',
+    desc: 'When customer declines and we have the appointment details',
     editable: true,
-    variables: ['doctor_name', 'date'],
+    variables: ['provider_name', 'date'],
     default:
       '❌ *Reschedule Declined*\n\n' +
-      'Your appointment with {{doctor_name}} on {{date}} has been cancelled.\n' +
+      'Your appointment with {{provider_name}} on {{date}} has been cancelled.\n' +
       'Reply "book" to schedule a new appointment at a time that works for you.',
   },
 
@@ -152,12 +152,12 @@ const SYSTEM_MESSAGES = [
     id: 'appointment_confirmed',
     category: 'Status',
     label: 'Appointment Confirmed (reminder response)',
-    desc: 'When patient confirms via reminder button',
+    desc: 'When customer confirms via reminder button',
     editable: true,
-    variables: ['doctor_name', 'date', 'time'],
+    variables: ['provider_name', 'date', 'time'],
     default:
       '✅ *Appointment Confirmed*\n\n' +
-      '👨‍⚕️ {{doctor_name}}\n' +
+      '🧑‍💼 {{provider_name}}\n' +
       '📅 {{date}} at {{time}}\n\n' +
       'See you there!',
   },
@@ -214,8 +214,8 @@ const SYSTEM_MESSAGES = [
     label: 'Appointment Reminder (24h before)',
     desc: 'Sent via WhatsApp Template — requires Meta approval to change',
     editable: false,
-    variables: ['patient_name', 'doctor_name', 'date', 'time', 'business_name'],
-    default: 'Hi {{patient_name}}, reminder: your appointment with {{doctor_name}} is on {{date}} at {{time}}. — {{business_name}}',
+    variables: ['patient_name', 'provider_name', 'date', 'time', 'business_name'],
+    default: 'Hi {{patient_name}}, reminder: your appointment with {{provider_name}} is on {{date}} at {{time}}. — {{business_name}}',
     note: 'This uses a WhatsApp Template Message (appointment_reminder). Template changes must be submitted to Meta for approval.',
   },
   {
@@ -224,19 +224,19 @@ const SYSTEM_MESSAGES = [
     label: 'Appointment Reminder (1h before)',
     desc: 'Sent via WhatsApp Template — requires Meta approval to change',
     editable: false,
-    variables: ['patient_name', 'doctor_name', 'date', 'time', 'business_name'],
-    default: 'Hi {{patient_name}}, reminder: your appointment with {{doctor_name}} is on {{date}} at {{time}}. — {{business_name}}',
+    variables: ['patient_name', 'provider_name', 'date', 'time', 'business_name'],
+    default: 'Hi {{patient_name}}, reminder: your appointment with {{provider_name}} is on {{date}} at {{time}}. — {{business_name}}',
     note: 'Uses the same appointment_reminder template as the 24h reminder.',
   },
   {
     id: 'daily_schedule',
     category: 'Reminders',
-    label: 'Daily Doctor Schedule',
-    desc: 'Morning summary sent to each doctor with their appointments',
+    label: 'Daily Staff Schedule',
+    desc: 'Morning summary sent to each staff member with their appointments',
     editable: true,
-    variables: ['doctor_name', 'date', 'appointment_count', 'business_name'],
+    variables: ['provider_name', 'date', 'appointment_count', 'business_name'],
     default:
-      '📋 *Today\'s Schedule — {{doctor_name}}*\n' +
+      '📋 *Today\'s Schedule — {{provider_name}}*\n' +
       '📅 {{date}}\n' +
       '━━━━━━━━━━━━━━━━━━\n' +
       '(appointments listed automatically)\n' +

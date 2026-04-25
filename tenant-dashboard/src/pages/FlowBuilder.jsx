@@ -794,11 +794,12 @@ export default function FlowBuilder() {
                       const currentVal = messageOverrides[msg.id] ?? '';
                       const isOverridden = currentVal && currentVal !== msg.default;
                       const SAMPLE_VARS = {
-                        doctor_name: 'Dr. Sharma', date: '28 Apr 2026', time: '10:30 AM',
+                        provider_name: 'Dr. Sharma', date: '28 Apr 2026', time: '10:30 AM',
                         location: 'Main Clinic, Sector 15', status: 'Confirmed',
                         start_time: '10:30 AM', end_time: '11:00 AM',
-                        service_name: 'Root Canal', patient_name: 'Rahul Verma',
-                        business_name: this?.tenant?.business_name || 'Your Clinic'
+                        service_name: 'Consultation', patient_name: 'Rahul Verma',
+                        business_name: 'Your Business',
+                        appointment_count: '5'
                       };
                       const previewText = (currentVal || msg.default).replace(
                         /\{\{(\w+)\}\}/g, (_, k) => SAMPLE_VARS[k] || `{{${k}}}`

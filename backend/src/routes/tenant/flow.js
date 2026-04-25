@@ -15,11 +15,13 @@ const { validateFlowConfig } = require('../../utils/flowConfig');
 // Get flow config
 router.get('/flow-config', async (req, res, next) => {
   try {
+    const settings = req.tenant.settings || {};
     res.json({
       flow_config: req.tenant.flow_config || null,
       ai_config: req.tenant.ai_config || null,
       labels: req.tenant.labels || { staff: 'Doctor', customer: 'Patient', booking: 'Appointment' },
-      features: req.tenant.features || {}
+      features: req.tenant.features || {},
+      messages: settings.system_messages || {}
     });
   } catch (err) {
     next(err);
@@ -29,7 +31,7 @@ router.get('/flow-config', async (req, res, next) => {
 // Save flow config
 router.put('/flow-config', async (req, res, next) => {
   try {
-    const { flow_config, labels } = req.body;
+    const { flow_config, labels, messages } = req.body;
 
     // Validate flow_config structure
     if (flow_config) {
@@ -39,10 +41,28 @@ router.put('/flow-config', async (req, res, next) => {
       }
     }
 
-    await pool.query(
-      `UPDATE tenants SET flow_config = $1, labels = COALESCE($2, labels), updated_at = NOW() WHERE id = $3`,
-      [flow_config ? JSON.stringify(flow_config) : null, labels ? JSON.stringify(labels) : null, req.tenantId]
-    );
+    // Build update query
+    let query = `UPDATE tenants SET flow_config = $1, labels = COALESCE($2, labels)`;
+    const params = [
+      flow_config ? JSON.stringify(flow_config) : null,
+      labels ? JSON.stringify(labels) : null
+    ];
+
+    // Save system message overrides in settings.system_messages
+    if (messages && typeof messages === 'object') {
+      // Only keep non-empty overrides (don't store defaults)
+      const clean = {};
+      Object.entries(messages).forEach(([k, v]) => {
+        if (typeof v === 'string' && v.trim()) clean[k] = v;
+      });
+      query += `, settings = jsonb_set(COALESCE(settings, '{}'), '{system_messages}', $${params.length + 1}::jsonb)`;
+      params.push(JSON.stringify(clean));
+    }
+
+    query += `, updated_at = NOW() WHERE id = $${params.length + 1}`;
+    params.push(req.tenantId);
+
+    await pool.query(query, params);
 
     // Invalidate cache so next inbound message uses the updated flow
     tenantCache.invalidate(req.tenantId);

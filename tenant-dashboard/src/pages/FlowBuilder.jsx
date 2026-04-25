@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../api';
 import Icon from '../components/Icons';
 import { ACTION_TYPES, deleteNodeAndCleanup, validateFlowDraft } from './flowBuilderUtils';
+import SYSTEM_MESSAGES, { getMessagesByCategory, CATEGORY_META } from './systemMessages';
 
 // ── Constants ──────────────────────────────────────────
 const BTN_ACTIONS = [
@@ -423,6 +424,8 @@ export default function FlowBuilder() {
   const [isNewFlow, setIsNewFlow] = useState(false);
   const [showFlowPicker, setShowFlowPicker] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showMessages, setShowMessages] = useState(false);
+  const [messageOverrides, setMessageOverrides] = useState({});
 
   useEffect(() => { load(); }, []);
 
@@ -450,6 +453,7 @@ export default function FlowBuilder() {
         setIsNewFlow(true);
       }
       setLabels(data.labels || { staff: 'Doctor', customer: 'Patient', booking: 'Appointment' });
+      setMessageOverrides(data.messages || {});
     } catch { setError('Failed to load'); }
     finally { setLoading(false); }
   }
@@ -494,7 +498,7 @@ export default function FlowBuilder() {
 
     setSaving(true); setError(''); setSaved(false);
     try {
-      await api.saveFlowConfig({ flow_config: flow, labels });
+      await api.saveFlowConfig({ flow_config: flow, labels, messages: messageOverrides });
       setSaved(true); setTimeout(() => setSaved(false), 3000);
     } catch (e) { setError(e.response?.data?.error || 'Failed to save'); }
     finally { setSaving(false); }
@@ -757,6 +761,110 @@ export default function FlowBuilder() {
           <svg className="w-5 h-5 text-emerald-400 group-hover:text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/></svg>
           <span className="text-sm font-semibold text-emerald-600 group-hover:text-emerald-700">Add a new flow</span>
         </button>
+      </div>
+
+      {/* System Messages */}
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-4">
+        <button onClick={() => setShowMessages(!showMessages)}
+          className="w-full flex items-center justify-between px-4 py-3 text-left">
+          <div className="flex items-center gap-2">
+            <Icon name="messageSquare" className="w-4 h-4 text-gray-400" />
+            <span className="text-sm font-bold text-gray-900">System Messages</span>
+            <span className="text-[10px] bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">{SYSTEM_MESSAGES.length}</span>
+          </div>
+          <svg className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${showMessages ? 'rotate-180' : ''}`}
+            fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        {showMessages && (
+          <div className="px-4 pb-4">
+            <p className="text-xs text-gray-500 mb-3">All messages your WhatsApp bot sends — customize any text, or use the defaults.</p>
+            {Object.entries(getMessagesByCategory()).map(([cat, msgs]) => {
+              const meta = CATEGORY_META[cat] || { icon: 'messageSquare', color: 'gray' };
+              return (
+                <div key={cat} className="mb-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon name={meta.icon} className={`w-4 h-4 text-${meta.color}-500`} />
+                    <span className="text-xs font-bold text-gray-700 uppercase tracking-wide">{cat}</span>
+                    <span className="text-[10px] text-gray-400">{msgs.length} messages</span>
+                  </div>
+                  <div className="space-y-2">
+                    {msgs.map(msg => {
+                      const currentVal = messageOverrides[msg.id] ?? '';
+                      const isOverridden = currentVal && currentVal !== msg.default;
+                      return (
+                        <div key={msg.id} className={`rounded-lg border p-3 ${msg.editable ? 'border-gray-100 bg-gray-50/50' : 'border-amber-100 bg-amber-50/30'}`}>
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold text-gray-800">{msg.label}</span>
+                              {!msg.editable && (
+                                <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">WhatsApp Template</span>
+                              )}
+                              {isOverridden && msg.editable && (
+                                <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">Customized</span>
+                              )}
+                            </div>
+                            {isOverridden && msg.editable && (
+                              <button onClick={() => setMessageOverrides(p => { const n = { ...p }; delete n[msg.id]; return n; })}
+                                className="text-[10px] text-gray-400 hover:text-red-500 font-medium">Reset to default</button>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-gray-500 mb-1.5">{msg.desc}</p>
+                          {msg.editable ? (
+                            <>
+                              <textarea
+                                value={currentVal || msg.default}
+                                onChange={e => setMessageOverrides(p => ({ ...p, [msg.id]: e.target.value }))}
+                                rows={Math.min(6, (currentVal || msg.default).split('\n').length + 1)}
+                                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-800 font-mono outline-none focus:border-emerald-400 transition resize-none bg-white leading-relaxed"
+                              />
+                              {msg.variables.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  <span className="text-[10px] text-gray-400 mr-1 pt-0.5">Variables:</span>
+                                  {msg.variables.map(v => (
+                                    <button key={v} type="button"
+                                      onClick={() => setMessageOverrides(p => ({
+                                        ...p,
+                                        [msg.id]: (p[msg.id] || msg.default) + `{{${v}}}`
+                                      }))}
+                                      className="text-[10px] bg-purple-50 text-purple-600 px-1.5 py-0.5 rounded hover:bg-purple-100 transition font-medium cursor-pointer">
+                                      {'{{' + v + '}}'}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <div className="w-full border border-amber-200 rounded-lg px-3 py-2 text-xs text-gray-600 font-mono bg-amber-50/50 leading-relaxed whitespace-pre-wrap">
+                                {msg.default}
+                              </div>
+                              {msg.note && (
+                                <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-1">
+                                  <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                  {msg.note}
+                                </p>
+                              )}
+                              {msg.variables.length > 0 && (
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  <span className="text-[10px] text-gray-400 mr-1 pt-0.5">Variables:</span>
+                                  {msg.variables.map(v => (
+                                    <span key={v} className="text-[10px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded font-medium">
+                                      {'{{' + v + '}}'}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Settings — Fallback only */}

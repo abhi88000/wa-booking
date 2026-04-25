@@ -15,6 +15,34 @@ class BookingEngine {
     this.wa = waService;
     this.tenantId = tenant.id;
     this.phone = patient.phone;
+    this.msgs = (tenant.settings || {}).system_messages || {};
+  }
+
+  // Get a system message, using tenant override or default
+  msg(id, vars = {}) {
+    const DEFAULTS = {
+      booking_confirmation: '✅ *Appointment {{status}}!*\n\n👨‍⚕️ {{doctor_name}}\n📅 {{date}}\n🕐 {{time}}\n{{location}}\nYou\'ll receive a reminder before your appointment.\nType "status" anytime to check your appointments.',
+      booking_summary: '📋 *Appointment Summary*\n\n👨‍⚕️ Doctor: {{doctor_name}}\n📝 Service: {{service_name}}\n📅 Date: {{date}}\n🕐 Time: {{start_time}} - {{end_time}}\n\nWould you like to confirm this appointment?',
+      doctor_notification: '📋 *New Appointment Booked*\n\nPatient: {{patient_name}}\n📅 {{date}}\n🕐 {{start_time}} - {{end_time}}\n📝 {{service_name}}\n\nStatus: {{status}}',
+      cancel_confirmation: '❌ *Appointment Cancelled*\n\n👨‍⚕️ {{doctor_name}}\n📅 {{date}} at {{time}}\n\nType "book" to schedule a new appointment.',
+      booking_cancelled_nav: 'Booking cancelled. Send "hi" to start over.',
+      reschedule_confirmation: '🔄 *Appointment Rescheduled!*\n\n👨‍⚕️ {{doctor_name}}\n📅 {{date}}\n🕐 {{time}}\n\nYou\'ll receive a reminder before your appointment.',
+      reschedule_accepted: '✅ *Reschedule Accepted*\n\n👨‍⚕️ {{doctor_name}}\n📅 {{date}} at {{time}}\n\nSee you there!',
+      reschedule_declined: '❌ *Reschedule Declined*\n\nYour appointment has been cancelled.\nReply "book" to schedule a new appointment at a time that works for you.',
+      reschedule_declined_detail: '❌ *Reschedule Declined*\n\nYour appointment with {{doctor_name}} on {{date}} has been cancelled.\nReply "book" to schedule a new appointment at a time that works for you.',
+      upcoming_appointments: '📋 *Your Upcoming Appointments*',
+      no_appointments: 'You have no upcoming appointments.',
+      appointment_confirmed: '✅ *Appointment Confirmed*\n\n👨‍⚕️ {{doctor_name}}\n📅 {{date}} at {{time}}\n\nSee you there!',
+      help_menu: '🤖 *{{business_name}} - Help*\n\nHere\'s what I can do:\n\n📅 *Book* — Schedule a new appointment\n📋 *Status* — View your appointments\n❌ *Cancel* — Cancel an appointment\n🔄 *Reschedule* — Change appointment time\n\nJust type any of these words or tap the buttons!',
+      error_message: 'Sorry, something went wrong. Please try again or type "hi" to start over.',
+      go_back: 'OK, going back. Send "hi" to see the menu.',
+      slot_taken: 'Sorry, this slot was just booked by someone else. Please pick another time.',
+    };
+    let text = this.msgs[id] || DEFAULTS[id] || '';
+    Object.entries(vars).forEach(([k, v]) => {
+      text = text.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), v ?? '');
+    });
+    return text;
   }
 
   // Format a DB date to DD Mon YYYY
@@ -39,7 +67,7 @@ class BookingEngine {
       }
       if (msg === 'cancel_booking' && currentState !== 'new' && currentState !== 'idle') {
         await this.setState({ state: 'idle' });
-        return await this.wa.sendText(this.phone, 'Booking cancelled. Send "hi" to start over.');
+        return await this.wa.sendText(this.phone, this.msg('booking_cancelled_nav'));
       }
 
       logger.info(`Booking engine: state=${currentState}, content=${content}`, {
@@ -96,9 +124,7 @@ class BookingEngine {
         tenantId: this.tenantId,
         phone: this.phone
       });
-      await this.wa.sendText(this.phone,
-        'Sorry, something went wrong. Please try again or type "hi" to start over.'
-      );
+      await this.wa.sendText(this.phone, this.msg('error_message'));
       await this.setState({ state: 'idle' });
     }
   }
@@ -132,7 +158,7 @@ class BookingEngine {
     }
     if (msg === 'go_back' || msg === 'cancel_booking') {
       await this.setState({ state: 'idle' });
-      return await this.wa.sendText(this.phone, 'Booking cancelled. Send "hi" to start over.');
+      return await this.wa.sendText(this.phone, this.msg('booking_cancelled_nav'));
     }
 
     // Any other message → show main menu with buttons
@@ -198,7 +224,7 @@ class BookingEngine {
   async handleClinicSelection(content, interactiveData, state) {
     if (content === 'cancel_booking') {
       await this.setState({ state: 'idle' });
-      return await this.wa.sendText(this.phone, 'Booking cancelled. Send "hi" to start over.');
+      return await this.wa.sendText(this.phone, this.msg('booking_cancelled_nav'));
     }
 
     const clinics = this.tenant.settings?.branches || [];
@@ -289,7 +315,7 @@ class BookingEngine {
   async handleDoctorSelection(content, interactiveData, state) {
     if (content === 'cancel_booking') {
       await this.setState({ state: 'idle' });
-      return await this.wa.sendText(this.phone, 'Booking cancelled. Send "hi" to start over.');
+      return await this.wa.sendText(this.phone, this.msg('booking_cancelled_nav'));
     }
     const doctorId = content.replace('doc_', '');
     
@@ -378,7 +404,7 @@ class BookingEngine {
   async handleServiceSelection(content, interactiveData, state) {
     if (content === 'cancel_booking') {
       await this.setState({ state: 'idle' });
-      return await this.wa.sendText(this.phone, 'Booking cancelled. Send "hi" to start over.');
+      return await this.wa.sendText(this.phone, this.msg('booking_cancelled_nav'));
     }
     const serviceId = content.replace('svc_', '');
     
@@ -534,7 +560,7 @@ class BookingEngine {
   async handleDateSelection(content, interactiveData, state) {
     if (content === 'cancel_booking') {
       await this.setState({ state: 'idle' });
-      return await this.wa.sendText(this.phone, 'Booking cancelled. Send "hi" to start over.');
+      return await this.wa.sendText(this.phone, this.msg('booking_cancelled_nav'));
     }
     const dateStr = content.replace('date_', '');
     
@@ -671,7 +697,7 @@ class BookingEngine {
   async handleTimeSelection(content, interactiveData, state) {
     if (content === 'cancel_booking') {
       await this.setState({ state: 'idle' });
-      return await this.wa.sendText(this.phone, 'Booking cancelled. Send "hi" to start over.');
+      return await this.wa.sendText(this.phone, this.msg('booking_cancelled_nav'));
     }
     if (content === 'back_to_dates') {
       await this.setState({ ...state, state: 'awaiting_date' });
@@ -697,13 +723,13 @@ class BookingEngine {
     await this.setState(updatedState);
 
     // Show confirmation
-    const summary = 
-      `📋 *Appointment Summary*\n\n` +
-      `👨‍⚕️ Doctor: ${state.doctorName}\n` +
-      `📝 Service: ${state.serviceName}\n` +
-      `📅 Date: ${this.formatDate(state.appointmentDate)}\n` +
-      `🕐 Time: ${this.formatTime(time)} - ${this.formatTime(endTime)}\n\n` +
-      `Would you like to confirm this appointment?`;
+    const summary = this.msg('booking_summary', {
+      doctor_name: state.doctorName,
+      service_name: state.serviceName,
+      date: this.formatDate(state.appointmentDate),
+      start_time: this.formatTime(time),
+      end_time: this.formatTime(endTime)
+    });
 
     await this.wa.sendButtons(this.phone, {
       bodyText: summary,
@@ -718,7 +744,7 @@ class BookingEngine {
   async handleConfirmation(content, interactiveData, state) {
     if (content === 'confirm_no' || content.toLowerCase().includes('cancel')) {
       await this.setState({ state: 'idle' });
-      return await this.wa.sendText(this.phone, 'Booking cancelled. Type "hi" to start again.');
+      return await this.wa.sendText(this.phone, this.msg('booking_cancelled_nav'));
     }
 
     if (content === 'confirm_yes' || content.toLowerCase().includes('yes') || content.toLowerCase().includes('confirm')) {
@@ -808,15 +834,13 @@ class BookingEngine {
         const statusText = this.tenant.settings?.auto_confirm ? 'Confirmed' : 'Pending Confirmation';
         const locationLine = this.tenant.settings?.google_maps_url
           ? `\n📍 Location: ${this.tenant.settings.google_maps_url}\n` : '';
-        await this.wa.sendText(this.phone,
-          `✅ *Appointment ${statusText}!*\n\n` +
-          `👨‍⚕️ ${state.doctorName}\n` +
-          `📅 ${this.formatDate(state.appointmentDate)}\n` +
-          `🕐 ${this.formatTime(state.startTime)}\n` +
-          locationLine +
-          `\nYou'll receive a reminder before your appointment.\n` +
-          `Type "status" anytime to check your appointments.`
-        );
+        await this.wa.sendText(this.phone, this.msg('booking_confirmation', {
+          status: statusText,
+          doctor_name: state.doctorName,
+          date: this.formatDate(state.appointmentDate),
+          time: this.formatTime(state.startTime),
+          location: locationLine
+        }));
 
         // Notify the doctor/clinic staff about new booking
         await this.notifyDoctor(state, appointment);
@@ -860,7 +884,7 @@ class BookingEngine {
     );
 
     if (rows.length === 0) {
-      return await this.wa.sendText(this.phone, 'No upcoming appointments found.');
+      return await this.wa.sendText(this.phone, this.msg('no_appointments'));
     }
 
     const a = rows[0];
@@ -869,12 +893,11 @@ class BookingEngine {
       [a.id]
     );
 
-    await this.wa.sendText(this.phone,
-      `✅ *Appointment Confirmed*\n\n` +
-      `👨‍⚕️ ${a.doctor_name}\n` +
-      `📅 ${this.formatDate(a.appointment_date)} at ${this.formatTime(a.start_time)}\n\n` +
-      `See you there!`
-    );
+    await this.wa.sendText(this.phone, this.msg('appointment_confirmed', {
+      doctor_name: a.doctor_name,
+      date: this.formatDate(a.appointment_date),
+      time: this.formatTime(a.start_time)
+    }));
   }
 
   // ── Handle Accept/Decline for Doctor-Initiated Reschedule ──
@@ -905,12 +928,11 @@ class BookingEngine {
       await this.setState({ state: 'idle' });
 
       const a = rows[0];
-      return await this.wa.sendText(this.phone,
-        `✅ *Reschedule Accepted*\n\n` +
-        `👨‍⚕️ ${a.doctor_name}\n` +
-        `📅 ${this.formatDate(a.appointment_date)} at ${this.formatTime(a.start_time)}\n\n` +
-        `See you there!`
-      );
+      return await this.wa.sendText(this.phone, this.msg('reschedule_accepted', {
+        doctor_name: a.doctor_name,
+        date: this.formatDate(a.appointment_date),
+        time: this.formatTime(a.start_time)
+      }));
     }
 
     if (msg === 'decline' || msg === 'no') {
@@ -928,11 +950,7 @@ class BookingEngine {
 
       await this.setState({ state: 'idle' });
 
-      return await this.wa.sendText(this.phone,
-        `❌ *Reschedule Declined*\n\n` +
-        `Your appointment has been cancelled.\n` +
-        `Reply "book" to schedule a new appointment at a time that works for you.`
-      );
+      return await this.wa.sendText(this.phone, this.msg('reschedule_declined'));
     }
 
     // Unrecognized response — prompt again
@@ -960,7 +978,7 @@ class BookingEngine {
     );
 
     if (rows.length === 0) {
-      return await this.wa.sendText(this.phone, 'No upcoming appointments found.');
+      return await this.wa.sendText(this.phone, this.msg('no_appointments'));
     }
 
     await pool.query(
@@ -972,11 +990,10 @@ class BookingEngine {
       [rows[0].id]
     );
 
-    return await this.wa.sendText(this.phone,
-      `❌ *Reschedule Declined*\n\n` +
-      `Your appointment with ${rows[0].doctor_name} on ${this.formatDate(rows[0].appointment_date)} has been cancelled.\n` +
-      `Reply "book" to schedule a new appointment at a time that works for you.`
-    );
+    return await this.wa.sendText(this.phone, this.msg('reschedule_declined_detail', {
+      doctor_name: rows[0].doctor_name,
+      date: this.formatDate(rows[0].appointment_date)
+    }));
   }
 
   // ── Show Upcoming Appointments ──────────────────────────
@@ -996,12 +1013,12 @@ class BookingEngine {
 
     if (rows.length === 0) {
       return await this.wa.sendButtons(this.phone, {
-        bodyText: 'You have no upcoming appointments.',
+        bodyText: this.msg('no_appointments'),
         buttons: [{ id: 'book', title: 'Book Appointment' }]
       });
     }
 
-    let msg = '📋 *Your Upcoming Appointments*\n\n';
+    let msg = this.msg('upcoming_appointments') + '\n\n';
     rows.forEach((a, i) => {
       msg += `${i + 1}. ${a.doctor_name}\n`;
       msg += `   📅 ${this.formatDate(a.appointment_date)} at ${this.formatTime(a.start_time)}\n`;
@@ -1107,7 +1124,7 @@ class BookingEngine {
   async handleCancelSelection(content, interactiveData, state) {
     if (content === 'cancel_booking') {
       await this.setState({ state: 'idle' });
-      return await this.wa.sendText(this.phone, 'OK, going back. Send "hi" to see the menu.');
+      return await this.wa.sendText(this.phone, this.msg('go_back'));
     }
     const appointmentId = content.replace('cancel_', '');
 
@@ -1143,12 +1160,11 @@ class BookingEngine {
     );
 
     const a = rows[0];
-    await this.wa.sendText(this.phone,
-      `❌ *Appointment Cancelled*\n\n` +
-      `👨‍⚕️ ${a.doctor_name}\n` +
-      `📅 ${this.formatDate(a.appointment_date)} at ${this.formatTime(a.start_time)}\n\n` +
-      `Type "book" to schedule a new appointment.`
-    );
+    await this.wa.sendText(this.phone, this.msg('cancel_confirmation', {
+      doctor_name: a.doctor_name,
+      date: this.formatDate(a.appointment_date),
+      time: this.formatTime(a.start_time)
+    }));
 
     await this.setState({ state: 'idle' });
     logger.info(`Appointment cancelled: ${appointmentId}`, { tenantId: this.tenantId, phone: this.phone });
@@ -1158,7 +1174,7 @@ class BookingEngine {
   async handleRescheduleSelection(content, interactiveData, state) {
     if (content === 'cancel_booking') {
       await this.setState({ state: 'idle' });
-      return await this.wa.sendText(this.phone, 'OK, going back. Send "hi" to see the menu.');
+      return await this.wa.sendText(this.phone, this.msg('go_back'));
     }
     const appointmentId = content.replace('resched_', '');
 
@@ -1200,7 +1216,7 @@ class BookingEngine {
   async handleRescheduleDateSelection(content, interactiveData, state) {
     if (content === 'cancel_booking') {
       await this.setState({ state: 'idle' });
-      return await this.wa.sendText(this.phone, 'Reschedule cancelled. Send "hi" to start over.');
+      return await this.wa.sendText(this.phone, this.msg('booking_cancelled_nav'));
     }
     const dateStr = content.replace('date_', '');
 
@@ -1217,7 +1233,7 @@ class BookingEngine {
   async handleRescheduleTimeSelection(content, interactiveData, state) {
     if (content === 'cancel_booking') {
       await this.setState({ state: 'idle' });
-      return await this.wa.sendText(this.phone, 'Reschedule cancelled. Send "hi" to start over.');
+      return await this.wa.sendText(this.phone, this.msg('booking_cancelled_nav'));
     }
     // Pagination: show next page of slots
     if (content.startsWith('slots_page_')) {
@@ -1304,13 +1320,11 @@ class BookingEngine {
         await pool.query(`INSERT INTO reminders (tenant_id, appointment_id, remind_at, type) VALUES ${values}`, params);
       }
 
-      await this.wa.sendText(this.phone,
-        `🔄 *Appointment Rescheduled!*\n\n` +
-        `👨‍⚕️ ${state.doctorName}\n` +
-        `📅 ${this.formatDate(state.appointmentDate)}\n` +
-        `🕐 ${this.formatTime(time)}\n\n` +
-        `You'll receive a reminder before your appointment.`
-      );
+      await this.wa.sendText(this.phone, this.msg('reschedule_confirmation', {
+        doctor_name: state.doctorName,
+        date: this.formatDate(state.appointmentDate),
+        time: this.formatTime(time)
+      }));
 
       await this.setState({ state: 'idle' });
       logger.info(`Appointment rescheduled: ${state.rescheduleAppointmentId} → ${appointment.id}`, {
@@ -1326,15 +1340,9 @@ class BookingEngine {
 
   // ── Send Help ───────────────────────────────────────────
   async sendHelp() {
-    await this.wa.sendText(this.phone,
-      `🤖 *${this.tenant.business_name} - Help*\n\n` +
-      `Here's what I can do:\n\n` +
-      `📅 *Book* — Schedule a new appointment\n` +
-      `📋 *Status* — View your appointments\n` +
-      `❌ *Cancel* — Cancel an appointment\n` +
-      `🔄 *Reschedule* — Change appointment time\n\n` +
-      `Just type any of these words or tap the buttons!`
-    );
+    await this.wa.sendText(this.phone, this.msg('help_menu', {
+      business_name: this.tenant.business_name
+    }));
   }
 
   // ── Notify Doctor about new booking ─────────────────────
@@ -1348,14 +1356,14 @@ class BookingEngine {
       const doctorPhone = rows[0]?.phone;
       if (!doctorPhone) return; // Doctor has no phone registered
 
-      await this.wa.sendText(doctorPhone,
-        `📋 *New Appointment Booked*\n\n` +
-        `Patient: ${this.patient.name || this.phone}\n` +
-        `📅 ${this.formatDate(state.appointmentDate)}\n` +
-        `🕐 ${this.formatTime(state.startTime)} - ${this.formatTime(state.endTime)}\n` +
-        `📝 ${state.serviceName || 'General'}\n\n` +
-        `Status: ${appointment.status}`
-      );
+      await this.wa.sendText(doctorPhone, this.msg('doctor_notification', {
+        patient_name: this.patient.name || this.phone,
+        date: this.formatDate(state.appointmentDate),
+        start_time: this.formatTime(state.startTime),
+        end_time: this.formatTime(state.endTime),
+        service_name: state.serviceName || 'General',
+        status: appointment.status
+      }));
     } catch (err) {
       // Non-critical — don't fail the booking if doctor notification fails
       logger.warn('Failed to notify doctor:', err.message);

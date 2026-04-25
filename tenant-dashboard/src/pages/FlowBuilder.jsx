@@ -710,6 +710,8 @@ export default function FlowBuilder() {
       {/* Flow Groups */}
       {flowGroups.map(fg => {
         const tpl = TEMPLATES.find(t => t.id === fg.template);
+        const visibleScreens = fg.screenIds.filter(id => id !== editing);
+        if (visibleScreens.length === 0 && editing && fg.screenIds.includes(editing)) return null;
         return (
           <div key={fg.id} className="mb-4 rounded-xl border border-gray-200 overflow-hidden">
             {/* Flow Header */}

@@ -26,6 +26,7 @@ export default {
   // Onboarding
   getOnboardingStatus: () => api.get('/onboarding/status'),
   connectWhatsApp: (data) => api.post('/onboarding/connect-whatsapp', data),
+  connectWhatsAppEmbedded: (data) => api.post('/onboarding/connect-whatsapp-embedded', data),
   setupBusiness: (data) => api.post('/onboarding/setup-business', data),
   completeOnboarding: () => api.post('/onboarding/complete'),
 

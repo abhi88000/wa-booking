@@ -46,6 +46,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       WA_VERIFY_TOKEN: ${WA_VERIFY_TOKEN:-}
       APP_URL: ${APP_URL:-http://localhost:4000}
+      FB_APP_ID: ${FB_APP_ID:-}
+      FB_APP_SECRET: ${FB_APP_SECRET:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-}
 
   # ── Cron Worker (Reminders + Scheduled Jobs) ─────────────
@@ -68,7 +70,11 @@ services:
 
   # ── Tenant Dashboard (Clinic Admin Panel) ───────────────
   tenant-dashboard:
-    build: ./tenant-dashboard
+    build:
+      context: ./tenant-dashboard
+      args:
+        VITE_FB_APP_ID: ${FB_APP_ID:-}
+        VITE_FB_CONFIG_ID: ${FB_CONFIG_ID:-}
     restart: always
     ports:
       - "3000:80"

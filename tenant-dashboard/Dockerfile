@@ -3,6 +3,10 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
+ARG VITE_FB_APP_ID
+ARG VITE_FB_CONFIG_ID
+ENV VITE_FB_APP_ID=$VITE_FB_APP_ID
+ENV VITE_FB_CONFIG_ID=$VITE_FB_CONFIG_ID
 RUN npm run build
 
 FROM nginx:alpine

@@ -104,6 +104,176 @@ router.post('/connect-whatsapp', async (req, res, next) => {
   }
 });
 
+// ── Connect WhatsApp via Embedded Signup (OAuth Code Exchange) ──
+// The frontend sends the auth code from FB.login() and we:
+// 1. Exchange code for access token
+// 2. Fetch WABA ID + phone number ID from the token
+// 3. Subscribe WABA to webhooks
+// 4. Register the phone number for messaging
+// 5. Save everything to tenant
+router.post('/connect-whatsapp-embedded', async (req, res, next) => {
+  try {
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ error: 'Authorization code is required' });
+
+    const FB_APP_ID = process.env.FB_APP_ID;
+    const FB_APP_SECRET = process.env.FB_APP_SECRET;
+    if (!FB_APP_ID || !FB_APP_SECRET) {
+      return res.status(500).json({ error: 'Facebook App credentials not configured on server' });
+    }
+
+    // Step 1: Exchange code for access token
+    logger.info(`Exchanging auth code for tenant ${req.tenantId}`);
+    const tokenResp = await axios.get('https://graph.facebook.com/v21.0/oauth/access_token', {
+      params: {
+        client_id: FB_APP_ID,
+        client_secret: FB_APP_SECRET,
+        code
+      }
+    });
+    const accessToken = tokenResp.data.access_token;
+    if (!accessToken) {
+      return res.status(400).json({ error: 'Failed to get access token from Meta' });
+    }
+
+    // Step 2: Get shared WABA ID(s) — list WABAs the user shared with our app
+    logger.info(`Fetching shared WABAs for tenant ${req.tenantId}`);
+    const debugResp = await axios.get('https://graph.facebook.com/v21.0/debug_token', {
+      params: { input_token: accessToken, access_token: `${FB_APP_ID}|${FB_APP_SECRET}` }
+    });
+    const grantedScopes = debugResp.data?.data?.scopes || [];
+    logger.info(`Granted scopes: ${grantedScopes.join(', ')}`, { tenantId: req.tenantId });
+
+    // Get the Business ID from the shared assets
+    const sharedWabaResp = await axios.get(
+      `https://graph.facebook.com/v21.0/${FB_APP_ID}/subscribed_apps_info`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    ).catch(() => null);
+
+    // Alternative: fetch WABAs directly via the user token
+    let wabaId = null;
+    let phoneNumberId = null;
+    let displayPhone = null;
+
+    // Try fetching business ID from the token, then get WABAs
+    const businessResp = await axios.get(
+      'https://graph.facebook.com/v21.0/me/businesses',
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    ).catch(() => null);
+
+    // Fetch WABAs shared with our app
+    const wabaListResp = await axios.get(
+      `https://graph.facebook.com/v21.0/me/whatsapp_business_accounts`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    ).catch(() => null);
+
+    if (!wabaListResp?.data?.data?.length) {
+      // Try via business ID
+      const bizId = businessResp?.data?.data?.[0]?.id;
+      if (bizId) {
+        const bizWabaResp = await axios.get(
+          `https://graph.facebook.com/v21.0/${bizId}/owned_whatsapp_business_accounts`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        ).catch(() => null);
+        if (bizWabaResp?.data?.data?.length) {
+          wabaId = bizWabaResp.data.data[0].id;
+        }
+      }
+    } else {
+      wabaId = wabaListResp.data.data[0].id;
+    }
+
+    if (!wabaId) {
+      return res.status(400).json({ 
+        error: 'No WhatsApp Business Account found. Please complete the WhatsApp setup in the popup and verify your phone number.' 
+      });
+    }
+
+    // Step 3: Get phone number(s) from WABA
+    logger.info(`Found WABA ${wabaId}, fetching phone numbers`);
+    const phoneResp = await axios.get(
+      `https://graph.facebook.com/v21.0/${wabaId}/phone_numbers`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    const phones = phoneResp.data?.data || [];
+    if (phones.length === 0) {
+      return res.status(400).json({ 
+        error: 'No phone number found on the WhatsApp Business Account. Please add a phone number in the Meta setup.' 
+      });
+    }
+    phoneNumberId = phones[0].id;
+    displayPhone = phones[0].display_phone_number;
+
+    // Step 4: Subscribe WABA to our app for webhooks
+    logger.info(`Subscribing WABA ${wabaId} to app webhooks`);
+    await axios.post(
+      `https://graph.facebook.com/v21.0/${wabaId}/subscribed_apps`,
+      {},
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    ).catch(err => {
+      logger.warn(`Failed to subscribe WABA to webhooks: ${err.response?.data?.error?.message || err.message}`);
+    });
+
+    // Step 5: Register phone number for messaging (Cloud API)
+    logger.info(`Registering phone ${phoneNumberId} for Cloud API messaging`);
+    await axios.post(
+      `https://graph.facebook.com/v21.0/${phoneNumberId}/register`,
+      { messaging_product: 'whatsapp', pin: '123456' },
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    ).catch(err => {
+      // May fail if already registered — that's OK
+      logger.warn(`Phone register call: ${err.response?.data?.error?.message || err.message}`);
+    });
+
+    // Step 6: Check for duplicate phone number
+    const { rows: existing } = await pool.query(
+      'SELECT tenant_id FROM wa_number_registry WHERE wa_phone_number_id = $1',
+      [phoneNumberId]
+    );
+    if (existing.length > 0 && existing[0].tenant_id !== req.tenantId) {
+      return res.status(409).json({ 
+        error: 'This WhatsApp number is already connected to another business' 
+      });
+    }
+
+    // Step 7: Save credentials to tenant
+    await pool.query(
+      `UPDATE tenants SET 
+        wa_phone_number_id = $1, wa_business_account_id = $2, 
+        wa_access_token = $3, wa_phone_number = $4,
+        wa_status = 'connected', onboarding_status = 'whatsapp_connected',
+        updated_at = NOW()
+       WHERE id = $5`,
+      [phoneNumberId, wabaId, accessToken, displayPhone, req.tenantId]
+    );
+
+    // Register in phone number registry
+    await pool.query(
+      `INSERT INTO wa_number_registry (wa_phone_number_id, tenant_id, phone_number)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (wa_phone_number_id) 
+       DO UPDATE SET tenant_id = $2, phone_number = $3, is_active = true`,
+      [phoneNumberId, req.tenantId, displayPhone]
+    );
+
+    logger.info(`WhatsApp connected via Embedded Signup for tenant ${req.tenantId}: ${displayPhone} (WABA: ${wabaId})`);
+
+    res.json({ 
+      success: true, 
+      message: 'WhatsApp connected successfully!',
+      phone: displayPhone,
+      wabaId
+    });
+  } catch (err) {
+    logger.error('Embedded Signup exchange failed:', err.response?.data || err.message);
+    const metaError = err.response?.data?.error?.message;
+    if (metaError) {
+      return res.status(400).json({ error: `Meta API: ${metaError}` });
+    }
+    next(err);
+  }
+});
+
 // ── Setup Business Details (Doctors, Services) ────────────
 router.post('/setup-business', async (req, res, next) => {
   try {

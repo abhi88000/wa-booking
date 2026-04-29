@@ -52,6 +52,7 @@ function App() {
       <div className="flex h-screen">
         <Sidebar onLogout={handleLogout} />
         <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 bg-gray-50 ml-0 sm:ml-64 pt-18 sm:pt-6">
+          <div className="max-w-6xl mx-auto">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/onboarding" element={<Onboarding />} />
@@ -67,6 +68,7 @@ function App() {
             <Route path="/data-deletion" element={<DataDeletion />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
+          </div>
         </main>
       </div>
       </ClinicProvider>

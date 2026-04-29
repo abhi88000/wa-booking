@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import api from '../api';
+
+const FB_APP_ID = import.meta.env.VITE_FB_APP_ID;
+const FB_CONFIG_ID = import.meta.env.VITE_FB_CONFIG_ID;
 
 export default function Settings() {
   const [settings, setSettings] = useState(null);
@@ -13,6 +16,7 @@ export default function Settings() {
   const [showAddClinic, setShowAddClinic] = useState(false);
   const [clinicForm, setClinicForm] = useState({ name: '', address: '', phone: '' });
   const [editingClinic, setEditingClinic] = useState(null);
+  const [waError, setWaError] = useState('');
 
   useEffect(() => {
     api.getSettings()
@@ -50,6 +54,39 @@ export default function Settings() {
       alert(err.response?.data?.error || err.response?.data?.details || 'Connection failed');
     } finally { setSavingWa(false); }
   };
+
+  // Embedded Signup
+  const launchEmbeddedSignup = useCallback(() => {
+    if (!window.FB) {
+      setWaError('Facebook SDK not loaded. Please refresh the page.');
+      return;
+    }
+    setWaError('');
+    setSavingWa(true);
+    window.FB.login(
+      async (response) => {
+        if (response.authResponse) {
+          try {
+            const { data } = await api.connectWhatsAppEmbedded({ code: response.authResponse.code });
+            setSettings(prev => ({ ...prev, wa_status: 'connected', wa_phone_number: data.phone }));
+            setShowWaForm(false);
+            setWaError('');
+          } catch (err) {
+            setWaError(err.response?.data?.error || 'Connection failed');
+          }
+        } else {
+          setWaError('Connection cancelled.');
+        }
+        setSavingWa(false);
+      },
+      {
+        config_id: FB_CONFIG_ID,
+        response_type: 'code',
+        override_default_response_type: true,
+        extras: { setup: {}, featureType: '', sessionInfoVersion: '3' }
+      }
+    );
+  }, []);
 
   if (loading) return <div className="text-gray-500 text-center py-20">Loading...</div>;
   if (!settings) return <div className="text-red-500 text-center py-20">Failed to load settings</div>;
@@ -252,10 +289,20 @@ export default function Settings() {
         {settings.wa_status === 'connected' && settings.wa_phone_number && (
           <p className="text-sm text-gray-500 mb-4">Current number: {settings.wa_phone_number}</p>
         )}
+        {waError && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">{waError}</div>}
+
+        {/* Embedded Signup button */}
+        {FB_APP_ID && FB_CONFIG_ID && !showWaForm && (
+          <button onClick={launchEmbeddedSignup} disabled={savingWa}
+            className="w-full bg-[#25D366] text-white py-3 rounded-lg font-semibold hover:bg-[#20bd5a] disabled:opacity-50 flex items-center justify-center gap-2 mb-3 transition">
+            {savingWa ? 'Connecting...' : (settings.wa_status === 'connected' ? 'Reconnect WhatsApp' : 'Connect with WhatsApp')}
+          </button>
+        )}
+
         {!showWaForm ? (
           <button onClick={() => setShowWaForm(true)}
-            className="text-sm text-slate-700 hover:underline">
-            {settings.wa_status === 'connected' ? 'Update credentials' : 'Connect WhatsApp'}
+            className="text-xs text-gray-400 hover:text-gray-600">
+            {FB_APP_ID ? 'Or enter credentials manually' : (settings.wa_status === 'connected' ? 'Update credentials' : 'Connect WhatsApp')}
           </button>
         ) : (
           <div className="space-y-3 mt-2">

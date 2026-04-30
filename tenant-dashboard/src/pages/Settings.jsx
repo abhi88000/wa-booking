@@ -82,20 +82,22 @@ export default function Settings() {
     setWaError('');
     setSavingWa(true);
     window.FB.login(
-      async (response) => {
+      (response) => {
         if (response.authResponse) {
-          try {
-            const { data } = await api.connectWhatsAppEmbedded({ code: response.authResponse.code });
-            setSettings(prev => ({ ...prev, wa_status: 'connected', wa_phone_number: data.phone }));
-            setShowWaForm(false);
-            setWaError('');
-          } catch (err) {
-            setWaError(err.response?.data?.error || 'Connection failed');
-          }
+          api.connectWhatsAppEmbedded({ code: response.authResponse.code })
+            .then(({ data }) => {
+              setSettings(prev => ({ ...prev, wa_status: 'connected', wa_phone_number: data.phone }));
+              setShowWaForm(false);
+              setWaError('');
+            })
+            .catch((err) => {
+              setWaError(err.response?.data?.error || 'Connection failed');
+            })
+            .finally(() => setSavingWa(false));
         } else {
           setWaError('Connection cancelled.');
+          setSavingWa(false);
         }
-        setSavingWa(false);
       },
       {
         config_id: FB_CONFIG_ID,

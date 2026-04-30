@@ -25,6 +25,24 @@ export default function Settings() {
       .finally(() => setLoading(false));
   }, []);
 
+  // Initialize Facebook SDK for Embedded Signup
+  useEffect(() => {
+    if (!FB_APP_ID) return;
+    window.fbAsyncInit = function () {
+      window.FB.init({ appId: FB_APP_ID, autoLogAppEvents: true, xfbml: false, version: 'v21.0' });
+    };
+    if (window.FB) {
+      window.fbAsyncInit();
+    } else if (!document.getElementById('facebook-jssdk')) {
+      const js = document.createElement('script');
+      js.id = 'facebook-jssdk';
+      js.src = 'https://connect.facebook.net/en_US/sdk.js';
+      js.async = true;
+      js.defer = true;
+      document.body.appendChild(js);
+    }
+  }, []);
+
   const handleSave = async () => {
     setSaving(true);
     try {

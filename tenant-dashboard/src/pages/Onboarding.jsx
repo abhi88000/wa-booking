@@ -27,8 +27,17 @@ export default function Onboarding() {
     window.fbAsyncInit = function () {
       window.FB.init({ appId: FB_APP_ID, autoLogAppEvents: true, xfbml: false, version: 'v21.0' });
     };
-    // If SDK already loaded, init now
-    if (window.FB) window.fbAsyncInit();
+    // If SDK already loaded, init now; otherwise inject script
+    if (window.FB) {
+      window.fbAsyncInit();
+    } else if (!document.getElementById('facebook-jssdk')) {
+      const js = document.createElement('script');
+      js.id = 'facebook-jssdk';
+      js.src = 'https://connect.facebook.net/en_US/sdk.js';
+      js.async = true;
+      js.defer = true;
+      document.body.appendChild(js);
+    }
   }, []);
 
   // Handle Embedded Signup session log message

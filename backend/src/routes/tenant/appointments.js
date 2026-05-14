@@ -93,13 +93,13 @@ router.patch('/appointments/:id/status', async (req, res, next) => {
         const time = formatTime12(appt.start_time);
         const date = formatDateDD(appt.appointment_date);
         const locationLine = req.tenant.settings?.google_maps_url
-          ? `\n📍 Location: ${req.tenant.settings.google_maps_url}\n` : '';
+          ? `\nLocation: ${req.tenant.settings.google_maps_url}\n` : '';
         await wa.sendText(appt.patient_phone,
-          `✅ *Appointment Confirmed*\n\n` +
-          `👨‍⚕️ ${appt.doctor_name || 'Doctor'}\n` +
-          `📅 ${date} at ${time}\n` +
+          `*Appointment confirmed*\n\n` +
+          `With   ${appt.doctor_name || 'Doctor'}\n` +
+          `When   ${date} at ${time}\n` +
           locationLine +
-          `\nYour appointment has been confirmed by ${req.tenant.business_name}. See you there!`
+          `\nYour appointment has been confirmed by ${req.tenant.business_name}. See you there.`
         );
       } catch (waErr) {
         logger.warn('Failed to send confirm notification:', waErr.message);
@@ -219,10 +219,10 @@ router.post('/appointments', requireRole('owner', 'admin', 'staff'), checkAppoin
             const wa = new WhatsAppService(req.tenant);
             const pName = value.patientName || 'Walk-in';
             await wa.sendText(doctorPhone,
-              `📋 *New Appointment Booked*\n\n` +
-              `Patient: ${pName}\n` +
-              `📅 ${formatDateDD(value.appointmentDate)}\n` +
-              `🕐 ${formatTime12(value.startTime)}\n\n` +
+              `*New appointment*\n\n` +
+              `Patient   ${pName}\n` +
+              `Date      ${formatDateDD(value.appointmentDate)}\n` +
+              `Time      ${formatTime12(value.startTime)}\n\n` +
               `Booked via dashboard by ${req.user?.name || 'staff'}.`
             );
           }
@@ -241,16 +241,16 @@ router.post('/appointments', requireRole('owner', 'admin', 'staff'), checkAppoin
             );
             const docName = docRow2[0]?.name || 'Doctor';
             const locationLine = req.tenant.settings?.google_maps_url
-              ? `\n📍 Location: ${req.tenant.settings.google_maps_url}\n` : '';
+              ? `\nLocation: ${req.tenant.settings.google_maps_url}\n` : '';
             await wa.sendText(patientPhone,
-              `✅ *Appointment Confirmed*\n\n` +
+              `*Appointment confirmed*\n\n` +
               `Hi ${value.patientName || 'there'}, your appointment has been booked:\n\n` +
-              `👨‍⚕️ ${docName}\n` +
-              `📅 ${formatDateDD(value.appointmentDate)}\n` +
-              `🕐 ${formatTime12(value.startTime)}\n` +
+              `With   ${docName}\n` +
+              `Date   ${formatDateDD(value.appointmentDate)}\n` +
+              `Time   ${formatTime12(value.startTime)}\n` +
               locationLine +
-              `\nYou'll receive a reminder before your appointment.\n` +
-              `— ${req.tenant.business_name}`
+              `\nWe will send a reminder before your appointment.\n` +
+              `- ${req.tenant.business_name}`
             );
           } catch (waErr) {
             logger.warn('Failed to notify patient on manual booking:', waErr.message);
@@ -442,13 +442,13 @@ router.post('/appointments/:id/followup', requireRole('owner', 'admin', 'staff')
         const date = formatDateDD(appointmentDate);
         const time = formatTime12(startTime);
         await wa.sendText(orig.patient_phone,
-          `📋 *Follow-up Appointment Scheduled*\n\n` +
+          `*Follow-up scheduled*\n\n` +
           `Hi ${orig.patient_name || 'there'}, your doctor has scheduled a follow-up visit:\n\n` +
-          `👨‍⚕️ ${orig.doctor_name || 'Doctor'}\n` +
-          `📅 ${date}\n` +
-          `🕐 ${time}\n\n` +
-          `If you need to reschedule, reply "reschedule".\n` +
-          `— ${req.tenant.business_name}`
+          `With   ${orig.doctor_name || 'Doctor'}\n` +
+          `Date   ${date}\n` +
+          `Time   ${time}\n\n` +
+          `If you need to reschedule, reply *reschedule*.\n` +
+          `- ${req.tenant.business_name}`
         );
       } catch (waErr) {
         logger.warn('Failed to send follow-up notification:', waErr.message);

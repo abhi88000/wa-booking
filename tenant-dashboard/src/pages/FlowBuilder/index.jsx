@@ -254,23 +254,6 @@ export default function FlowBuilder() {
   return (
     <ReactFlowProvider>
       <div className="h-screen flex flex-col bg-slate-100">
-        <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold text-slate-900">Flow Builder</h1>
-            <p className="text-xs text-slate-500">Design what happens when a customer messages you on WhatsApp</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setShowTemplates(true)} className="text-sm px-3 py-1.5 border border-slate-300 rounded hover:bg-slate-50 inline-flex items-center gap-1.5">
-              <Ico.template className="w-4 h-4" /> Templates
-            </button>
-            {saved && (
-              <span className="text-sm text-emerald-600 inline-flex items-center gap-1">
-                <Ico.check className="w-4 h-4" /> Saved
-              </span>
-            )}
-          </div>
-        </div>
-
         <Toolbar
           onAddNode={addNode}
           onAutoLayout={doAutoLayout}
@@ -281,15 +264,19 @@ export default function FlowBuilder() {
           onSave={doSave}
           onCancel={doCancel}
           saving={saving}
+          saved={saved}
           errors={validationErrors}
           onOpenMessages={() => { setFocusMessageId(null); setShowMessages(true); }}
           onOpenLabels={() => setShowLabels(true)}
+          onOpenTemplates={() => setShowTemplates(true)}
           onTogglePreview={() => setShowPreview(p => !p)}
           previewOpen={showPreview}
         />
 
-        {error && (
-          <div className="bg-red-50 border-b border-red-200 px-4 py-2 text-sm text-red-700">{error}</div>
+        {error && validationErrors.length === 0 && (
+          <div className="bg-red-50 border-b border-red-200 px-4 py-2 text-sm text-red-700 flex items-center gap-2">
+            <Ico.warn className="w-4 h-4 shrink-0" /> {error}
+          </div>
         )}
 
         <div className="flex-1 flex min-h-0">

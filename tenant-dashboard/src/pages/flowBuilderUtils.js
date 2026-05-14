@@ -32,7 +32,7 @@ function hasText(value) {
 
 function getNodeIds(flow) {
   return Object.keys(flow || {}).filter(key =>
-    key !== 'fallback' && key !== '_flows' && key !== '_startFlow' &&
+    !key.startsWith('_') && key !== 'fallback' &&
     typeof flow[key] === 'object' && !Array.isArray(flow[key])
   );
 }

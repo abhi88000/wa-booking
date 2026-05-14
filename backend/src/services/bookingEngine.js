@@ -21,21 +21,21 @@ class BookingEngine {
   // Get a system message, using tenant override or default
   msg(id, vars = {}) {
     const DEFAULTS = {
-      booking_confirmation: '✅ *Appointment {{status}}!*\n\n🧑‍💼 {{provider_name}}\n📅 {{date}}\n🕐 {{time}}\n{{location}}\nYou\'ll receive a reminder before your appointment.\nType "status" anytime to check your appointments.',
-      booking_summary: '📋 *Appointment Summary*\n\n🧑‍💼 Provider: {{provider_name}}\n📝 Service: {{service_name}}\n📅 Date: {{date}}\n🕐 Time: {{start_time}} - {{end_time}}\n\nWould you like to confirm this appointment?',
-      staff_notification: '📋 *New Appointment Booked*\n\nCustomer: {{patient_name}}\n📅 {{date}}\n🕐 {{start_time}} - {{end_time}}\n📝 {{service_name}}\n\nStatus: {{status}}',
-      cancel_confirmation: '❌ *Appointment Cancelled*\n\n🧑‍💼 {{provider_name}}\n📅 {{date}} at {{time}}\n\nType "book" to schedule a new appointment.',
-      booking_cancelled_nav: 'Booking cancelled. Send "hi" to start over.',
-      reschedule_confirmation: '🔄 *Appointment Rescheduled!*\n\n🧑‍💼 {{provider_name}}\n📅 {{date}}\n🕐 {{time}}\n\nYou\'ll receive a reminder before your appointment.',
-      reschedule_accepted: '✅ *Reschedule Accepted*\n\n🧑‍💼 {{provider_name}}\n📅 {{date}} at {{time}}\n\nSee you there!',
-      reschedule_declined: '❌ *Reschedule Declined*\n\nYour appointment has been cancelled.\nReply "book" to schedule a new appointment at a time that works for you.',
-      reschedule_declined_detail: '❌ *Reschedule Declined*\n\nYour appointment with {{provider_name}} on {{date}} has been cancelled.\nReply "book" to schedule a new appointment at a time that works for you.',
-      upcoming_appointments: '📋 *Your Upcoming Appointments*',
-      no_appointments: 'You have no upcoming appointments.',
-      appointment_confirmed: '✅ *Appointment Confirmed*\n\n🧑‍💼 {{provider_name}}\n📅 {{date}} at {{time}}\n\nSee you there!',
-      help_menu: '🤖 *{{business_name}} - Help*\n\nHere\'s what I can do:\n\n📅 *Book* — Schedule a new appointment\n📋 *Status* — View your appointments\n❌ *Cancel* — Cancel an appointment\n🔄 *Reschedule* — Change appointment time\n\nJust type any of these words or tap the buttons!',
-      error_message: 'Sorry, something went wrong. Please try again or type "hi" to start over.',
-      go_back: 'OK, going back. Send "hi" to see the menu.',
+      booking_confirmation: '*Appointment {{status}}*\n\nWith   {{provider_name}}\nWhen   {{date}}, {{time}}\nWhere  {{location}}\n\nWe will send a reminder before your appointment.\nReply *status* anytime to view your appointments.',
+      booking_summary: '*Please confirm*\n\nProvider   {{provider_name}}\nService    {{service_name}}\nDate       {{date}}\nTime       {{start_time}} - {{end_time}}\n\nWould you like to confirm this appointment?',
+      staff_notification: '*New appointment*\n\nCustomer   {{patient_name}}\nDate       {{date}}\nTime       {{start_time}} - {{end_time}}\nService    {{service_name}}\nStatus     {{status}}',
+      cancel_confirmation: '*Appointment cancelled*\n\nWith   {{provider_name}}\nWhen   {{date}} at {{time}}\n\nReply *book* anytime to schedule a new appointment.',
+      booking_cancelled_nav: 'Booking cancelled. Reply *hi* to start over.',
+      reschedule_confirmation: '*Appointment rescheduled*\n\nWith   {{provider_name}}\nWhen   {{date}}, {{time}}\n\nWe will send a reminder before your appointment.',
+      reschedule_accepted: '*Reschedule accepted*\n\nWith   {{provider_name}}\nWhen   {{date}} at {{time}}\n\nSee you there.',
+      reschedule_declined: '*Reschedule declined*\n\nYour appointment has been cancelled.\nReply *book* to schedule a new appointment at a time that works for you.',
+      reschedule_declined_detail: '*Reschedule declined*\n\nYour appointment with {{provider_name}} on {{date}} has been cancelled.\nReply *book* to schedule a new appointment at a time that works for you.',
+      upcoming_appointments: '*Your upcoming appointments*',
+      no_appointments: 'You have no upcoming appointments.\nReply *book* to schedule one.',
+      appointment_confirmed: '*Appointment confirmed*\n\nWith   {{provider_name}}\nWhen   {{date}} at {{time}}\n\nSee you there.',
+      help_menu: '*{{business_name}} - Help*\n\nHere is what I can do:\n\n*Book*         Schedule a new appointment\n*Status*       View your appointments\n*Cancel*       Cancel an appointment\n*Reschedule*   Change appointment time\n\nJust reply with any of these words.',
+      error_message: 'Sorry, something went wrong. Please try again or reply *hi* to start over.',
+      go_back: 'OK, going back. Reply *hi* to see the menu.',
       slot_taken: 'Sorry, this slot was just booked by someone else. Please pick another time.',
     };
     let text = this.msgs[id] || DEFAULTS[id] || '';
@@ -170,7 +170,7 @@ class BookingEngine {
     });
     const settings = this.tenant.settings || {};
     const welcome = settings.welcome_message ||
-      `Welcome to ${this.tenant.business_name}! 👋\n\nHow can I help you today?`;
+      `Welcome to ${this.tenant.business_name}.\n\nHow can I help you today?`;
 
     await this.wa.sendButtons(this.phone, {
       bodyText: welcome,
@@ -836,7 +836,7 @@ class BookingEngine {
         // Send confirmation
         const statusText = this.tenant.settings?.auto_confirm ? 'Confirmed' : 'Pending Confirmation';
         const locationLine = this.tenant.settings?.google_maps_url
-          ? `\n📍 Location: ${this.tenant.settings.google_maps_url}\n` : '';
+          ? `\nLocation: ${this.tenant.settings.google_maps_url}\n` : '';
         await this.wa.sendText(this.phone, this.msg('booking_confirmation', {
           status: statusText,
           provider_name: state.doctorName,
@@ -1024,9 +1024,9 @@ class BookingEngine {
     let msg = this.msg('upcoming_appointments') + '\n\n';
     rows.forEach((a, i) => {
       msg += `${i + 1}. ${a.doctor_name}\n`;
-      msg += `   📅 ${this.formatDate(a.appointment_date)} at ${this.formatTime(a.start_time)}\n`;
-      msg += `   📝 ${a.service_name || 'General'}\n`;
-      msg += `   Status: ${a.status}\n\n`;
+      msg += `   When     ${this.formatDate(a.appointment_date)} at ${this.formatTime(a.start_time)}\n`;
+      msg += `   Service  ${a.service_name || 'General'}\n`;
+      msg += `   Status   ${a.status}\n\n`;
     });
 
     msg += 'Need to make changes?';

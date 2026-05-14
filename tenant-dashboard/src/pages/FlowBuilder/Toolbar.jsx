@@ -1,23 +1,32 @@
 // ============================================================
-// Flow Builder Toolbar
+// Flow Builder Toolbar — single tight row.
+// Brand left, add steps, secondary tools, view toggles, save right.
 // ============================================================
 import { Ico } from './icons';
 
-function TBtn({ onClick, disabled, title, children, primary, danger, active }) {
-  const base = 'px-3 py-1.5 text-sm rounded-md flex items-center gap-1.5 transition';
-  const cls = primary
-    ? `${base} bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50`
-    : danger
-    ? `${base} border border-slate-300 bg-white hover:bg-red-50 hover:border-red-200 text-slate-700`
-    : active
-    ? `${base} border border-emerald-400 bg-emerald-50 text-emerald-700`
-    : `${base} border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed`;
+function Btn({ onClick, disabled, title, children, variant = 'ghost', active }) {
+  const base = 'inline-flex items-center gap-1.5 rounded-md text-sm transition shrink-0';
+  const variants = {
+    primary: 'px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed',
+    outline: 'px-3 py-1.5 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed',
+    ghost:   'px-2.5 py-1.5 text-slate-700 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed' + (active ? ' bg-slate-100' : ''),
+    icon:    'p-1.5 text-slate-600 hover:bg-slate-100 rounded-md disabled:opacity-30 disabled:cursor-not-allowed',
+  };
   return (
-    <button onClick={onClick} disabled={disabled} title={title} className={cls}>
+    <button onClick={onClick} disabled={disabled} title={title} className={`${base} ${variants[variant]}`}>
       {children}
     </button>
   );
 }
+
+const Sep = () => <div className="h-5 w-px bg-slate-200 mx-1 shrink-0" />;
+
+const ADD_STEPS = [
+  { type: 'menu',      label: 'Menu',      icon: 'message',  color: 'text-blue-600',    tip: 'Buttons the customer can tap' },
+  { type: 'input',     label: 'Question',  icon: 'question', color: 'text-purple-600',  tip: 'Ask for name, rating, email...' },
+  { type: 'condition', label: 'If / Else', icon: 'branch',   color: 'text-amber-600',   tip: 'Branch based on an answer' },
+  { type: 'action',    label: 'Action',    icon: 'bolt',     color: 'text-emerald-600', tip: 'Save lead, notify staff, etc.' },
+];
 
 export default function Toolbar({
   onAddNode,
@@ -29,78 +38,107 @@ export default function Toolbar({
   onSave,
   onCancel,
   saving,
+  saved,
   errors,
   onOpenMessages,
   onOpenLabels,
+  onOpenTemplates,
   onTogglePreview,
   previewOpen,
 }) {
+  const hasErrors = errors && errors.length > 0;
+
   return (
-    <div className="border-b border-slate-200 bg-white px-4 py-2.5 flex items-center gap-2 flex-wrap">
-      <div className="flex items-center gap-1 mr-2">
-        <span className="text-xs text-slate-500 mr-1">Add:</span>
-        <TBtn onClick={() => onAddNode('menu')} title="Menu with buttons — for choices like Book / Status / Cancel">
-          <Ico.message className="w-4 h-4 text-blue-600" /> Menu
-        </TBtn>
-        <TBtn onClick={() => onAddNode('input')} title="Ask the customer a question — name, rating, email, etc.">
-          <Ico.question className="w-4 h-4 text-purple-600" /> Question
-        </TBtn>
-        <TBtn onClick={() => onAddNode('condition')} title="Branch the flow based on what they answered">
-          <Ico.branch className="w-4 h-4 text-amber-600" /> If / Else
-        </TBtn>
-        <TBtn onClick={() => onAddNode('action')} title="Save lead, notify staff, or set a value">
-          <Ico.bolt className="w-4 h-4 text-emerald-600" /> Action
-        </TBtn>
+    <div className="bg-white border-b border-slate-200 px-3 sm:px-4 h-12 flex items-center gap-1 overflow-x-auto">
+      {/* Brand */}
+      <div className="flex items-center gap-2 mr-3 shrink-0">
+        <div className="w-7 h-7 rounded-md bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white">
+          <Ico.canvas className="w-4 h-4" />
+        </div>
+        <div className="hidden md:block">
+          <div className="text-sm font-semibold text-slate-900 leading-tight">Flow Builder</div>
+        </div>
       </div>
 
-      <div className="h-6 w-px bg-slate-200 mx-1" />
+      <Sep />
 
-      <TBtn onClick={onAutoLayout} title="Auto-arrange nodes neatly">
-        <Ico.layout className="w-4 h-4" /> Tidy up
-      </TBtn>
-      <TBtn onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+      {/* Add steps */}
+      {ADD_STEPS.map(s => {
+        const Icon = Ico[s.icon];
+        return (
+          <Btn key={s.type} onClick={() => onAddNode(s.type)} title={s.tip}>
+            <Icon className={`w-4 h-4 ${s.color}`} />
+            <span className="hidden lg:inline">{s.label}</span>
+          </Btn>
+        );
+      })}
+
+      <Sep />
+
+      {/* History + layout — icon-only to save space */}
+      <Btn variant="icon" onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">
         <Ico.undo className="w-4 h-4" />
-      </TBtn>
-      <TBtn onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)">
+      </Btn>
+      <Btn variant="icon" onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)">
         <Ico.redo className="w-4 h-4" />
-      </TBtn>
+      </Btn>
+      <Btn variant="icon" onClick={onAutoLayout} title="Auto-arrange nodes">
+        <Ico.layout className="w-4 h-4" />
+      </Btn>
 
-      <div className="h-6 w-px bg-slate-200 mx-1" />
+      <Sep />
 
+      {/* Configuration drawers */}
       {onOpenMessages && (
-        <TBtn onClick={onOpenMessages} title="Edit the messages your bot sends — confirmations, reminders, errors">
-          <Ico.message className="w-4 h-4 text-emerald-600" /> Messages
-        </TBtn>
+        <Btn onClick={onOpenMessages} title="Edit the messages your bot sends">
+          <Ico.message className="w-4 h-4 text-emerald-600" />
+          <span className="hidden xl:inline">Messages</span>
+        </Btn>
       )}
       {onOpenLabels && (
-        <TBtn onClick={onOpenLabels} title="Rename Doctor / Patient / Appointment to match your business">
-          <Ico.tag className="w-4 h-4 text-blue-600" /> Labels
-        </TBtn>
+        <Btn onClick={onOpenLabels} title="Rename Doctor / Patient / Appointment">
+          <Ico.tag className="w-4 h-4 text-blue-600" />
+          <span className="hidden xl:inline">Labels</span>
+        </Btn>
+      )}
+      {onOpenTemplates && (
+        <Btn onClick={onOpenTemplates} title="Start from a template">
+          <Ico.template className="w-4 h-4 text-slate-600" />
+          <span className="hidden xl:inline">Templates</span>
+        </Btn>
       )}
       {onTogglePreview && (
-        <TBtn onClick={onTogglePreview} active={previewOpen} title="Show/hide WhatsApp phone preview">
-          <Ico.phone className="w-4 h-4" /> Preview
-        </TBtn>
+        <Btn onClick={onTogglePreview} active={previewOpen} title="WhatsApp phone preview">
+          <Ico.phone className="w-4 h-4 text-slate-600" />
+          <span className="hidden xl:inline">Preview</span>
+        </Btn>
       )}
 
-      <div className="flex-1" />
+      <div className="flex-1 min-w-2" />
 
-      {errors && errors.length > 0 && (
+      {/* Status pill */}
+      {hasErrors && (
         <div
-          className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1 max-w-md truncate flex items-center gap-1.5"
+          className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1 inline-flex items-center gap-1.5 shrink-0 max-w-[260px]"
           title={errors.join('\n')}
         >
-          <Ico.warn className="w-4 h-4 shrink-0" />
-          <span className="truncate">{errors.length} issue{errors.length > 1 ? 's' : ''}: {errors[0]}</span>
+          <Ico.warn className="w-3.5 h-3.5 shrink-0" />
+          <span className="truncate">{errors.length} issue{errors.length > 1 ? 's' : ''}</span>
         </div>
       )}
+      {!hasErrors && saved && (
+        <span className="text-xs text-emerald-700 inline-flex items-center gap-1 shrink-0">
+          <Ico.check className="w-3.5 h-3.5" /> Saved
+        </span>
+      )}
 
-      <TBtn onClick={onCancel} title="Discard unsaved changes">
+      <Btn variant="ghost" onClick={onCancel} title="Discard unsaved changes">
         Cancel
-      </TBtn>
-      <TBtn primary onClick={onSave} disabled={saving} title="Save and publish flow">
-        <Ico.save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save'}
-      </TBtn>
+      </Btn>
+      <Btn variant="primary" onClick={onSave} disabled={saving} title="Save and publish flow">
+        <Ico.save className="w-4 h-4" />
+        {saving ? 'Saving...' : 'Save'}
+      </Btn>
     </div>
   );
 }

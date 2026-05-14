@@ -59,7 +59,9 @@ function validateFlowConfig(flowConfig) {
     return { errors: ['flow_config must be a JSON object'] };
   }
 
-  const nodeIds = Object.keys(flowConfig).filter(key => key !== 'fallback');
+  const nodeIds = Object.keys(flowConfig).filter(key =>
+    key !== 'fallback' && !key.startsWith('_')
+  );
   const knownNodes = new Set(nodeIds);
   const edges = new Map(nodeIds.map(nodeId => [nodeId, []]));
 

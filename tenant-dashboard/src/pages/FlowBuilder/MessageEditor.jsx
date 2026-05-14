@@ -7,10 +7,20 @@ import { Ico } from './icons';
 
 // Render {{variables}} with sample data for live preview
 function fillVars(text, sample) {
-  return text.replace(/\{\{(\w+)\}\}/g, (_, k) => {
+  // First: drop [[optional segments]] if any {{var}} inside is empty in sample
+  text = text.replace(/\[\[([^\]]*?)\]\]/g, (_, seg) => {
+    const keys = [...seg.matchAll(/\{\{(\w+)\}\}/g)].map(m => m[1]);
+    if (keys.length === 0) return seg;
+    const allFilled = keys.every(k => sample[k] !== undefined && String(sample[k]).trim() !== '');
+    return allFilled ? seg : '';
+  });
+  // Then substitute remaining vars
+  text = text.replace(/\{\{(\w+)\}\}/g, (_, k) => {
     if (sample[k] !== undefined) return sample[k];
     return '{{' + k + '}}';
   });
+  // Collapse extra blank lines
+  return text.replace(/\n{3,}/g, '\n\n').trim();
 }
 
 // Format WhatsApp markdown (*bold*) for the preview

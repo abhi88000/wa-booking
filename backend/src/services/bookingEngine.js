@@ -21,27 +21,37 @@ class BookingEngine {
   // Get a system message, using tenant override or default
   msg(id, vars = {}) {
     const DEFAULTS = {
-      booking_confirmation: '*Appointment {{status}}*\n\nWith   {{provider_name}}\nWhen   {{date}}, {{time}}\nWhere  {{location}}\n\nWe will send a reminder before your appointment.\nReply *status* anytime to view your appointments.',
-      booking_summary: '*Please confirm*\n\nProvider   {{provider_name}}\nService    {{service_name}}\nDate       {{date}}\nTime       {{start_time}} - {{end_time}}\n\nWould you like to confirm this appointment?',
-      staff_notification: '*New appointment*\n\nCustomer   {{patient_name}}\nDate       {{date}}\nTime       {{start_time}} - {{end_time}}\nService    {{service_name}}\nStatus     {{status}}',
-      cancel_confirmation: '*Appointment cancelled*\n\nWith   {{provider_name}}\nWhen   {{date}} at {{time}}\n\nReply *book* anytime to schedule a new appointment.',
+      booking_confirmation: '✅ *Appointment {{status}}*\n\n👤 {{provider_name}}\n📅 {{date}}, {{time}}[[\n📍 {{location}}]]\n\nWe will send a reminder before your appointment.\nReply *status* anytime to view your appointments.',
+      booking_summary: '📋 *Please confirm*\n\n👤 {{provider_name}}[[\n🩺 {{service_name}}]]\n📅 {{date}}\n🕒 {{start_time}} - {{end_time}}\n\nWould you like to confirm this appointment?',
+      staff_notification: '🆕 *New appointment*\n\n👤 {{patient_name}}\n📅 {{date}}\n🕒 {{start_time}} - {{end_time}}[[\n🩺 {{service_name}}]]\n📌 {{status}}',
+      cancel_confirmation: '❌ *Appointment cancelled*\n\n👤 {{provider_name}}\n📅 {{date}} at {{time}}\n\nReply *book* anytime to schedule a new appointment.',
       booking_cancelled_nav: 'Booking cancelled. Reply *hi* to start over.',
-      reschedule_confirmation: '*Appointment rescheduled*\n\nWith   {{provider_name}}\nWhen   {{date}}, {{time}}\n\nWe will send a reminder before your appointment.',
-      reschedule_accepted: '*Reschedule accepted*\n\nWith   {{provider_name}}\nWhen   {{date}} at {{time}}\n\nSee you there.',
-      reschedule_declined: '*Reschedule declined*\n\nYour appointment has been cancelled.\nReply *book* to schedule a new appointment at a time that works for you.',
-      reschedule_declined_detail: '*Reschedule declined*\n\nYour appointment with {{provider_name}} on {{date}} has been cancelled.\nReply *book* to schedule a new appointment at a time that works for you.',
-      upcoming_appointments: '*Your upcoming appointments*',
+      reschedule_confirmation: '🔄 *Appointment rescheduled*\n\n👤 {{provider_name}}\n📅 {{date}}, {{time}}\n\nWe will send a reminder before your appointment.',
+      reschedule_accepted: '✅ *Reschedule accepted*\n\n👤 {{provider_name}}\n📅 {{date}} at {{time}}\n\nSee you there.',
+      reschedule_declined: '❌ *Reschedule declined*\n\nYour appointment has been cancelled.\nReply *book* to schedule a new appointment at a time that works for you.',
+      reschedule_declined_detail: '❌ *Reschedule declined*\n\nYour appointment with {{provider_name}} on {{date}} has been cancelled.\nReply *book* to schedule a new appointment at a time that works for you.',
+      upcoming_appointments: '📅 *Your upcoming appointments*',
       no_appointments: 'You have no upcoming appointments.\nReply *book* to schedule one.',
-      appointment_confirmed: '*Appointment confirmed*\n\nWith   {{provider_name}}\nWhen   {{date}} at {{time}}\n\nSee you there.',
-      help_menu: '*{{business_name}} - Help*\n\nHere is what I can do:\n\n*Book*         Schedule a new appointment\n*Status*       View your appointments\n*Cancel*       Cancel an appointment\n*Reschedule*   Change appointment time\n\nJust reply with any of these words.',
-      error_message: 'Sorry, something went wrong. Please try again or reply *hi* to start over.',
+      appointment_confirmed: '✅ *Appointment confirmed*\n\n👤 {{provider_name}}\n📅 {{date}} at {{time}}\n\nSee you there.',
+      help_menu: '👋 *{{business_name}} - Help*\n\nHere is what I can do:\n\n*Book*         Schedule a new appointment\n*Status*       View your appointments\n*Cancel*       Cancel an appointment\n*Reschedule*   Change appointment time\n\nJust reply with any of these words.',
+      error_message: '⚠️ Sorry, something went wrong. Please try again or reply *hi* to start over.',
       go_back: 'OK, going back. Reply *hi* to see the menu.',
-      slot_taken: 'Sorry, this slot was just booked by someone else. Please pick another time.',
+      slot_taken: '⏳ Sorry, this slot was just booked by someone else. Please pick another time.',
     };
     let text = this.msgs[id] || DEFAULTS[id] || '';
+    // Drop [[optional segments]] when any {{var}} inside is empty/missing
+    text = text.replace(/\[\[([^\]]*?)\]\]/g, (_, seg) => {
+      const keys = [...seg.matchAll(/\{\{(\w+)\}\}/g)].map(m => m[1]);
+      if (keys.length === 0) return seg;
+      const allFilled = keys.every(k => vars[k] !== undefined && vars[k] !== null && String(vars[k]).trim() !== '');
+      return allFilled ? seg : '';
+    });
+    // Substitute remaining variables
     Object.entries(vars).forEach(([k, v]) => {
       text = text.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), v ?? '');
     });
+    // Collapse 3+ consecutive newlines (left over from dropped segments) into 2
+    text = text.replace(/\n{3,}/g, '\n\n').trim();
     return text;
   }
 
@@ -835,14 +845,12 @@ class BookingEngine {
 
         // Send confirmation
         const statusText = this.tenant.settings?.auto_confirm ? 'Confirmed' : 'Pending Confirmation';
-        const locationLine = this.tenant.settings?.google_maps_url
-          ? `\nLocation: ${this.tenant.settings.google_maps_url}\n` : '';
         await this.wa.sendText(this.phone, this.msg('booking_confirmation', {
           status: statusText,
           provider_name: state.doctorName,
           date: this.formatDate(state.appointmentDate),
           time: this.formatTime(state.startTime),
-          location: locationLine
+          location: this.tenant.settings?.google_maps_url || ''
         }));
 
         // Notify the doctor/clinic staff about new booking
@@ -1024,9 +1032,9 @@ class BookingEngine {
     let msg = this.msg('upcoming_appointments') + '\n\n';
     rows.forEach((a, i) => {
       msg += `${i + 1}. ${a.doctor_name}\n`;
-      msg += `   When     ${this.formatDate(a.appointment_date)} at ${this.formatTime(a.start_time)}\n`;
-      msg += `   Service  ${a.service_name || 'General'}\n`;
-      msg += `   Status   ${a.status}\n\n`;
+      msg += `   📅 ${this.formatDate(a.appointment_date)} at ${this.formatTime(a.start_time)}\n`;
+      msg += `   🩺 ${a.service_name || 'General'}\n`;
+      msg += `   📌 ${a.status}\n\n`;
     });
 
     msg += 'Need to make changes?';

@@ -1,11 +1,14 @@
-// System Messages - Defaults + Variable Definitions
+// System Messages — Defaults + Variable Definitions
 // Each message the bot can send, grouped by category.
-// Users can override any editable message; defaults used as fallback.
-// Backend reads overrides from tenant flow_config.messages
-// Defaults are clean, plain text - no emojis. Brand voice is professional.
+// Users can override any editable message; defaults are used as fallback.
+//
+// SYNTAX:
+//   {{variable}}        — substituted with real data at send time
+//   [[optional {{x}}]]  — the whole segment is dropped if {{x}} is empty/missing
+//                         (great for fields like location that may be blank)
 
 const SYSTEM_MESSAGES = [
-  // -- Booking --------------------------------------------
+  // ── Booking ────────────────────────────────────────────
   {
     id: 'booking_confirmation',
     category: 'Booking',
@@ -14,12 +17,13 @@ const SYSTEM_MESSAGES = [
     editable: true,
     variables: ['provider_name', 'date', 'time', 'location', 'status'],
     default:
-      '*Appointment {{status}}*\n\n' +
-      'With   {{provider_name}}\n' +
-      'When   {{date}}, {{time}}\n' +
-      'Where  {{location}}\n\n' +
+      '✅ *Appointment {{status}}*\n\n' +
+      '👤 {{provider_name}}\n' +
+      '📅 {{date}}, {{time}}' +
+      '[[\n📍 {{location}}]]\n\n' +
       'We will send a reminder before your appointment.\n' +
       'Reply *status* anytime to view your appointments.',
+    note: 'Wrap a line in [[ ]] to hide it when the variable is empty — e.g. [[\\n📍 {{location}}]] disappears when no location is set.',
   },
   {
     id: 'booking_summary',
@@ -29,11 +33,11 @@ const SYSTEM_MESSAGES = [
     editable: true,
     variables: ['provider_name', 'service_name', 'date', 'start_time', 'end_time'],
     default:
-      '*Please confirm*\n\n' +
-      'Provider   {{provider_name}}\n' +
-      'Service    {{service_name}}\n' +
-      'Date       {{date}}\n' +
-      'Time       {{start_time}} - {{end_time}}\n\n' +
+      '📋 *Please confirm*\n\n' +
+      '👤 {{provider_name}}' +
+      '[[\n🩺 {{service_name}}]]\n' +
+      '📅 {{date}}\n' +
+      '🕒 {{start_time}} - {{end_time}}\n\n' +
       'Would you like to confirm this appointment?',
   },
   {
@@ -44,15 +48,15 @@ const SYSTEM_MESSAGES = [
     editable: true,
     variables: ['patient_name', 'date', 'start_time', 'end_time', 'service_name', 'status'],
     default:
-      '*New appointment*\n\n' +
-      'Customer   {{patient_name}}\n' +
-      'Date       {{date}}\n' +
-      'Time       {{start_time}} - {{end_time}}\n' +
-      'Service    {{service_name}}\n' +
-      'Status     {{status}}',
+      '🆕 *New appointment*\n\n' +
+      '👤 {{patient_name}}\n' +
+      '📅 {{date}}\n' +
+      '🕒 {{start_time}} - {{end_time}}' +
+      '[[\n🩺 {{service_name}}]]\n' +
+      '📌 {{status}}',
   },
 
-  // -- Cancellation ---------------------------------------
+  // ── Cancellation ───────────────────────────────────────
   {
     id: 'cancel_confirmation',
     category: 'Cancellation',
@@ -61,9 +65,9 @@ const SYSTEM_MESSAGES = [
     editable: true,
     variables: ['provider_name', 'date', 'time'],
     default:
-      '*Appointment cancelled*\n\n' +
-      'With   {{provider_name}}\n' +
-      'When   {{date}} at {{time}}\n\n' +
+      '❌ *Appointment cancelled*\n\n' +
+      '👤 {{provider_name}}\n' +
+      '📅 {{date}} at {{time}}\n\n' +
       'Reply *book* anytime to schedule a new appointment.',
   },
   {
@@ -76,7 +80,7 @@ const SYSTEM_MESSAGES = [
     default: 'Booking cancelled. Reply *hi* to start over.',
   },
 
-  // -- Reschedule -----------------------------------------
+  // ── Reschedule ─────────────────────────────────────────
   {
     id: 'reschedule_confirmation',
     category: 'Reschedule',
@@ -85,9 +89,9 @@ const SYSTEM_MESSAGES = [
     editable: true,
     variables: ['provider_name', 'date', 'time'],
     default:
-      '*Appointment rescheduled*\n\n' +
-      'With   {{provider_name}}\n' +
-      'When   {{date}}, {{time}}\n\n' +
+      '🔄 *Appointment rescheduled*\n\n' +
+      '👤 {{provider_name}}\n' +
+      '📅 {{date}}, {{time}}\n\n' +
       'We will send a reminder before your appointment.',
   },
   {
@@ -98,9 +102,9 @@ const SYSTEM_MESSAGES = [
     editable: true,
     variables: ['provider_name', 'date', 'time'],
     default:
-      '*Reschedule accepted*\n\n' +
-      'With   {{provider_name}}\n' +
-      'When   {{date}} at {{time}}\n\n' +
+      '✅ *Reschedule accepted*\n\n' +
+      '👤 {{provider_name}}\n' +
+      '📅 {{date}} at {{time}}\n\n' +
       'See you there.',
   },
   {
@@ -111,7 +115,7 @@ const SYSTEM_MESSAGES = [
     editable: true,
     variables: [],
     default:
-      '*Reschedule declined*\n\n' +
+      '❌ *Reschedule declined*\n\n' +
       'Your appointment has been cancelled.\n' +
       'Reply *book* to schedule a new appointment at a time that works for you.',
   },
@@ -123,12 +127,12 @@ const SYSTEM_MESSAGES = [
     editable: true,
     variables: ['provider_name', 'date'],
     default:
-      '*Reschedule declined*\n\n' +
+      '❌ *Reschedule declined*\n\n' +
       'Your appointment with {{provider_name}} on {{date}} has been cancelled.\n' +
       'Reply *book* to schedule a new appointment at a time that works for you.',
   },
 
-  // -- Status ---------------------------------------------
+  // ── Status ─────────────────────────────────────────────
   {
     id: 'upcoming_appointments',
     category: 'Status',
@@ -136,7 +140,7 @@ const SYSTEM_MESSAGES = [
     desc: 'Header text for the appointments list',
     editable: true,
     variables: [],
-    default: '*Your upcoming appointments*',
+    default: '📅 *Your upcoming appointments*',
   },
   {
     id: 'no_appointments',
@@ -155,13 +159,13 @@ const SYSTEM_MESSAGES = [
     editable: true,
     variables: ['provider_name', 'date', 'time'],
     default:
-      '*Appointment confirmed*\n\n' +
-      'With   {{provider_name}}\n' +
-      'When   {{date}} at {{time}}\n\n' +
+      '✅ *Appointment confirmed*\n\n' +
+      '👤 {{provider_name}}\n' +
+      '📅 {{date}} at {{time}}\n\n' +
       'See you there.',
   },
 
-  // -- Navigation -----------------------------------------
+  // ── Navigation ─────────────────────────────────────────
   {
     id: 'help_menu',
     category: 'Navigation',
@@ -170,7 +174,7 @@ const SYSTEM_MESSAGES = [
     editable: true,
     variables: ['business_name'],
     default:
-      '*{{business_name}} - Help*\n\n' +
+      '👋 *{{business_name}} - Help*\n\n' +
       'Here is what I can do:\n\n' +
       '*Book*         Schedule a new appointment\n' +
       '*Status*       View your appointments\n' +
@@ -185,7 +189,7 @@ const SYSTEM_MESSAGES = [
     desc: 'Shown when the bot encounters an unexpected error',
     editable: true,
     variables: [],
-    default: 'Sorry, something went wrong. Please try again or reply *hi* to start over.',
+    default: '⚠️ Sorry, something went wrong. Please try again or reply *hi* to start over.',
   },
   {
     id: 'go_back',
@@ -203,28 +207,28 @@ const SYSTEM_MESSAGES = [
     desc: 'When a time slot was just booked by someone else',
     editable: true,
     variables: [],
-    default: 'Sorry, this slot was just booked by someone else. Please pick another time.',
+    default: '⏳ Sorry, this slot was just booked by someone else. Please pick another time.',
   },
 
-  // -- Reminders (WhatsApp Templates - Read Only) ---------
+  // ── Reminders (WhatsApp Templates) ─────────────────────
   {
     id: 'reminder_24h',
     category: 'Reminders',
     label: 'Appointment Reminder (24h before)',
-    desc: 'Sent via WhatsApp Template - requires Meta approval to change',
+    desc: 'Sent via WhatsApp Template — requires Meta approval to change',
     editable: false,
     variables: ['patient_name', 'provider_name', 'date', 'time', 'business_name'],
-    default: 'Hi {{patient_name}}, reminder: your appointment with {{provider_name}} is on {{date}} at {{time}}. - {{business_name}}',
+    default: 'Hi {{patient_name}}, reminder: your appointment with {{provider_name}} is on {{date}} at {{time}}. — {{business_name}}',
     note: 'This uses a WhatsApp Template Message (appointment_reminder). Template changes must be submitted to Meta for approval.',
   },
   {
     id: 'reminder_1h',
     category: 'Reminders',
     label: 'Appointment Reminder (1h before)',
-    desc: 'Sent via WhatsApp Template - requires Meta approval to change',
+    desc: 'Sent via WhatsApp Template — requires Meta approval to change',
     editable: false,
     variables: ['patient_name', 'provider_name', 'date', 'time', 'business_name'],
-    default: 'Hi {{patient_name}}, reminder: your appointment with {{provider_name}} is on {{date}} at {{time}}. - {{business_name}}',
+    default: 'Hi {{patient_name}}, reminder: your appointment with {{provider_name}} is on {{date}} at {{time}}. — {{business_name}}',
     note: 'Uses the same appointment_reminder template as the 24h reminder.',
   },
   {
@@ -235,13 +239,13 @@ const SYSTEM_MESSAGES = [
     editable: true,
     variables: ['provider_name', 'date', 'appointment_count', 'business_name'],
     default:
-      '*Today\'s schedule - {{provider_name}}*\n' +
-      '{{date}}\n' +
+      '📋 *Today\'s schedule — {{provider_name}}*\n' +
+      '📅 {{date}}\n' +
       '------------------------------\n' +
       '(appointments listed automatically)\n' +
       '------------------------------\n' +
       'Total: {{appointment_count}} appointment(s)\n' +
-      '- {{business_name}}',
+      '— {{business_name}}',
   },
 ];
 

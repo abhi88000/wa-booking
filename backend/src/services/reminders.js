@@ -207,21 +207,21 @@ class ReminderService {
 
           const wa = new WhatsAppService(tenant);
 
-          let msg = `*Today's schedule - ${doc.name}*\n`;
-          msg += `${this.formatDate(new Date())}\n`;
+          let msg = `📋 *Today's schedule — ${doc.name}*\n`;
+          msg += `📅 ${this.formatDate(new Date())}\n`;
           msg += `------------------------------\n`;
 
           appts.forEach((a, i) => {
             const time = this.formatTime(a.start_time);
-            const tag = a.status === 'confirmed' ? '[ok]   ' : '[wait] ';
-            msg += `${tag}${time} - ${a.patient_name || 'Patient'}`;
+            const icon = a.status === 'confirmed' ? '✅' : '⏳';
+            msg += `${icon} ${time} — ${a.patient_name || 'Patient'}`;
             if (a.service_name) msg += ` (${a.service_name})`;
             msg += '\n';
           });
 
           msg += `------------------------------\n`;
           msg += `Total: ${appts.length} appointment${appts.length > 1 ? 's' : ''}\n`;
-          msg += `- ${doc.business_name}`;
+          msg += `— ${doc.business_name}`;
 
           await wa.sendText(doc.phone, msg);
           sent++;

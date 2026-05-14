@@ -62,6 +62,27 @@ export default function MessagesPanel({ overrides, onChange, focusId = null, com
   const overrideCount = Object.keys(overrides || {}).length;
   const showCats = !search.trim();
 
+  // Detect overrides that still use the old plain-text "With / When / Where" style.
+  // These were saved before the emoji defaults shipped and look out of place now.
+  const obsoleteIds = Object.entries(overrides || {})
+    .filter(([id, text]) =>
+      typeof text === 'string' &&
+      /\b(With|When|Where|Provider|Customer|Service|Date|Time|Status)\s{2,}/.test(text)
+    )
+    .map(([id]) => id);
+
+  const resetAll = () => {
+    if (typeof window !== 'undefined' &&
+        !window.confirm('Reset every message to its default (with emojis)? Your customisations will be removed.')) return;
+    onChange({});
+  };
+
+  const resetObsolete = () => {
+    const next = { ...(overrides || {}) };
+    obsoleteIds.forEach(id => { delete next[id]; });
+    onChange(next);
+  };
+
   return (
     <div className="flex flex-col h-full bg-slate-50">
       {/* Search bar */}
@@ -76,9 +97,41 @@ export default function MessagesPanel({ overrides, onChange, focusId = null, com
             className="w-full text-sm pl-9 pr-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
           />
         </div>
-        {overrideCount > 0 && (
-          <div className="text-[11px] text-emerald-700 mt-2 flex items-center gap-1.5">
-            <Ico.check className="w-3.5 h-3.5" /> {overrideCount} message{overrideCount > 1 ? 's' : ''} customised
+
+        <div className="flex items-center justify-between gap-3 mt-2 flex-wrap">
+          {overrideCount > 0 ? (
+            <div className="text-[11px] text-emerald-700 flex items-center gap-1.5">
+              <Ico.check className="w-3.5 h-3.5" /> {overrideCount} message{overrideCount > 1 ? 's' : ''} customised
+            </div>
+          ) : <span />}
+          {overrideCount > 0 && (
+            <button
+              onClick={resetAll}
+              className="text-[11px] text-slate-500 hover:text-red-600 inline-flex items-center gap-1 transition"
+              title="Remove every override and use the default texts"
+            >
+              <Ico.undo className="w-3 h-3" /> Reset all to defaults
+            </button>
+          )}
+        </div>
+
+        {obsoleteIds.length > 0 && (
+          <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs flex items-start gap-2">
+            <Ico.warn className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <div className="text-amber-900 font-medium">
+                {obsoleteIds.length} message{obsoleteIds.length > 1 ? 's are' : ' is'} using the old plain-text style
+              </div>
+              <div className="text-amber-700 text-[11px] mt-0.5">
+                You probably saved these before the new emoji defaults. Reset to get the cleaner look (with auto-hiding blank fields).
+              </div>
+            </div>
+            <button
+              onClick={resetObsolete}
+              className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-amber-600 hover:bg-amber-700 text-white inline-flex items-center gap-1 shrink-0 transition"
+            >
+              Reset these
+            </button>
           </div>
         )}
       </div>

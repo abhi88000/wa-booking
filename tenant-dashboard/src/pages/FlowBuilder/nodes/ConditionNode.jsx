@@ -1,11 +1,12 @@
-import { Position } from '@xyflow/react';
+﻿import { Position } from '@xyflow/react';
 import { NodeShell, TargetHandle, SourceHandle } from './NodeShell';
+import { Ico } from '../icons';
 
 export default function ConditionNode({ data, selected }) {
   const rules = Array.isArray(data.rules) ? data.rules : [];
   return (
     <NodeShell
-      icon="🔀"
+      Icon={Ico.branch}
       title="If / Else"
       subtitle={data.variable ? `check: ${data.variable}` : (data.name || data.id)}
       color="amber"

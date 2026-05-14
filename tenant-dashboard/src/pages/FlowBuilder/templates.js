@@ -1,12 +1,9 @@
-// ============================================================
 // Flow Templates
-// ============================================================
 export const TEMPLATES = [
   {
     id: 'blank',
     name: 'Blank Flow',
     desc: 'Start from scratch with a single welcome step',
-    icon: '✨',
     industries: 'Any',
     flow: {
       start: {
@@ -22,8 +19,7 @@ export const TEMPLATES = [
     id: 'appointment',
     name: 'Appointment Booking',
     desc: 'Book, view, or cancel appointments on WhatsApp',
-    icon: '📅',
-    industries: 'Clinics · Salons · Gyms · Consultants',
+    industries: 'Clinics, Salons, Gyms, Consultants',
     flow: {
       start: {
         type: 'menu',
@@ -42,17 +38,16 @@ export const TEMPLATES = [
     id: 'feedback',
     name: 'Customer Feedback',
     desc: 'Collect ratings and comments after a service',
-    icon: '⭐',
-    industries: 'Restaurants · Hotels · Salons',
+    industries: 'Restaurants, Hotels, Salons',
     flow: {
       start: {
         type: 'menu',
         name: 'Rating',
         message: "Hi! We'd love to hear about your experience. How would you rate us?",
         buttons: [
-          { id: 'r5', label: '⭐ Excellent', action: 'text', response: "Thank you! We're glad you had a great experience. 🎉" },
-          { id: 'r3', label: '😐 Average',   action: 'text', response: "Thanks for the feedback. We'll work to improve!" },
-          { id: 'r1', label: '👎 Poor',      action: 'text', response: "We're sorry to hear that. We'll do better. 🙏" }
+          { id: 'r5', label: 'Excellent',     action: 'text', response: "Thank you! We're glad you had a great experience." },
+          { id: 'r3', label: 'Average',       action: 'text', response: "Thanks for the feedback. We'll work to improve!" },
+          { id: 'r1', label: 'Poor',          action: 'text', response: "We're sorry to hear that. We'll do better." }
         ]
       },
       fallback: 'Please select a rating from the options above.'
@@ -62,8 +57,7 @@ export const TEMPLATES = [
     id: 'lead-capture',
     name: 'Lead Capture',
     desc: 'Greet, qualify, and save leads to your dashboard',
-    icon: '🎯',
-    industries: 'Real estate · Services · B2B',
+    industries: 'Real estate, Services, B2B',
     flow: {
       start: {
         type: 'menu',
@@ -71,7 +65,7 @@ export const TEMPLATES = [
         message: 'Hi! Interested in our services? Let me grab a few details.',
         buttons: [
           { id: 'go',  label: "Yes, let's go", action: 'next', next: 'ask_name' },
-          { id: 'no',  label: 'Maybe later',   action: 'text', response: 'No worries — message us anytime! 👋' }
+          { id: 'no',  label: 'Maybe later',   action: 'text', response: 'No worries, message us anytime.' }
         ]
       },
       ask_name: {
@@ -85,7 +79,7 @@ export const TEMPLATES = [
       ask_email: {
         type: 'input',
         name: 'Ask email',
-        message: 'Thanks {{customer_name}}! What\'s your email?',
+        message: 'Thanks {{customer_name}}! What is your email?',
         variable: 'customer_email',
         input_type: 'email',
         next: 'save_lead'
@@ -95,7 +89,7 @@ export const TEMPLATES = [
         name: 'Save lead',
         action_type: 'save_record',
         record_type: 'lead',
-        message: "We've got your details — someone from our team will reach out soon. 🙏"
+        message: "We have your details, someone from our team will reach out soon."
       },
       fallback: 'Please choose from the options above.'
     }

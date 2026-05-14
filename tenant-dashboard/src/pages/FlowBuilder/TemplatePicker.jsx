@@ -1,7 +1,22 @@
-// ============================================================
+﻿// ============================================================
 // Template Picker Modal
 // ============================================================
 import { TEMPLATES } from './templates';
+import { Ico } from './icons';
+
+const TEMPLATE_ICONS = {
+  blank: Ico.sparkles,
+  appointment: Ico.calendar,
+  feedback: Ico.star,
+  'lead-capture': Ico.target
+};
+
+const TEMPLATE_COLORS = {
+  blank: 'text-slate-500 bg-slate-100',
+  appointment: 'text-emerald-600 bg-emerald-100',
+  feedback: 'text-amber-600 bg-amber-100',
+  'lead-capture': 'text-blue-600 bg-blue-100'
+};
 
 export default function TemplatePicker({ open, onPick, onClose }) {
   if (!open) return null;
@@ -13,25 +28,33 @@ export default function TemplatePicker({ open, onPick, onClose }) {
             <h2 className="text-lg font-semibold text-slate-900">Choose a template</h2>
             <p className="text-xs text-slate-500 mt-0.5">Pick a ready-made template, or start from a blank flow</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded hover:bg-slate-100">
+            <Ico.close className="w-5 h-5" />
+          </button>
         </div>
         <div className="p-6 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-4">
-          {TEMPLATES.map(t => (
-            <button
-              key={t.id}
-              onClick={() => onPick(t)}
-              className="text-left border-2 border-slate-200 hover:border-emerald-500 hover:shadow-md transition-all rounded-xl p-4 bg-white"
-            >
-              <div className="flex items-start gap-3">
-                <div className="text-3xl">{t.icon}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-slate-900">{t.name}</div>
-                  <div className="text-sm text-slate-600 mt-1">{t.desc}</div>
-                  <div className="text-xs text-slate-400 mt-2">{t.industries}</div>
+          {TEMPLATES.map(t => {
+            const TIcon = TEMPLATE_ICONS[t.id] || Ico.template;
+            const colors = TEMPLATE_COLORS[t.id] || 'text-slate-500 bg-slate-100';
+            return (
+              <button
+                key={t.id}
+                onClick={() => onPick(t)}
+                className="text-left border-2 border-slate-200 hover:border-emerald-500 hover:shadow-md transition-all rounded-xl p-4 bg-white"
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`w-12 h-12 rounded-lg flex items-center justify-center shrink-0 ${colors}`}>
+                    <TIcon className="w-6 h-6" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-slate-900">{t.name}</div>
+                    <div className="text-sm text-slate-600 mt-1">{t.desc}</div>
+                    <div className="text-xs text-slate-400 mt-2">{t.industries}</div>
+                  </div>
                 </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>

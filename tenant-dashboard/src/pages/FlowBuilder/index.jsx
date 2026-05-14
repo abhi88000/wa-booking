@@ -1,6 +1,4 @@
-// ============================================================
-// FlowBuilder — Visual Canvas Edition
-// ============================================================
+// FlowBuilder - Visual Canvas Edition
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ReactFlowProvider } from '@xyflow/react';
 import api from '../../api';
@@ -10,7 +8,7 @@ import Canvas from './Canvas';
 import Toolbar from './Toolbar';
 import NodeEditor from './NodeEditor';
 import TemplatePicker from './TemplatePicker';
-import { TEMPLATES } from './templates';
+import { Ico } from './icons';
 import { useHistory } from './useHistory';
 import { autoLayout } from './useAutoLayout';
 import { flowToGraph, graphToFlow, generateNodeId } from './converter';
@@ -35,7 +33,6 @@ export default function FlowBuilder() {
   const [validationErrors, setValidationErrors] = useState([]);
   const originalFlowRef = useRef({});
 
-  // History-managed nodes/edges
   const { state: graph, set: setGraph, undo, redo, canUndo, canRedo, reset } = useHistory({ nodes: [], edges: [] });
   const { nodes, edges } = graph;
 
@@ -53,7 +50,7 @@ export default function FlowBuilder() {
     }));
   }, [setGraph]);
 
-  // ─── Load ─────────────────────────────────────────────
+  // Load
   useEffect(() => {
     (async () => {
       try {
@@ -81,7 +78,7 @@ export default function FlowBuilder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ─── Keyboard shortcuts ───────────────────────────────
+  // Keyboard shortcuts
   useEffect(() => {
     const onKey = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -97,14 +94,12 @@ export default function FlowBuilder() {
     return () => window.removeEventListener('keydown', onKey);
   }, [undo, redo]);
 
-  // ─── Selection / Editing ──────────────────────────────
   const selectedNode = nodes.find(n => n.id === selectedNodeId) || null;
 
   const updateNodeData = useCallback((newData) => {
     setNodes(prev => prev.map(n => n.id === selectedNodeId ? { ...n, data: { ...newData, id: n.id } } : n));
   }, [selectedNodeId, setNodes]);
 
-  // ─── Add node ─────────────────────────────────────────
   const addNode = useCallback((type) => {
     const id = generateNodeId(type);
     const defaults = NODE_DEFAULTS[type] || NODE_DEFAULTS.menu;
@@ -118,7 +113,6 @@ export default function FlowBuilder() {
     setSelectedNodeId(id);
   }, [setNodes]);
 
-  // ─── Delete node ──────────────────────────────────────
   const deleteSelected = useCallback(() => {
     if (!selectedNodeId || selectedNodeId === 'start') return;
     setGraph(prev => ({
@@ -128,7 +122,6 @@ export default function FlowBuilder() {
     setSelectedNodeId(null);
   }, [selectedNodeId, setGraph]);
 
-  // ─── Duplicate node ───────────────────────────────────
   const duplicateSelected = useCallback(() => {
     if (!selectedNode) return;
     const newId = generateNodeId(selectedNode.type || 'screen');
@@ -142,7 +135,7 @@ export default function FlowBuilder() {
     setSelectedNodeId(newId);
   }, [selectedNode, setNodes]);
 
-  // ─── Connect (drag edge to wire steps) ────────────────
+  // Connect (drag-and-drop wire)
   const onConnect = useCallback((connection) => {
     const { source, sourceHandle, target } = connection;
     setGraph(prev => {
@@ -151,14 +144,12 @@ export default function FlowBuilder() {
         const data = { ...n.data };
         const type = data.type;
         if (type === 'menu') {
-          // sourceHandle = "btn-N" — link that button's "next"
           const m = sourceHandle && sourceHandle.match(/^btn-(\d+)$/);
           const buttons = Array.isArray(data.buttons) ? [...data.buttons] : [];
           if (m) {
             const i = parseInt(m[1], 10);
             if (buttons[i]) buttons[i] = { ...buttons[i], action: 'next', next: target };
           } else {
-            // Dropped on bottom — add a new button
             buttons.push({ id: `btn_${Date.now()}`, label: 'Continue', action: 'next', next: target });
           }
           data.buttons = buttons;
@@ -177,30 +168,24 @@ export default function FlowBuilder() {
         }
         return { ...n, data };
       });
-      // Rebuild edges from authoritative node data so we never duplicate
       const tempFlow = graphToFlow(newNodes, prev.edges, originalFlowRef.current);
       const { edges: rebuilt } = flowToGraph(tempFlow);
       return { nodes: newNodes, edges: rebuilt };
     });
   }, [setGraph]);
 
-  // ─── Rebuild edges when nodes' button/rule mappings change ─
-  // (happens via NodeEditor edits)
+  // Rebuild edges when node data changes
   useEffect(() => {
     if (nodes.length === 0) return;
     const tempFlow = graphToFlow(nodes, edges, originalFlowRef.current);
     const { edges: rebuilt } = flowToGraph(tempFlow);
-    // shallow compare
     const same = rebuilt.length === edges.length && rebuilt.every((e, i) =>
       edges[i] && e.id === edges[i].id && e.source === edges[i].source && e.target === edges[i].target
     );
-    if (!same) {
-      setEdges(rebuilt);
-    }
+    if (!same) setEdges(rebuilt);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodes]);
 
-  // ─── Save ─────────────────────────────────────────────
   const doSave = async () => {
     const flow = graphToFlow(nodes, edges, originalFlowRef.current);
     const errs = validateFlowDraft(flow);
@@ -224,7 +209,6 @@ export default function FlowBuilder() {
     }
   };
 
-  // ─── Cancel / discard ─────────────────────────────────
   const doCancel = () => {
     const { nodes: gn, edges: ge } = flowToGraph(originalFlow);
     reset({ nodes: gn, edges: ge });
@@ -232,7 +216,6 @@ export default function FlowBuilder() {
     setError('');
   };
 
-  // ─── Pick template ────────────────────────────────────
   const onPickTemplate = (template) => {
     const fc = JSON.parse(JSON.stringify(template.flow));
     originalFlowRef.current = fc;
@@ -244,7 +227,6 @@ export default function FlowBuilder() {
     setSelectedNodeId(null);
   };
 
-  // ─── Auto-layout ──────────────────────────────────────
   const doAutoLayout = () => {
     setNodes(prev => autoLayout(prev, edges));
   };
@@ -253,8 +235,8 @@ export default function FlowBuilder() {
     return (
       <div className="h-full flex items-center justify-center text-slate-500">
         <div className="text-center">
-          <div className="animate-spin w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full mx-auto mb-3" />
-          Loading your flow…
+          <Ico.spinner className="w-8 h-8 text-emerald-500 animate-spin mx-auto mb-3" />
+          Loading your flow...
         </div>
       </div>
     );
@@ -263,17 +245,20 @@ export default function FlowBuilder() {
   return (
     <ReactFlowProvider>
       <div className="h-screen flex flex-col bg-slate-100">
-        {/* Page header */}
         <div className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
           <div>
             <h1 className="text-lg font-semibold text-slate-900">Flow Builder</h1>
             <p className="text-xs text-slate-500">Design what happens when a customer messages you on WhatsApp</p>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowTemplates(true)} className="text-sm px-3 py-1.5 border border-slate-300 rounded hover:bg-slate-50">
-              📋 Templates
+            <button onClick={() => setShowTemplates(true)} className="text-sm px-3 py-1.5 border border-slate-300 rounded hover:bg-slate-50 inline-flex items-center gap-1.5">
+              <Ico.template className="w-4 h-4" /> Templates
             </button>
-            {saved && <span className="text-sm text-emerald-600">✓ Saved</span>}
+            {saved && (
+              <span className="text-sm text-emerald-600 inline-flex items-center gap-1">
+                <Ico.check className="w-4 h-4" /> Saved
+              </span>
+            )}
           </div>
         </div>
 
@@ -295,7 +280,6 @@ export default function FlowBuilder() {
         )}
 
         <div className="flex-1 flex min-h-0">
-          {/* Canvas */}
           <div className="flex-1 min-w-0 relative">
             <Canvas
               nodes={nodes}
@@ -309,7 +293,7 @@ export default function FlowBuilder() {
             {nodes.length === 0 && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="text-center text-slate-400">
-                  <div className="text-5xl mb-3">🎨</div>
+                  <Ico.canvas className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                   <div className="text-lg font-medium">Empty canvas</div>
                   <div className="text-sm mt-1">Pick a template or click "Add Menu" above to begin</div>
                 </div>
@@ -317,7 +301,6 @@ export default function FlowBuilder() {
             )}
           </div>
 
-          {/* Side panel */}
           <aside className="w-[380px] border-l border-slate-200 bg-white shrink-0">
             <NodeEditor
               node={selectedNode}

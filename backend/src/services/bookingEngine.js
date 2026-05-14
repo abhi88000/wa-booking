@@ -98,6 +98,9 @@ class BookingEngine {
         case 'awaiting_confirm':
           return await this.handleConfirmation(content, interactiveData, state);
 
+        case 'awaiting_appointment_action':
+          return await this.handleAppointmentAction(content, state);
+
         case 'awaiting_cancel':
           return await this.handleCancelSelection(content, interactiveData, state);
 
@@ -1034,6 +1037,25 @@ class BookingEngine {
         { id: 'reschedule', title: 'Reschedule' }
       ]
     });
+
+    await this.setState({ state: 'awaiting_appointment_action' });
+  }
+
+  // ── Handle Appointment Action (Cancel / Reschedule) ─────
+  async handleAppointmentAction(content, state) {
+    const msg = (content || '').toLowerCase().trim();
+    if (msg === 'cancel' || msg === 'cancel appointment') {
+      return await this.showCancellableAppointments();
+    }
+    if (msg === 'reschedule') {
+      return await this.showReschedulableAppointments();
+    }
+    if (msg === 'book') {
+      return await this.startBookingFlow();
+    }
+    // Unrecognized — re-show options
+    await this.setState({ state: 'idle' });
+    return await this.handleNewMessage(content, state);
   }
 
   // ── Show Cancellable Appointments ───────────────────────

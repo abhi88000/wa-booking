@@ -52,26 +52,36 @@ function App() {
       <ClinicProvider>
       <div className="flex h-screen">
         <Sidebar onLogout={handleLogout} />
-        <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 bg-gray-50 ml-0 sm:ml-64 pt-18 sm:pt-6">
-          <div className="max-w-6xl mx-auto">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/appointments" element={<Appointments />} />
-            <Route path="/doctors" element={<Doctors />} />
-            <Route path="/services" element={<Services />} />
-            <Route path="/patients" element={<Patients />} />
-            <Route path="/flow-builder" element={<FlowBuilder />} />
-            <Route path="/system-messages" element={<SystemMessages />} />
-            <Route path="/inbox" element={<Inbox />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/terms" element={<Terms />} />
-            <Route path="/data-deletion" element={<DataDeletion />} />
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-          </div>
-        </main>
+        <Routes>
+          {/* Full-bleed routes: no max-width wrapper, no padding, no scroll on main */}
+          <Route path="/flow-builder" element={
+            <div className="flex-1 min-w-0 h-screen ml-0 sm:ml-64 pt-14 sm:pt-0 bg-slate-100">
+              <FlowBuilder />
+            </div>
+          } />
+          {/* Standard routes */}
+          <Route path="/*" element={
+            <main className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 bg-gray-50 ml-0 sm:ml-64 pt-18 sm:pt-6">
+              <div className="max-w-6xl mx-auto">
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/onboarding" element={<Onboarding />} />
+                  <Route path="/appointments" element={<Appointments />} />
+                  <Route path="/doctors" element={<Doctors />} />
+                  <Route path="/services" element={<Services />} />
+                  <Route path="/patients" element={<Patients />} />
+                  <Route path="/system-messages" element={<SystemMessages />} />
+                  <Route path="/inbox" element={<Inbox />} />
+                  <Route path="/settings" element={<Settings />} />
+                  <Route path="/privacy" element={<Privacy />} />
+                  <Route path="/terms" element={<Terms />} />
+                  <Route path="/data-deletion" element={<DataDeletion />} />
+                  <Route path="*" element={<Navigate to="/" />} />
+                </Routes>
+              </div>
+            </main>
+          } />
+        </Routes>
       </div>
       </ClinicProvider>
     </BrowserRouter>

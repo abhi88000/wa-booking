@@ -6,21 +6,21 @@ import { Link } from 'react-router-dom';
 import MessagesPanel from './MessagesPanel';
 import { Ico } from './icons';
 
-export default function MessagesDrawer({ open, onClose, overrides, onChange, focusId }) {
+export default function MessagesDrawer({ open, onClose, overrides, onChange, focusId, onSave, saving, dirty }) {
   if (!open) return null;
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
       <div className="fixed top-0 right-0 bottom-0 w-full max-w-3xl bg-white shadow-2xl z-50 flex flex-col">
         <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between bg-white">
-          <div>
+          <div className="min-w-0">
             <div className="text-sm font-semibold text-slate-900 flex items-center gap-2">
               <Ico.message className="w-4 h-4 text-emerald-600" />
               Bot Messages
             </div>
             <div className="text-[11px] text-slate-500 mt-0.5">Confirmations, reminders, errors. Customise any of them.</div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <Link
               to="/system-messages"
               onClick={onClose}
@@ -29,7 +29,18 @@ export default function MessagesDrawer({ open, onClose, overrides, onChange, foc
             >
               <Ico.externalLink className="w-3.5 h-3.5" /> Full page
             </Link>
-            <button onClick={onClose} className="p-1.5 rounded hover:bg-slate-100 text-slate-500">
+            {onSave && (
+              <button
+                onClick={onSave}
+                disabled={saving || !dirty}
+                className="text-xs font-semibold px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Save all flow & message changes"
+              >
+                <Ico.save className="w-3.5 h-3.5" />
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+            )}
+            <button onClick={onClose} className="p-1.5 rounded hover:bg-slate-100 text-slate-500" title="Close">
               <Ico.close className="w-4 h-4" />
             </button>
           </div>

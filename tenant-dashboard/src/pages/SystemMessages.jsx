@@ -70,7 +70,7 @@ export default function SystemMessages() {
   }
 
   return (
-    <div className="h-[calc(100vh-3rem)] flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="h-[calc(100vh-3rem)] flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative">
       <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
@@ -80,7 +80,7 @@ export default function SystemMessages() {
           <p className="text-xs text-slate-500 mt-0.5">Edit every message your WhatsApp bot sends — confirmations, reminders, errors, navigation.</p>
         </div>
         <div className="flex items-center gap-2">
-          {saved && (
+          {saved && !dirty && (
             <span className="text-sm text-emerald-600 inline-flex items-center gap-1">
               <Ico.check className="w-4 h-4" /> Saved
             </span>
@@ -107,12 +107,37 @@ export default function SystemMessages() {
         <div className="bg-red-50 border-b border-red-200 px-6 py-2 text-sm text-red-700">{error}</div>
       )}
 
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 relative">
         <MessagesPanel
           overrides={overrides}
           onChange={setOverrides}
           focusId={focusId}
         />
+
+        {/* Sticky save bar — appears over the list when there are unsaved changes */}
+        {dirty && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3 px-4 py-2.5 bg-slate-900/95 backdrop-blur text-white rounded-full shadow-2xl border border-slate-700">
+            <span className="text-sm flex items-center gap-2">
+              <Ico.warn className="w-4 h-4 text-amber-400" />
+              You have unsaved changes
+            </span>
+            <button
+              onClick={doDiscard}
+              disabled={saving}
+              className="text-xs px-3 py-1 rounded-full text-slate-300 hover:text-white hover:bg-slate-700 transition disabled:opacity-50"
+            >
+              Discard
+            </button>
+            <button
+              onClick={doSave}
+              disabled={saving}
+              className="text-xs font-semibold px-3 py-1 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white inline-flex items-center gap-1.5 transition disabled:opacity-50"
+            >
+              <Ico.save className="w-3.5 h-3.5" />
+              {saving ? 'Saving...' : 'Save changes'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -253,7 +253,7 @@ export default function FlowBuilder() {
 
   return (
     <ReactFlowProvider>
-      <div className="h-screen flex flex-col bg-slate-100">
+      <div className="h-full flex flex-col bg-slate-100">
         <Toolbar
           onAddNode={addNode}
           onAutoLayout={doAutoLayout}
@@ -331,6 +331,9 @@ export default function FlowBuilder() {
           overrides={messageOverrides}
           onChange={setMessageOverrides}
           focusId={focusMessageId}
+          onSave={doSave}
+          saving={saving}
+          dirty={true}
         />
         <LabelsDrawer
           open={showLabels}

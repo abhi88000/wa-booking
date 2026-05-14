@@ -8,6 +8,11 @@ import Canvas from './Canvas';
 import Toolbar from './Toolbar';
 import NodeEditor from './NodeEditor';
 import TemplatePicker from './TemplatePicker';
+import MessagesDrawer from './MessagesDrawer';
+import LabelsDrawer from './LabelsDrawer';
+import PhonePreview from './PhonePreview';
+import EmptyState from './EmptyState';
+import { TEMPLATES } from './templates';
 import { Ico } from './icons';
 import { useHistory } from './useHistory';
 import { autoLayout } from './useAutoLayout';
@@ -30,6 +35,10 @@ export default function FlowBuilder() {
   const [originalFlow, setOriginalFlow] = useState({});
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [showMessages, setShowMessages] = useState(false);
+  const [showLabels, setShowLabels] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [focusMessageId, setFocusMessageId] = useState(null);
   const [validationErrors, setValidationErrors] = useState([]);
   const originalFlowRef = useRef({});
 
@@ -273,6 +282,10 @@ export default function FlowBuilder() {
           onCancel={doCancel}
           saving={saving}
           errors={validationErrors}
+          onOpenMessages={() => { setFocusMessageId(null); setShowMessages(true); }}
+          onOpenLabels={() => setShowLabels(true)}
+          onTogglePreview={() => setShowPreview(p => !p)}
+          previewOpen={showPreview}
         />
 
         {error && (
@@ -291,15 +304,25 @@ export default function FlowBuilder() {
               onConnect={onConnect}
             />
             {nodes.length === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="text-center text-slate-400">
-                  <Ico.canvas className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-                  <div className="text-lg font-medium">Empty canvas</div>
-                  <div className="text-sm mt-1">Pick a template or click "Add Menu" above to begin</div>
-                </div>
-              </div>
+              <EmptyState
+                onAddStep={(t) => addNode(t)}
+                onPickTemplate={(starterId) => {
+                  if (starterId === 'blank') { addNode('menu'); return; }
+                  const map = { booking: 'appointment', lead: 'lead-capture', feedback: 'feedback' };
+                  const tplId = map[starterId] || starterId;
+                  const tpl = TEMPLATES.find(t => t.id === tplId);
+                  if (tpl) onPickTemplate(tpl);
+                  else setShowTemplates(true);
+                }}
+              />
             )}
           </div>
+
+          {showPreview && (
+            <aside className="w-[320px] border-l border-slate-200 shrink-0">
+              <PhonePreview node={selectedNode} />
+            </aside>
+          )}
 
           <aside className="w-[380px] border-l border-slate-200 bg-white shrink-0">
             <NodeEditor
@@ -309,11 +332,25 @@ export default function FlowBuilder() {
               onDelete={deleteSelected}
               onDuplicate={duplicateSelected}
               onClose={() => setSelectedNodeId(null)}
+              onOpenMessage={(msgId) => { setFocusMessageId(msgId); setShowMessages(true); }}
             />
           </aside>
         </div>
 
         <TemplatePicker open={showTemplates} onPick={onPickTemplate} onClose={() => setShowTemplates(false)} />
+        <MessagesDrawer
+          open={showMessages}
+          onClose={() => setShowMessages(false)}
+          overrides={messageOverrides}
+          onChange={setMessageOverrides}
+          focusId={focusMessageId}
+        />
+        <LabelsDrawer
+          open={showLabels}
+          onClose={() => setShowLabels(false)}
+          labels={labels}
+          onChange={setLabels}
+        />
       </div>
     </ReactFlowProvider>
   );

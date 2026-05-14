@@ -1,8 +1,55 @@
 ﻿// ============================================================
 // Node Editor - Side Panel for the Selected Node
 // ============================================================
+import { useState } from 'react';
 import { Ico } from './icons';
 import { BUTTON_ACTION_META, ACTION_TYPE_META, COLOR_CLASSES } from './actionMeta';
+import { STEP_GUIDE } from './stepGuidance';
+
+// Maps booking-related button actions to the relevant system message id
+const BTN_ACTION_TO_MSG = {
+  booking_flow: 'booking_confirmation',
+  booking_cancel: 'cancel_confirmation',
+  booking_status: 'upcoming_appointments',
+};
+
+function StepHint({ type }) {
+  const guide = STEP_GUIDE[type];
+  const [open, setOpen] = useState(false);
+  if (!guide) return null;
+  return (
+    <div className="bg-slate-50 border border-slate-200 rounded-lg overflow-hidden">
+      <button onClick={() => setOpen(o => !o)} className="w-full text-left px-3 py-2 flex items-center justify-between hover:bg-slate-100 transition">
+        <div className="flex items-center gap-2 min-w-0">
+          <Ico.info className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span className="text-[11px] text-slate-600"><strong className="font-semibold">{guide.title}</strong> — {guide.short}</span>
+        </div>
+        {open ? <Ico.up className="w-3 h-3 text-slate-400" /> : <Ico.down className="w-3 h-3 text-slate-400" />}
+      </button>
+      {open && (
+        <div className="px-3 pb-3 pt-1 border-t border-slate-200 bg-white space-y-2">
+          <div className="text-[11px] text-slate-500 italic">{guide.when}</div>
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-1">Examples</div>
+            <ul className="space-y-1">
+              {guide.examples.map((ex, i) => (
+                <li key={i} className="text-[11px] text-slate-700 leading-relaxed">
+                  <strong className="font-semibold text-slate-800">{ex.name}.</strong> {ex.text}
+                </li>
+              ))}
+            </ul>
+          </div>
+          {guide.tip && (
+            <div className="text-[11px] text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-1 flex gap-1.5">
+              <Ico.sparkles className="w-3 h-3 shrink-0 mt-0.5" />
+              <span>{guide.tip}</span>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const INPUT_TYPES = [
   { v: 'text', l: 'Text' }, { v: 'number', l: 'Number' }, { v: 'email', l: 'Email' },
@@ -31,7 +78,7 @@ function Field({ label, hint, children }) {
 
 const inputClass = "w-full text-sm border border-slate-300 rounded-md px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500";
 
-export default function NodeEditor({ node, allNodes, onChange, onDelete, onDuplicate, onClose }) {
+export default function NodeEditor({ node, allNodes, onChange, onDelete, onDuplicate, onClose, onOpenMessage }) {
   if (!node) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-center text-slate-500 p-6">
@@ -74,6 +121,8 @@ export default function NodeEditor({ node, allNodes, onChange, onDelete, onDupli
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <StepHint type={type} />
+
         <Field label="Step name" hint="A friendly name for your reference">
           <input
             type="text"
@@ -96,7 +145,7 @@ export default function NodeEditor({ node, allNodes, onChange, onDelete, onDupli
           </Field>
         )}
 
-        {type === 'menu' && <MenuEditor data={data} update={update} allNodes={allNodes} />}
+        {type === 'menu' && <MenuEditor data={data} update={update} allNodes={allNodes} onOpenMessage={onOpenMessage} />}
         {type === 'input' && <InputEditor data={data} update={update} allNodes={allNodes} />}
         {type === 'condition' && <ConditionEditor data={data} update={update} allNodes={allNodes} />}
         {type === 'action' && <ActionEditor data={data} update={update} allNodes={allNodes} />}
@@ -106,7 +155,7 @@ export default function NodeEditor({ node, allNodes, onChange, onDelete, onDupli
 }
 
 // --- Menu Editor ---------------------------------------
-function MenuEditor({ data, update, allNodes }) {
+function MenuEditor({ data, update, allNodes, onOpenMessage }) {
   const buttons = Array.isArray(data.buttons) ? data.buttons : [];
   const setButtons = (next) => update({ buttons: next });
   const addButton = () => setButtons([...buttons, { id: `btn_${Date.now()}`, label: '', action: 'next' }]);
@@ -174,6 +223,16 @@ function MenuEditor({ data, update, allNodes }) {
                     <span>{meta.desc}</span>
                   </div>
                 </div>
+              )}
+              {BTN_ACTION_TO_MSG[btn.action] && onOpenMessage && (
+                <button
+                  type="button"
+                  onClick={() => onOpenMessage(BTN_ACTION_TO_MSG[btn.action])}
+                  className="mt-1.5 text-[11px] text-emerald-700 hover:text-emerald-800 inline-flex items-center gap-1"
+                >
+                  <Ico.message className="w-3 h-3" /> Customise the message customers receive
+                  <Ico.arrowRight className="w-3 h-3" />
+                </button>
               )}
             </div>
 

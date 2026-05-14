@@ -10,6 +10,7 @@ import Services from './pages/Services';
 import Patients from './pages/Patients';
 import Settings from './pages/Settings';
 import FlowBuilder from './pages/FlowBuilder';
+import SystemMessages from './pages/SystemMessages';
 import Inbox from './pages/Inbox';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
@@ -61,6 +62,7 @@ function App() {
             <Route path="/services" element={<Services />} />
             <Route path="/patients" element={<Patients />} />
             <Route path="/flow-builder" element={<FlowBuilder />} />
+            <Route path="/system-messages" element={<SystemMessages />} />
             <Route path="/inbox" element={<Inbox />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/privacy" element={<Privacy />} />
@@ -94,6 +96,7 @@ function Sidebar({ onLogout }) {
     { to: '/services', label: 'Services', icon: 'package' },
     { to: '/patients', label: customerLabel + 's', icon: 'users' },
     { to: '/flow-builder', label: 'Flow Builder', icon: 'bot' },
+    { to: '/system-messages', label: 'Bot Messages', icon: 'messageSquare' },
     { to: '/inbox', label: 'Inbox', icon: 'messageCircle' },
     { to: '/settings', label: 'Settings', icon: 'settings' },
   ];

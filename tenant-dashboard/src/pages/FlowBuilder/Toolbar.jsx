@@ -1,14 +1,17 @@
-﻿// ============================================================
+// ============================================================
 // Flow Builder Toolbar
 // ============================================================
 import { Ico } from './icons';
 
-function TBtn({ onClick, disabled, title, children, primary, danger }) {
+function TBtn({ onClick, disabled, title, children, primary, danger, active }) {
+  const base = 'px-3 py-1.5 text-sm rounded-md flex items-center gap-1.5 transition';
   const cls = primary
-    ? 'px-3 py-1.5 text-sm rounded-md bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1.5 disabled:opacity-50'
+    ? `${base} bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50`
     : danger
-    ? 'px-3 py-1.5 text-sm rounded-md border border-slate-300 bg-white hover:bg-red-50 hover:border-red-200 text-slate-700 flex items-center gap-1.5'
-    : 'px-3 py-1.5 text-sm rounded-md border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed';
+    ? `${base} border border-slate-300 bg-white hover:bg-red-50 hover:border-red-200 text-slate-700`
+    : active
+    ? `${base} border border-emerald-400 bg-emerald-50 text-emerald-700`
+    : `${base} border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-40 disabled:cursor-not-allowed`;
   return (
     <button onClick={onClick} disabled={disabled} title={title} className={cls}>
       {children}
@@ -26,22 +29,26 @@ export default function Toolbar({
   onSave,
   onCancel,
   saving,
-  errors
+  errors,
+  onOpenMessages,
+  onOpenLabels,
+  onTogglePreview,
+  previewOpen,
 }) {
   return (
     <div className="border-b border-slate-200 bg-white px-4 py-2.5 flex items-center gap-2 flex-wrap">
       <div className="flex items-center gap-1 mr-2">
         <span className="text-xs text-slate-500 mr-1">Add:</span>
-        <TBtn onClick={() => onAddNode('menu')} title="Menu with buttons">
+        <TBtn onClick={() => onAddNode('menu')} title="Menu with buttons — for choices like Book / Status / Cancel">
           <Ico.message className="w-4 h-4 text-blue-600" /> Menu
         </TBtn>
-        <TBtn onClick={() => onAddNode('input')} title="Ask the customer a question">
+        <TBtn onClick={() => onAddNode('input')} title="Ask the customer a question — name, rating, email, etc.">
           <Ico.question className="w-4 h-4 text-purple-600" /> Question
         </TBtn>
-        <TBtn onClick={() => onAddNode('condition')} title="Branch based on a variable">
+        <TBtn onClick={() => onAddNode('condition')} title="Branch the flow based on what they answered">
           <Ico.branch className="w-4 h-4 text-amber-600" /> If / Else
         </TBtn>
-        <TBtn onClick={() => onAddNode('action')} title="Save, notify, or schedule something">
+        <TBtn onClick={() => onAddNode('action')} title="Save lead, notify staff, or set a value">
           <Ico.bolt className="w-4 h-4 text-emerald-600" /> Action
         </TBtn>
       </div>
@@ -49,14 +56,32 @@ export default function Toolbar({
       <div className="h-6 w-px bg-slate-200 mx-1" />
 
       <TBtn onClick={onAutoLayout} title="Auto-arrange nodes neatly">
-        <Ico.layout className="w-4 h-4" /> Auto-arrange
+        <Ico.layout className="w-4 h-4" /> Tidy up
       </TBtn>
       <TBtn onClick={onUndo} disabled={!canUndo} title="Undo (Ctrl+Z)">
-        <Ico.undo className="w-4 h-4" /> Undo
+        <Ico.undo className="w-4 h-4" />
       </TBtn>
       <TBtn onClick={onRedo} disabled={!canRedo} title="Redo (Ctrl+Y)">
-        <Ico.redo className="w-4 h-4" /> Redo
+        <Ico.redo className="w-4 h-4" />
       </TBtn>
+
+      <div className="h-6 w-px bg-slate-200 mx-1" />
+
+      {onOpenMessages && (
+        <TBtn onClick={onOpenMessages} title="Edit the messages your bot sends — confirmations, reminders, errors">
+          <Ico.message className="w-4 h-4 text-emerald-600" /> Messages
+        </TBtn>
+      )}
+      {onOpenLabels && (
+        <TBtn onClick={onOpenLabels} title="Rename Doctor / Patient / Appointment to match your business">
+          <Ico.tag className="w-4 h-4 text-blue-600" /> Labels
+        </TBtn>
+      )}
+      {onTogglePreview && (
+        <TBtn onClick={onTogglePreview} active={previewOpen} title="Show/hide WhatsApp phone preview">
+          <Ico.phone className="w-4 h-4" /> Preview
+        </TBtn>
+      )}
 
       <div className="flex-1" />
 
@@ -74,7 +99,7 @@ export default function Toolbar({
         Cancel
       </TBtn>
       <TBtn primary onClick={onSave} disabled={saving} title="Save and publish flow">
-        <Ico.save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save flow'}
+        <Ico.save className="w-4 h-4" /> {saving ? 'Saving...' : 'Save'}
       </TBtn>
     </div>
   );

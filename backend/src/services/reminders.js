@@ -6,6 +6,7 @@
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
 const WhatsAppService = require('./whatsapp');
+const { decrypt } = require('../utils/encryption');
 
 class ReminderService {
   
@@ -81,7 +82,7 @@ class ReminderService {
     const tenant = {
       id: reminder.tenant_id,
       wa_phone_number_id: reminder.wa_phone_number_id,
-      wa_access_token: reminder.wa_access_token,
+      wa_access_token: decrypt(reminder.wa_access_token),
       business_name: reminder.business_name
     };
 
@@ -200,7 +201,7 @@ class ReminderService {
           const tenant = {
             id: doc.tenant_id,
             wa_phone_number_id: doc.wa_phone_number_id,
-            wa_access_token: doc.wa_access_token,
+            wa_access_token: decrypt(doc.wa_access_token),
             business_name: doc.business_name
           };
 

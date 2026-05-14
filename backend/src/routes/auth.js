@@ -69,47 +69,59 @@ router.post('/signup', async (req, res, next) => {
       slug = `${slug}-${Date.now().toString(36)}`;
     }
 
-    // Create tenant
-    const { rows: tenant } = await pool.query(
-      `INSERT INTO tenants (business_name, business_type, slug, email, phone, city, country, timezone)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [value.businessName, value.businessType, slug, value.email, value.phone, value.city, value.country, value.timezone]
-    );
+    // Create tenant + user in a transaction
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
 
-    const tenantId = tenant[0].id;
-
-    // Mark invite code as used (single-use)
-    if (inviteCodeId) {
-      await pool.query(
-        `UPDATE invite_codes SET used_by_tenant_id = $1, used_at = NOW() WHERE id = $2`,
-        [tenantId, inviteCodeId]
+      const { rows: tenant } = await client.query(
+        `INSERT INTO tenants (business_name, business_type, slug, email, phone, city, country, timezone)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+        [value.businessName, value.businessType, slug, value.email, value.phone, value.city, value.country, value.timezone]
       );
+
+      const tenantId = tenant[0].id;
+
+      // Mark invite code as used (single-use)
+      if (inviteCodeId) {
+        await client.query(
+          `UPDATE invite_codes SET used_by_tenant_id = $1, used_at = NOW() WHERE id = $2`,
+          [tenantId, inviteCodeId]
+        );
+      }
+
+      // Create owner user
+      const passwordHash = await bcrypt.hash(value.password, 12);
+      const { rows: user } = await client.query(
+        `INSERT INTO tenant_users (tenant_id, email, password_hash, name, role)
+         VALUES ($1, $2, $3, $4, 'owner') RETURNING id, email, name, role`,
+        [tenantId, value.email, passwordHash, value.ownerName]
+      );
+
+      await client.query('COMMIT');
+
+      // Generate token
+      const token = signTenantToken(user[0], tenantId);
+
+      logger.info(`New tenant registered: ${value.businessName} (${tenantId})`);
+
+      res.status(201).json({
+        message: 'Account created successfully!',
+        token,
+        tenant: {
+          id: tenantId,
+          businessName: tenant[0].business_name,
+          slug: tenant[0].slug,
+          onboardingStatus: tenant[0].onboarding_status
+        },
+        user: user[0]
+      });
+    } catch (txErr) {
+      await client.query('ROLLBACK');
+      throw txErr;
+    } finally {
+      client.release();
     }
-
-    // Create owner user
-    const passwordHash = await bcrypt.hash(value.password, 12);
-    const { rows: user } = await pool.query(
-      `INSERT INTO tenant_users (tenant_id, email, password_hash, name, role)
-       VALUES ($1, $2, $3, $4, 'owner') RETURNING id, email, name, role`,
-      [tenantId, value.email, passwordHash, value.ownerName]
-    );
-
-    // Generate token
-    const token = signTenantToken(user[0], tenantId);
-
-    logger.info(`New tenant registered: ${value.businessName} (${tenantId})`);
-
-    res.status(201).json({
-      message: 'Account created successfully!',
-      token,
-      tenant: {
-        id: tenantId,
-        businessName: tenant[0].business_name,
-        slug: tenant[0].slug,
-        onboardingStatus: tenant[0].onboarding_status
-      },
-      user: user[0]
-    });
   } catch (err) {
     next(err);
   }

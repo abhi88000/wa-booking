@@ -78,9 +78,17 @@ router.get('/whatsapp', (req, res) => {
 
 // ── Message Handler (POST) ────────────────────────────────
 router.post('/whatsapp', async (req, res) => {
-  // Verify webhook signature (if app secret is configured)
+  // Verify webhook signature
   const appSecret = process.env.WA_APP_SECRET;
-  if (appSecret && req.rawBody) {
+  if (!appSecret && process.env.NODE_ENV === 'production') {
+    logger.error('WA_APP_SECRET not set in production — rejecting webhook', WH);
+    return res.status(500).send('Server misconfigured');
+  }
+  if (appSecret) {
+    if (!req.rawBody) {
+      logger.warn('Webhook received without raw body — cannot verify signature', WH);
+      return res.status(400).send('Missing raw body');
+    }
     const signature = req.headers['x-hub-signature-256'];
     if (!signature) {
       logger.warn('Webhook received without X-Hub-Signature-256 header', WH);

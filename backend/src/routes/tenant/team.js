@@ -36,7 +36,7 @@ router.post('/team', requireRole('owner'), async (req, res, next) => {
       return res.status(400).json({ error: `Invalid role. Use: ${validRoles.join(', ')}` });
     }
 
-    const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 12);
     const { rows } = await pool.query(
       `INSERT INTO tenant_users (tenant_id, email, password_hash, name, role)
        VALUES ($1, $2, $3, $4, $5)

@@ -8,6 +8,7 @@ const router = express.Router();
 const pool = require('../db/pool');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+const { encrypt } = require('../utils/encryption');
 const { authPlatform } = require('../middleware/auth');
 const logger = require('../utils/logger');
 
@@ -223,7 +224,7 @@ router.patch('/tenants/:id/wa-config', async (req, res, next) => {
 
     if (wa_phone_number_id !== undefined) { updates.push(`wa_phone_number_id = $${idx++}`); params.push(wa_phone_number_id); }
     if (wa_business_account_id !== undefined) { updates.push(`wa_business_account_id = $${idx++}`); params.push(wa_business_account_id); }
-    if (wa_access_token !== undefined) { updates.push(`wa_access_token = $${idx++}`); params.push(wa_access_token); }
+    if (wa_access_token !== undefined) { updates.push(`wa_access_token = $${idx++}`); params.push(encrypt(wa_access_token)); }
     if (wa_phone_number !== undefined) { updates.push(`wa_phone_number = $${idx++}`); params.push(wa_phone_number); }
 
     if (updates.length === 0) return res.status(400).json({ error: 'No fields to update' });

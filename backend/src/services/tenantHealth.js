@@ -7,6 +7,7 @@
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
 const axios = require('axios');
+const { decrypt } = require('../utils/encryption');
 
 const WA_API_BASE = 'https://graph.facebook.com/v21.0';
 
@@ -126,7 +127,8 @@ class TenantHealthService {
       [tenantId]
     );
     if (rows.length === 0) return { valid: false, error: 'Tenant not found' };
-    const { wa_phone_number_id, wa_access_token } = rows[0];
+    const wa_phone_number_id = rows[0].wa_phone_number_id;
+    const wa_access_token = decrypt(rows[0].wa_access_token);
 
     if (!wa_phone_number_id || !wa_access_token) {
       return { valid: false, error: 'WA credentials not configured' };

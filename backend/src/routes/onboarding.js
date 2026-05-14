@@ -4,6 +4,7 @@
 
 const express = require('express');
 const router = express.Router();
+const { encrypt } = require('../utils/encryption');
 const Joi = require('joi');
 const axios = require('axios');
 const pool = require('../db/pool');
@@ -78,7 +79,7 @@ router.post('/connect-whatsapp', async (req, res, next) => {
         wa_status = 'connected', onboarding_status = 'whatsapp_connected',
         updated_at = NOW()
        WHERE id = $5`,
-      [value.phoneNumberId, value.businessAccountId, value.accessToken, value.displayPhone, req.tenantId]
+      [value.phoneNumberId, value.businessAccountId, encrypt(value.accessToken), value.displayPhone, req.tenantId]
     );
 
     // Register in phone number registry
@@ -244,7 +245,7 @@ router.post('/connect-whatsapp-embedded', async (req, res, next) => {
         wa_status = 'connected', onboarding_status = 'whatsapp_connected',
         updated_at = NOW()
        WHERE id = $5`,
-      [phoneNumberId, wabaId, accessToken, displayPhone, req.tenantId]
+      [phoneNumberId, wabaId, encrypt(accessToken), displayPhone, req.tenantId]
     );
 
     // Register in phone number registry

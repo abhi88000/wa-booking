@@ -12,6 +12,7 @@
 
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
+const { decrypt } = require('../utils/encryption');
 
 const TTL_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -34,6 +35,9 @@ async function getById(tenantId) {
     [tenantId]
   );
   const tenant = rows[0] || null;
+  if (tenant && tenant.wa_access_token) {
+    tenant.wa_access_token = decrypt(tenant.wa_access_token);
+  }
   if (tenant) {
     cacheById.set(tenantId, { data: tenant, expiresAt: Date.now() + TTL_MS });
   }
@@ -54,6 +58,9 @@ async function getByPhoneNumberId(phoneNumberId) {
     [phoneNumberId]
   );
   const tenant = rows[0] || null;
+  if (tenant && tenant.wa_access_token) {
+    tenant.wa_access_token = decrypt(tenant.wa_access_token);
+  }
   if (tenant) {
     cacheByPhone.set(phoneNumberId, { data: tenant, expiresAt: Date.now() + TTL_MS });
   }

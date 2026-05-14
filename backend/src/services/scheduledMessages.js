@@ -12,6 +12,7 @@
 const pool = require('../db/pool');
 const logger = require('../utils/logger');
 const WhatsAppService = require('./whatsapp');
+const { decrypt } = require('../utils/encryption');
 
 const CAT = { category: 'scheduled-messages' };
 
@@ -79,7 +80,7 @@ class ScheduledMessageService {
     const wa = new WhatsAppService({
       id: msg.tenant_id,
       wa_phone_number_id: msg.wa_phone_number_id,
-      wa_access_token: msg.wa_access_token,
+      wa_access_token: decrypt(msg.wa_access_token),
       business_name: msg.business_name,
     });
 

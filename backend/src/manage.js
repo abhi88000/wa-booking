@@ -20,6 +20,7 @@ require('dotenv').config();
 const pool = require('./db/pool');
 const bcrypt = require('bcrypt');
 const readline = require('readline');
+const { encrypt, decrypt } = require('./utils/encryption');
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 const ask = (q) => new Promise(resolve => rl.question(q, resolve));
@@ -281,7 +282,7 @@ async function checkTenantHealth(tenantId) {
     try {
       const resp = await axios.get(
         `https://graph.facebook.com/v21.0/${t.wa_phone_number_id}`,
-        { headers: { Authorization: `Bearer ${t.wa_access_token}` }, timeout: 10000 }
+        { headers: { Authorization: `Bearer ${decrypt(t.wa_access_token)}` }, timeout: 10000 }
       );
       ok(`WA API responding (verified_name: ${resp.data.verified_name || 'N/A'})`);
     } catch (waErr) {
@@ -443,7 +444,7 @@ async function cmdFixWA(tenantId) {
         wa_access_token = $3, wa_phone_number = $4,
         wa_status = 'connected', wa_webhook_verified = true, updated_at = NOW()
        WHERE id = $5`,
-      [phoneNumberId, wabaId, accessToken, displayPhone, tenantId]
+      [phoneNumberId, wabaId, encrypt(accessToken), displayPhone, tenantId]
     );
 
     // Register number

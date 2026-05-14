@@ -92,8 +92,13 @@ app.use('/api/auth/platform/login', loginLimiter);
 // ── Routes ─────────────────────────────────────────────────
 
 // Health check
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', db: 'connected', timestamp: new Date().toISOString() });
+  } catch (err) {
+    res.status(503).json({ status: 'error', db: 'disconnected', timestamp: new Date().toISOString() });
+  }
 });
 
 // WhatsApp Webhook (central — routes to correct tenant)

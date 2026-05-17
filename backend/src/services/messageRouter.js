@@ -25,7 +25,8 @@ const MODULE_STATES = {
     'awaiting_cancel', 'awaiting_reschedule',
     'reschedule_awaiting_date', 'reschedule_awaiting_time',
     'awaiting_reschedule_response',
-    'awaiting_appointment_action'
+    'awaiting_appointment_action',
+    'awaiting_extra_booking_confirm'
   ],
   // Future modules register here:
   // payment: ['awaiting_payment_method', 'awaiting_payment_confirm'],

@@ -21,12 +21,12 @@ class BookingEngine {
   // Get a system message, using tenant override or default
   msg(id, vars = {}) {
     const DEFAULTS = {
-      booking_confirmation: '✅ *Appointment {{status}}*\n\n👤 {{provider_name}}\n📅 {{date}}, {{time}}[[\n📍 {{location}}]]\n\nWe will send a reminder before your appointment.\nReply *status* anytime to view your appointments.',
+      booking_confirmation: '✅ *Appointment {{status}}*\n\n👤 {{provider_name}}\n📅 {{date}}, {{time}}[[\n📍 {{location}}]]',
       booking_summary: '📋 *Please confirm*\n\n👤 {{provider_name}}[[\n🩺 {{service_name}}]]\n📅 {{date}}\n🕒 {{start_time}} - {{end_time}}\n\nWould you like to confirm this appointment?',
       staff_notification: '🆕 *New appointment*\n\n👤 {{patient_name}}\n📅 {{date}}\n🕒 {{start_time}} - {{end_time}}[[\n🩺 {{service_name}}]]\n📌 {{status}}',
       cancel_confirmation: '❌ *Appointment cancelled*\n\n👤 {{provider_name}}\n📅 {{date}} at {{time}}\n\nReply *book* anytime to schedule a new appointment.',
       booking_cancelled_nav: 'Booking cancelled. Reply *hi* to start over.',
-      reschedule_confirmation: '🔄 *Appointment rescheduled*\n\n👤 {{provider_name}}\n📅 {{date}}, {{time}}\n\nWe will send a reminder before your appointment.',
+      reschedule_confirmation: '🔄 *Appointment rescheduled*\n\n👤 {{provider_name}}\n📅 {{date}}, {{time}}',
       reschedule_accepted: '✅ *Reschedule accepted*\n\n👤 {{provider_name}}\n📅 {{date}} at {{time}}\n\nSee you there.',
       reschedule_declined: '❌ *Reschedule declined*\n\nYour appointment has been cancelled.\nReply *book* to schedule a new appointment at a time that works for you.',
       reschedule_declined_detail: '❌ *Reschedule declined*\n\nYour appointment with {{provider_name}} on {{date}} has been cancelled.\nReply *book* to schedule a new appointment at a time that works for you.',

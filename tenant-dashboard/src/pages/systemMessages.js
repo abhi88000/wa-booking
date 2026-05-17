@@ -20,9 +20,7 @@ const SYSTEM_MESSAGES = [
       '✅ *Appointment {{status}}*\n\n' +
       '👤 {{provider_name}}\n' +
       '📅 {{date}}, {{time}}' +
-      '[[\n📍 {{location}}]]\n\n' +
-      'We will send a reminder before your appointment.\n' +
-      'Reply *status* anytime to view your appointments.',
+      '[[\n📍 {{location}}]]',
     note: 'Wrap a line in [[ ]] to hide it when the variable is empty — e.g. [[\\n📍 {{location}}]] disappears when no location is set.',
   },
   {
@@ -91,8 +89,7 @@ const SYSTEM_MESSAGES = [
     default:
       '🔄 *Appointment rescheduled*\n\n' +
       '👤 {{provider_name}}\n' +
-      '📅 {{date}}, {{time}}\n\n' +
-      'We will send a reminder before your appointment.',
+      '📅 {{date}}, {{time}}',
   },
   {
     id: 'reschedule_accepted',

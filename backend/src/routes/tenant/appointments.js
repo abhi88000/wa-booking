@@ -247,10 +247,9 @@ router.post('/appointments', requireRole('owner', 'admin', 'staff'), checkAppoin
               `Hi ${value.patientName || 'there'}, your appointment has been booked:\n\n` +
               `👤 ${docName}\n` +
               `📅 ${formatDateDD(value.appointmentDate)}\n` +
-              `🕒 ${formatTime12(value.startTime)}\n` +
+              `🕒 ${formatTime12(value.startTime)}` +
               locationLine +
-              `\nWe will send a reminder before your appointment.\n` +
-              `— ${req.tenant.business_name}`
+              `\n— ${req.tenant.business_name}`
             );
           } catch (waErr) {
             logger.warn('Failed to notify patient on manual booking:', waErr.message);

@@ -37,6 +37,8 @@ class BookingEngine {
       error_message: '⚠️ Sorry, something went wrong. Please try again or reply *hi* to start over.',
       go_back: 'OK, going back. Reply *hi* to see the menu.',
       slot_taken: '⏳ Sorry, this slot was just booked by someone else. Please pick another time.',
+      existing_appointment_warning: '📌 You already have *{{count}}* upcoming appointment{{plural}} with us:\n\n{{list}}\n\nWould you like to book another one?',
+      booking_limit_reached: '🚫 You already have *{{count}}* upcoming appointments — that\'s the maximum allowed.\n\nPlease cancel or reschedule an existing one before booking more.\n\nReply *status* to view them, or *cancel* to cancel one.',
     };
     let text = this.msgs[id] || DEFAULTS[id] || '';
     // Drop [[optional segments]] when any {{var}} inside is empty/missing
@@ -89,6 +91,9 @@ class BookingEngine {
         case 'new':
         case 'idle':
           return await this.handleNewMessage(content, state);
+
+        case 'awaiting_extra_booking_confirm':
+          return await this.handleExtraBookingConfirm(content, interactiveData, state);
 
         case 'awaiting_clinic':
           return await this.handleClinicSelection(content, interactiveData, state);
@@ -195,6 +200,53 @@ class BookingEngine {
 
   // ── Start Booking: Show Clinics or Doctors ──────────────
   async startBookingFlow() {
+    // ── Guard: existing upcoming appointments for this patient ──
+    // Tenant-configurable: settings.max_upcoming_per_patient (default 3)
+    const MAX_UPCOMING = Number(this.tenant.settings?.max_upcoming_per_patient) || 3;
+
+    const { rows: upcoming } = await pool.query(
+      `SELECT a.id, a.appointment_date, a.start_time, d.name AS doctor_name
+         FROM appointments a
+         LEFT JOIN doctors d ON d.id = a.doctor_id
+        WHERE a.tenant_id = $1 AND a.patient_id = $2
+          AND a.appointment_date >= CURRENT_DATE
+          AND a.status NOT IN ('cancelled', 'no_show', 'rescheduled', 'completed')
+        ORDER BY a.appointment_date ASC, a.start_time ASC`,
+      [this.tenantId, this.patient.id]
+    );
+
+    if (upcoming.length >= MAX_UPCOMING) {
+      await this.setState({ state: 'idle' });
+      return await this.wa.sendText(this.phone, this.msg('booking_limit_reached', {
+        count: upcoming.length,
+        max: MAX_UPCOMING,
+      }));
+    }
+
+    if (upcoming.length > 0) {
+      const list = upcoming.map(a =>
+        `• ${this.formatDate(a.appointment_date)} at ${this.formatTime(a.start_time)} — ${a.doctor_name || 'Doctor'}`
+      ).join('\n');
+
+      await this.setState({ state: 'awaiting_extra_booking_confirm' });
+      return await this.wa.sendButtons(this.phone, {
+        bodyText: this.msg('existing_appointment_warning', {
+          count: upcoming.length,
+          plural: upcoming.length > 1 ? 's' : '',
+          list,
+        }),
+        buttons: [
+          { id: 'continue_booking', title: 'Yes, book another' },
+          { id: 'cancel_booking', title: 'No, cancel' }
+        ]
+      });
+    }
+
+    return await this._showClinicsOrDoctors();
+  }
+
+  // Extracted from startBookingFlow so the "extra booking" confirm path can re-enter it
+  async _showClinicsOrDoctors() {
     // Check if tenant has clinics configured
     const clinics = this.tenant.settings?.branches || [];
 
@@ -231,6 +283,20 @@ class BookingEngine {
       : null;
 
     return await this.showDoctors(selectedClinic);
+  }
+
+  // ── Handle "you already have appointments — book another?" confirm ──
+  async handleExtraBookingConfirm(content, interactiveData, state) {
+    const choice = (interactiveData?.button_reply?.id || content || '').toLowerCase().trim();
+
+    if (choice === 'continue_booking' || choice === 'yes' || choice === 'yes, book another') {
+      await this.setState({ state: 'idle' });
+      return await this._showClinicsOrDoctors();
+    }
+
+    // Anything else → cancel
+    await this.setState({ state: 'idle' });
+    return await this.wa.sendText(this.phone, this.msg('booking_cancelled_nav'));
   }
 
   // ── Handle Clinic Selection ─────────────────────────────

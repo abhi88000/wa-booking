@@ -24,6 +24,30 @@ const SYSTEM_MESSAGES = [
     note: 'Wrap a line in [[ ]] to hide it when the variable is empty — e.g. [[\\n📍 {{location}}]] disappears when no location is set.',
   },
   {
+    id: 'existing_appointment_warning',
+    category: 'Booking',
+    label: 'Existing Appointment Warning',
+    desc: 'Shown when the customer tries to book while they already have upcoming appointments',
+    editable: true,
+    variables: ['count', 'plural', 'list'],
+    default:
+      '📌 You already have *{{count}}* upcoming appointment{{plural}} with us:\n\n' +
+      '{{list}}\n\n' +
+      'Would you like to book another one?',
+  },
+  {
+    id: 'booking_limit_reached',
+    category: 'Booking',
+    label: 'Booking Limit Reached',
+    desc: 'Shown when the customer has hit the maximum number of upcoming appointments (default: 3)',
+    editable: true,
+    variables: ['count', 'max'],
+    default:
+      '🚫 You already have *{{count}}* upcoming appointments — that\'s the maximum allowed.\n\n' +
+      'Please cancel or reschedule an existing one before booking more.\n\n' +
+      'Reply *status* to view them, or *cancel* to cancel one.',
+  },
+  {
     id: 'booking_summary',
     category: 'Booking',
     label: 'Booking Summary (before confirm)',

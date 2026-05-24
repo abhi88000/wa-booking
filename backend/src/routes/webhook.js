@@ -204,10 +204,11 @@ async function processMessage(tenant, msg, contact, phoneNumberId) {
 
   // ── IDEMPOTENCY CHECK ──
   // Meta can retry webhooks — prevent processing the same message twice
+  // Scope by tenant_id so one tenant cannot probe another tenant's message IDs.
   if (waMessageId) {
     const { rows: existing } = await pool.query(
-      'SELECT id FROM chat_messages WHERE wa_message_id = $1 LIMIT 1',
-      [waMessageId]
+      'SELECT id FROM chat_messages WHERE tenant_id = $1 AND wa_message_id = $2 LIMIT 1',
+      [tenant.id, waMessageId]
     );
     if (existing.length > 0) {
       logger.info(`Duplicate message skipped: ${waMessageId}`, WH);

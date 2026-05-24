@@ -251,9 +251,9 @@ router.get('/doctors/:id/slots', async (req, res, next) => {
 
     const { rows: booked } = await pool.query(
       `SELECT start_time, end_time FROM appointments 
-       WHERE doctor_id = $1 AND appointment_date = $2 
+       WHERE doctor_id = $1 AND tenant_id = $2 AND appointment_date = $3 
        AND status NOT IN ('cancelled', 'rescheduled')`,
-      [doctorId, date]
+      [doctorId, req.tenantId, date]
     );
 
     const { rows: breaks } = await pool.query(

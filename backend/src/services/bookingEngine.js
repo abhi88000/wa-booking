@@ -532,7 +532,8 @@ class BookingEngine {
 
     // Get doctor's slot_duration
     const { rows: docRows } = await pool.query(
-      'SELECT slot_duration FROM doctors WHERE id = $1', [state.doctorId]
+      'SELECT slot_duration FROM doctors WHERE id = $1 AND tenant_id = $2',
+      [state.doctorId, this.tenantId]
     );
     const slotDuration = (docRows.length > 0 && docRows[0].slot_duration) ? docRows[0].slot_duration : 30;
     
@@ -552,8 +553,8 @@ class BookingEngine {
       // Skip full-day breaks
       const { rows: fullDayBreaks } = await pool.query(
         `SELECT 1 FROM doctor_breaks 
-         WHERE doctor_id = $1 AND break_date = $2 AND is_full_day = true`,
-        [state.doctorId, dateStr]
+         WHERE doctor_id = $1 AND tenant_id = $2 AND break_date = $3 AND is_full_day = true`,
+        [state.doctorId, this.tenantId, dateStr]
       );
       if (fullDayBreaks.length > 0) continue;
 
@@ -603,9 +604,9 @@ class BookingEngine {
     // Get booked appointments
     const { rows: booked } = await pool.query(
       `SELECT start_time, end_time FROM appointments 
-       WHERE doctor_id = $1 AND appointment_date = $2 
+       WHERE doctor_id = $1 AND tenant_id = $2 AND appointment_date = $3 
        AND status NOT IN ('cancelled', 'rescheduled')`,
-      [doctorId, dateStr]
+      [doctorId, this.tenantId, dateStr]
     );
 
     // Get breaks
@@ -665,7 +666,8 @@ class BookingEngine {
 
     // Use doctor's slot_duration (default 30 min)
     const { rows: docRows } = await pool.query(
-      `SELECT slot_duration FROM doctors WHERE id = $1`, [doctorId]
+      `SELECT slot_duration FROM doctors WHERE id = $1 AND tenant_id = $2`,
+      [doctorId, this.tenantId]
     );
     const duration = (docRows.length > 0 && docRows[0].slot_duration) ? docRows[0].slot_duration : 30;
 
@@ -689,9 +691,9 @@ class BookingEngine {
     // Get existing appointments for this day
     const { rows: booked } = await pool.query(
       `SELECT start_time, end_time FROM appointments 
-       WHERE doctor_id = $1 AND appointment_date = $2 
+       WHERE doctor_id = $1 AND tenant_id = $2 AND appointment_date = $3 
        AND status NOT IN ('cancelled', 'rescheduled')`,
-      [doctorId, dateStr]
+      [doctorId, this.tenantId, dateStr]
     );
 
     // Get breaks for this day (date-specific + recurring daily breaks with null break_date)
@@ -789,7 +791,10 @@ class BookingEngine {
     }
     const time = content.replace('time_', '');
     // Get doctor's slot_duration for end time calculation
-    const { rows: docSlot } = await pool.query('SELECT slot_duration FROM doctors WHERE id = $1', [state.doctorId]);
+    const { rows: docSlot } = await pool.query(
+      'SELECT slot_duration FROM doctors WHERE id = $1 AND tenant_id = $2',
+      [state.doctorId, this.tenantId]
+    );
     const duration = (docSlot.length > 0 && docSlot[0].slot_duration) ? docSlot[0].slot_duration : 30;
     const endTime = this.minutesToTime(this.timeToMinutes(time) + duration);
 
@@ -1021,8 +1026,8 @@ class BookingEngine {
 
       // Delete unsent reminders
       await pool.query(
-        `DELETE FROM reminders WHERE appointment_id = $1 AND sent = false`,
-        [state.appointmentId]
+        `DELETE FROM reminders WHERE appointment_id = $1 AND tenant_id = $2 AND sent = false`,
+        [state.appointmentId, this.tenantId]
       );
 
       await this.setState({ state: 'idle' });
@@ -1059,12 +1064,12 @@ class BookingEngine {
     }
 
     await pool.query(
-      `UPDATE appointments SET status = 'cancelled', updated_at = NOW() WHERE id = $1`,
-      [rows[0].id]
+      `UPDATE appointments SET status = 'cancelled', updated_at = NOW() WHERE id = $1 AND tenant_id = $2`,
+      [rows[0].id, this.tenantId]
     );
     await pool.query(
-      `DELETE FROM reminders WHERE appointment_id = $1 AND sent = false`,
-      [rows[0].id]
+      `DELETE FROM reminders WHERE appointment_id = $1 AND tenant_id = $2 AND sent = false`,
+      [rows[0].id, this.tenantId]
     );
 
     return await this.wa.sendText(this.phone, this.msg('reschedule_declined_detail', {
@@ -1245,14 +1250,14 @@ class BookingEngine {
     }
 
     await pool.query(
-      `UPDATE appointments SET status = 'cancelled', updated_at = NOW() WHERE id = $1`,
-      [appointmentId]
+      `UPDATE appointments SET status = 'cancelled', updated_at = NOW() WHERE id = $1 AND tenant_id = $2`,
+      [appointmentId, this.tenantId]
     );
 
     // Delete unsent reminders for this appointment
     await pool.query(
-      `DELETE FROM reminders WHERE appointment_id = $1 AND sent = false`,
-      [appointmentId]
+      `DELETE FROM reminders WHERE appointment_id = $1 AND tenant_id = $2 AND sent = false`,
+      [appointmentId, this.tenantId]
     );
 
     const a = rows[0];
@@ -1338,7 +1343,10 @@ class BookingEngine {
     }
     const time = content.replace('time_', '');
     // Get doctor's slot_duration for end time calculation
-    const { rows: docSlot } = await pool.query('SELECT slot_duration FROM doctors WHERE id = $1', [state.doctorId]);
+    const { rows: docSlot } = await pool.query(
+      'SELECT slot_duration FROM doctors WHERE id = $1 AND tenant_id = $2',
+      [state.doctorId, this.tenantId]
+    );
     const duration = (docSlot.length > 0 && docSlot[0].slot_duration) ? docSlot[0].slot_duration : 30;
     const endTime = this.minutesToTime(this.timeToMinutes(time) + duration);
 
@@ -1371,12 +1379,12 @@ class BookingEngine {
 
       // Cancel old appointment
       await client.query(
-        `UPDATE appointments SET status = 'rescheduled', updated_at = NOW() WHERE id = $1`,
-        [state.rescheduleAppointmentId]
+        `UPDATE appointments SET status = 'rescheduled', updated_at = NOW() WHERE id = $1 AND tenant_id = $2`,
+        [state.rescheduleAppointmentId, this.tenantId]
       );
       await client.query(
-        `DELETE FROM reminders WHERE appointment_id = $1 AND sent = false`,
-        [state.rescheduleAppointmentId]
+        `DELETE FROM reminders WHERE appointment_id = $1 AND tenant_id = $2 AND sent = false`,
+        [state.rescheduleAppointmentId, this.tenantId]
       );
 
       // Create new appointment

@@ -12,11 +12,12 @@
 
 const winston = require('winston');
 
-// Custom format: always show tenantId when present
-const tenantFormat = winston.format.printf(({ timestamp, level, message, tenantId, service, ...meta }) => {
+// Custom format: always show tenantId and req_id when present
+const tenantFormat = winston.format.printf(({ timestamp, level, message, tenantId, reqId, service, ...meta }) => {
   const tenant = tenantId ? ` [tenant:${tenantId.substring(0, 8)}]` : '';
+  const reqTag = reqId ? ` [req:${reqId}]` : '';
   const extras = Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta)}` : '';
-  return `${timestamp} [${level}]${tenant}: ${message}${extras}`;
+  return `${timestamp} [${level}]${tenant}${reqTag}: ${message}${extras}`;
 });
 
 const logger = winston.createLogger({

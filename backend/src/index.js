@@ -28,12 +28,16 @@ const logger = require('./utils/logger');
 const alerts = require('./utils/alerts');
 const pool = require('./db/pool');
 const errorHandler = require('./middleware/errorHandler');
+const requestId = require('./middleware/requestId');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Trust first proxy (Nginx) — required for express-rate-limit behind a reverse proxy
 app.set('trust proxy', 1);
+
+// Assign req.id and emit X-Request-Id header — used to correlate logs across services
+app.use(requestId());
 
 // Optional request middleware (currently a no-op; kept to make adding
 // request instrumentation easier later).
@@ -58,7 +62,7 @@ app.use(cors({
     : (process.env.NODE_ENV === 'production' ? false : true),
   credentials: true
 }));
-app.use(morgan('combined', {
+app.use(morgan(':req[x-request-id] :method :url :status :res[content-length] - :response-time ms', {
   stream: { write: (msg) => logger.info(msg.trim()) }
 }));
 

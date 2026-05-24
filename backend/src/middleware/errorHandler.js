@@ -48,19 +48,22 @@ function errorHandler(err, req, res, _next) {
     stack: err.stack,
     path: req.path,
     method: req.method,
-    tenantId: req.tenantId || null
+    tenantId: req.tenantId || null,
+    reqId: req.id || null
   });
   alerts.captureException(err, {
     tenantId: req.tenantId,
     path: req.path,
-    method: req.method
+    method: req.method,
+    reqId: req.id
   });
 
   res.status(500).json({
     error: process.env.NODE_ENV === 'production'
       ? 'Internal server error'
       : err.message,
-    code: 'INTERNAL_ERROR'
+    code: 'INTERNAL_ERROR',
+    reqId: req.id
   });
 }
 

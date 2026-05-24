@@ -33,21 +33,24 @@ Multi-tenant WhatsApp automation platform. Businesses sign up, connect their Wha
 ```
 ├── docker-compose.saas.yml        # Production compose (6 services)
 ├── .env.example                   # Environment variable template
-├── scripts/validate.js            # Pre-deploy validation script
+├── scripts/
+│   ├── validate.js                # Pre-deploy validation script
+│   └── backup-db.sh               # Daily DB backup (gzip, verify, S3 optional, Telegram alert)
 ├── db/
 │   └── init-saas.sql              # Full schema: tables, indexes, enums, RLS
 │
 ├── backend/
-│   ├── migrations/                # Incremental schema migrations (001–005)
+│   ├── migrations/                # Incremental schema migrations (001–007)
 │   └── src/
-│       ├── index.js               # Express server entry point
-│       ├── cron.js                 # Scheduled jobs (reminders, health checks, outbound)
+│       ├── index.js               # Express server entry point + /health + /healthz
+│       ├── cron.js                 # Scheduled jobs (reminders, self-monitor, outbound)
 │       ├── manage.js              # CLI: create admin, check stats
 │       ├── db/pool.js             # PostgreSQL connection pool
 │       ├── middleware/
 │       │   ├── auth.js            # JWT auth (platform + tenant + role-based)
 │       │   ├── tenantContext.js   # Load tenant config (cached), enforce limits
-│       │   └── errorHandler.js    # Centralized error handling
+│       │   ├── requestId.js       # Assigns req.id + X-Request-Id header for log correlation
+│       │   └── errorHandler.js    # Centralized error handling (logs + alerts + reqId in 500)
 │       ├── routes/
 │       │   ├── auth.js            # Signup + login (tenant + platform)
 │       │   ├── onboarding.js      # WhatsApp connect + business setup
@@ -77,7 +80,8 @@ Multi-tenant WhatsApp automation platform. Businesses sign up, connect their Wha
 │       │   ├── scheduledMessages.js # Outbound scheduled message engine
 │       │   └── tenantHealth.js    # Health monitoring, stuck conversation reset
 │       └── utils/
-│           ├── logger.js          # Winston logger with file rotation
+│           ├── logger.js          # Winston logger with file rotation, renders [tenant:xxx] [req:yyy]
+│           ├── alerts.js          # Self-hosted Telegram alerter (no third-party SaaS)
 │           └── errors.js          # Typed error classes (AppError, NotFoundError, etc.)
 │
 ├── tenant-dashboard/              # Business owner's web panel
@@ -221,9 +225,106 @@ Deployed on AWS EC2 with Nginx reverse proxy + Let's Encrypt SSL.
 cd /home/ubuntu/wa-booking
 git pull origin feature/configurable-whatsapp-flows
 docker compose -f docker-compose.saas.yml up -d --build backend cron-worker tenant-dashboard super-admin
+
+# Smoke test
+curl -i http://localhost:4000/healthz
 ```
 
 See [docs/deployment.md](docs/deployment.md) for full Nginx config, SSL setup, and domain configuration.
+
+
+## Operations
+
+### Health checks
+
+- `GET /health` and `GET /healthz` — both touch the DB and return JSON:
+  ```json
+  { "status": "ok", "db": "connected", "uptime_s": 142, "latency_ms": 19,
+    "version": "<GIT_SHA>", "timestamp": "..." }
+  ```
+  Returns 503 with `db: "disconnected"` if the DB query fails — surfaces silent
+  auth failures that would otherwise be invisible until a real request hits.
+
+### Self-monitoring + alerting (Telegram, self-hosted)
+
+No third-party SaaS. The cron worker hits `/healthz` every 60s and pings
+Telegram on 2 consecutive failures, plus a recovery message when it comes back.
+
+Enable by setting in `.env`:
+```
+TELEGRAM_BOT_TOKEN=<from @BotFather>
+TELEGRAM_CHAT_ID=<your chat id>
+HEALTHCHECK_URL=http://backend:4000/healthz   # default inside compose network
+GIT_SHA=<set at deploy time, surfaced in /healthz + alerts>
+```
+
+What triggers an alert:
+- Backend down (2 consecutive `/healthz` failures)
+- `uncaughtException` / `unhandledRejection`
+- Unhandled 500 in any route (via `errorHandler` middleware)
+- Backup script failure (gzip verify, dump size, or upload)
+
+Alerts include a 5-minute dedup window per error key so a crash loop doesn't
+spam the channel.
+
+### Backups
+
+`scripts/backup-db.sh` runs daily at 03:00 (cron on the host):
+- `pg_dump | gzip` of `wa_booking_saas` (no-owner, no-privileges)
+- verifies the gzip is valid and at least 1 KB
+- optional S3 upload if `BACKUP_S3_BUCKET` is set and `aws` CLI is on PATH
+- local rotation: `find -mtime +$KEEP_DAYS -delete` (default 14 days)
+- Telegram alert on any failure, weekly success ping on Mondays
+
+```bash
+# Run manually
+~/wa-booking/scripts/backup-db.sh
+# Tail the log
+tail -f ~/db-backups/backup.log
+```
+
+### Log correlation
+
+Every request gets a `req.id` (8 random hex bytes, or upstream `X-Request-Id`
+from Nginx when present). It's echoed in the response header, logged inline as
+`[req:xxx]`, included in Telegram alerts, and returned in the 500 response body
+so a customer-visible error maps to one log line:
+
+```bash
+docker compose -f docker-compose.saas.yml logs backend | grep 'req:abc12345'
+```
+
+### Database migrations
+
+Numbered SQL files in `backend/migrations/` are idempotent (`IF NOT EXISTS`,
+`ON CONFLICT`). Apply manually after deploy when a new one lands:
+
+```bash
+docker compose -f docker-compose.saas.yml exec -T postgres \
+  psql -U postgres -d wa_booking_saas < backend/migrations/00X_*.sql
+```
+
+
+## Security model
+
+**Tenant isolation is enforced at the query layer.** Every query against a
+tenant-scoped table (`appointments`, `doctors`, `chat_messages`, `reminders`,
+`doctor_breaks`, `doctor_availability`, etc.) MUST include
+`AND tenant_id = $N`. Even when filtering by a primary-key UUID like
+`doctor_id` — those UUIDs can leak via chat state or admin payloads, and the
+tenant_id filter is the last line of defense against cross-tenant reads.
+
+Defense in depth:
+- **JWT** carries `tenantId`; middleware sets `req.tenantId`
+- **`tenantContext` middleware** also sets `app.tenant_id` via Postgres
+  `set_config()` for RLS policies
+- **RLS policies** (migration 002) provide a backstop if a query forgets the
+  filter (catches the bug at runtime instead of leaking)
+- **`wa_app` non-superuser DB role** (migration 007) limits blast radius if
+  SQLi ever lands
+
+When adding new queries, copy the `AND tenant_id = $N` pattern from neighbors.
+Do not remove it thinking it's redundant — it isn't.
 
 
 ## Flow Builder

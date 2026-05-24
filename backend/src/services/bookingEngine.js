@@ -597,6 +597,10 @@ class BookingEngine {
   }
 
   // ── Check if a date has at least one open slot ──────────
+  // NOTE: every query in this file MUST include `AND tenant_id = this.tenantId`
+  // when filtering by doctor_id / appointment_id. doctor_id is a UUID but is
+  // visible in chat state — a tenant could otherwise read another tenant's
+  // schedule by replaying state. Same applies to reminders / breaks / doctors.
   async _hasAvailableSlots(doctorId, dateStr, dayName, dayAvail, duration) {
     const startMin = this.timeToMinutes(dayAvail.start_time);
     const endMin = this.timeToMinutes(dayAvail.end_time);

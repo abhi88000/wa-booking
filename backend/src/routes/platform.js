@@ -10,6 +10,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const { encrypt } = require('../utils/encryption');
 const { authPlatform } = require('../middleware/auth');
+const { signManagedTenantToken } = require('../middleware/auth');
 const logger = require('../utils/logger');
 
 // All platform routes require super admin auth
@@ -412,6 +413,62 @@ router.post('/tenants/:id/reset-password', async (req, res, next) => {
 
     logger.info(`Password reset for tenant ${req.params.id} user ${users[0].email} by platform admin`);
     res.json({ success: true, email: users[0].email });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── Managed Session ──────────────────────────────────────
+// Mint a short-lived tenant JWT so the platform admin can open the tenant
+// dashboard logged in as the customer's owner user. Used to set up doctors /
+// services / flows on behalf of a customer without screen-sharing. Logged.
+router.post('/tenants/:id/managed-session', async (req, res, next) => {
+  try {
+    const { rows: tenants } = await pool.query(
+      `SELECT id, business_name, is_active FROM tenants WHERE id = $1`,
+      [req.params.id]
+    );
+    if (tenants.length === 0) {
+      return res.status(404).json({ error: 'Tenant not found' });
+    }
+    if (!tenants[0].is_active) {
+      return res.status(400).json({ error: 'Tenant is inactive' });
+    }
+
+    const { rows: users } = await pool.query(
+      `SELECT id, email, role FROM tenant_users
+       WHERE tenant_id = $1 AND role = 'owner' AND is_active = true
+       ORDER BY created_at ASC LIMIT 1`,
+      [req.params.id]
+    );
+    if (users.length === 0) {
+      return res.status(404).json({ error: 'No active owner user for this tenant' });
+    }
+
+    const token = signManagedTenantToken(users[0], req.params.id, req.admin);
+
+    await pool.query(
+      `INSERT INTO audit_log (tenant_id, user_type, action, entity_type, details)
+       VALUES ($1, 'platform_admin', 'MANAGED_SESSION_START', 'tenant', $2)`,
+      [req.params.id, JSON.stringify({
+        manager_id: req.admin.id,
+        manager_email: req.admin.email,
+        impersonated_user_id: users[0].id,
+        impersonated_user_email: users[0].email
+      })]
+    );
+
+    logger.info(
+      `Managed session started: admin=${req.admin.email} tenant=${tenants[0].business_name}`,
+      { tenantId: req.params.id, reqId: req.id }
+    );
+
+    res.json({
+      token,
+      tenant: { id: tenants[0].id, businessName: tenants[0].business_name },
+      tenantDashboardUrl: process.env.TENANT_DASHBOARD_URL || null,
+      expiresInMinutes: 120
+    });
   } catch (err) {
     next(err);
   }

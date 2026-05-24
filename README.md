@@ -294,6 +294,32 @@ so a customer-visible error maps to one log line:
 docker compose -f docker-compose.saas.yml logs backend | grep 'req:abc12345'
 ```
 
+### Managed sessions (account-manager mode)
+
+The hub has a **"Manage as Tenant"** button on each tenant's detail page. It
+mints a short-lived (2h) tenant JWT for the customer's owner user with extra
+claims `managed: true, managerEmail`, opens the tenant dashboard at
+`?managed_token=...`, and writes a `MANAGED_SESSION_START` row to `audit_log`
+(action attributed to the platform admin's email).
+
+The tenant dashboard:
+- Strips the token from the URL on mount (no leakage to browser history)
+- Shows a soft blue banner: *"Your account manager <email> is configuring this
+  account for you."* — so the customer sees who set things up the next time
+  they log in is implicit (the banner only renders while the managed token is
+  active; they can clear it by logging out and back in)
+
+Use this for: doctor / service / availability setup, flow builder edits,
+sending a test WhatsApp message, reproducing a customer-reported bug. Avoid
+for: password changes (use the dedicated "Reset Password" action so it goes
+through the proper hashing path) and billing actions.
+
+Configure the redirect target via env on the backend:
+```
+TENANT_DASHBOARD_URL=https://booking.yourdomain.com
+```
+Falls back to the hub origin with `hub.` swapped to `booking.` if unset.
+
 ### Database migrations
 
 Numbered SQL files in `backend/migrations/` are idempotent (`IF NOT EXISTS`,

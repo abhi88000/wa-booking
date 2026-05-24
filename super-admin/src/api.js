@@ -37,6 +37,7 @@ export default {
   updateWAConfig: (id, data) => api.patch(`/platform/tenants/${id}/wa-config`, data),
   deleteTenant: (id) => api.delete(`/platform/tenants/${id}`),
   resetPassword: (id, newPassword) => api.post(`/platform/tenants/${id}/reset-password`, { newPassword }),
+  startManagedSession: (id) => api.post(`/platform/tenants/${id}/managed-session`),
   
   // Analytics
   getAnalytics: () => api.get('/platform/analytics'),

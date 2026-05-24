@@ -17,6 +17,7 @@ export default function TenantDetail() {
   const [deleteModal, setDeleteModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [tab, setTab] = useState('info');
+  const [managing, setManaging] = useState(false);
 
   useEffect(() => {
     api.getTenant(id)
@@ -53,6 +54,26 @@ export default function TenantDetail() {
       setNewPassword('');
     } catch (err) {
       showError(err.response?.data?.error || 'Reset failed');
+    }
+  };
+
+  // Open the tenant dashboard as the customer's owner user. Backend mints a
+  // short-lived JWT with `managed: true` so the tenant UI shows a banner and
+  // every action is attributable to the admin via audit_log.
+  const handleManage = async () => {
+    setManaging(true);
+    try {
+      const { data } = await api.startManagedSession(id);
+      const base = data.tenantDashboardUrl
+        || import.meta.env.VITE_TENANT_DASHBOARD_URL
+        || window.location.origin.replace('hub.', 'booking.');
+      const url = `${base.replace(/\/$/, '')}/?managed_token=${encodeURIComponent(data.token)}`;
+      window.open(url, '_blank', 'noopener');
+      success(`Opening ${data.tenant.businessName} — session expires in ${data.expiresInMinutes} min`);
+    } catch (err) {
+      showError(err.response?.data?.error || 'Failed to start managed session');
+    } finally {
+      setManaging(false);
     }
   };
 
@@ -218,6 +239,11 @@ export default function TenantDetail() {
           <div className="bg-white rounded-lg p-6 border border-gray-100">
             <h2 className="font-semibold text-gray-900 mb-4">Actions</h2>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <button onClick={handleManage} disabled={managing || !tenant.is_active}
+                className="px-4 py-2 rounded-lg text-sm bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                title="Open the tenant dashboard logged in as this customer (managed session, 2h, audited)">
+                {managing ? 'Opening…' : 'Manage as Tenant'}
+              </button>
               <button onClick={handleToggle}
                 className={`px-4 py-2 rounded-lg text-sm ${tenant.is_active 
                   ? 'bg-red-100 text-red-700 hover:bg-red-200' 

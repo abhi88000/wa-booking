@@ -84,6 +84,32 @@ function signTenantToken(user, tenantId) {
   );
 }
 
+/**
+ * Generate a short-lived tenant JWT for a platform admin running a "Managed
+ * Session" on behalf of a customer (Option A: open tenant dashboard as them).
+ * The token carries the tenant user's identity (so all existing tenant routes
+ * work unchanged) plus extra claims that mark the session as managed and
+ * record which admin is acting. Use these claims for UI banners and audit
+ * logs; never trust them for authorization decisions.
+ */
+function signManagedTenantToken(user, tenantId, admin) {
+  return jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      tenantId,
+      type: 'tenant_user',
+      managed: true,
+      managerId: admin.id,
+      managerEmail: admin.email,
+      managedAt: Date.now()
+    },
+    JWT_SECRET,
+    { expiresIn: '2h' }
+  );
+}
+
 function extractToken(req) {
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -92,4 +118,4 @@ function extractToken(req) {
   return null;
 }
 
-module.exports = { authPlatform, authTenant, requireRole, signPlatformToken, signTenantToken };
+module.exports = { authPlatform, authTenant, requireRole, signPlatformToken, signTenantToken, signManagedTenantToken };

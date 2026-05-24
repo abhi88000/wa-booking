@@ -17,9 +17,16 @@ import Terms from './pages/Terms';
 import DataDeletion from './pages/DataDeletion';
 import { ClinicProvider, useClinic } from './ClinicContext';
 import Icon from './components/Icons';
+import ManagedBanner from './components/ManagedBanner';
+import { adoptManagedTokenFromUrl, decodeToken } from './auth';
+
+// One-shot: if the hub opened us with ?managed_token=..., move it into
+// localStorage and strip the query string before React mounts.
+const urlToken = adoptManagedTokenFromUrl();
 
 function App() {
-  const [token, setToken] = useState(localStorage.getItem('tenant_token'));
+  const [token, setToken] = useState(urlToken || localStorage.getItem('tenant_token'));
+  const claims = decodeToken(token);
 
   const handleLogin = (newToken) => {
     localStorage.setItem('tenant_token', newToken);
@@ -50,6 +57,7 @@ function App() {
   return (
     <BrowserRouter>
       <ClinicProvider>
+      {claims?.managed && <ManagedBanner managerEmail={claims.managerEmail} />}
       <div className="flex h-screen">
         <Sidebar onLogout={handleLogout} />
         <Routes>

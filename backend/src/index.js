@@ -25,6 +25,7 @@ const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const logger = require('./utils/logger');
+const alerts = require('./utils/alerts');
 const pool = require('./db/pool');
 const errorHandler = require('./middleware/errorHandler');
 
@@ -33,6 +34,10 @@ const PORT = process.env.PORT || 4000;
 
 // Trust first proxy (Nginx) — required for express-rate-limit behind a reverse proxy
 app.set('trust proxy', 1);
+
+// Optional request middleware (currently a no-op; kept to make adding
+// request instrumentation easier later).
+app.use(alerts.requestHandler());
 
 // ── Global Middleware ──────────────────────────────────────
 app.use(helmet());
@@ -91,15 +96,32 @@ app.use('/api/auth/platform/login', loginLimiter);
 
 // ── Routes ─────────────────────────────────────────────────
 
-// Health check
-app.get('/health', async (req, res) => {
+// Health check — used by UptimeRobot / load balancer. Touches DB so a
+// silent DB-auth failure (like the one on 2026-05-22) returns 503.
+async function healthHandler(req, res) {
+  const started = Date.now();
   try {
     await pool.query('SELECT 1');
-    res.json({ status: 'ok', db: 'connected', timestamp: new Date().toISOString() });
+    res.json({
+      status: 'ok',
+      db: 'connected',
+      uptime_s: Math.round(process.uptime()),
+      latency_ms: Date.now() - started,
+      version: process.env.GIT_SHA || 'unknown',
+      timestamp: new Date().toISOString()
+    });
   } catch (err) {
-    res.status(503).json({ status: 'error', db: 'disconnected', timestamp: new Date().toISOString() });
+    logger.error('Health check failed:', { message: err.message, code: err.code });
+    res.status(503).json({
+      status: 'error',
+      db: 'disconnected',
+      error: err.code || 'unknown',
+      timestamp: new Date().toISOString()
+    });
   }
-});
+}
+app.get('/health', healthHandler);
+app.get('/healthz', healthHandler);  // k8s / common convention
 
 // WhatsApp Webhook (central — routes to correct tenant)
 app.use('/webhook', require('./routes/webhook'));
@@ -126,6 +148,9 @@ app.use('/api/tenant', require('./routes/tenant'));
 app.use((req, res) => {
   res.status(404).json({ error: 'Not found', code: 'NOT_FOUND' });
 });
+
+// Optional error-capture middleware (currently no-op; reserved hook)
+app.use(alerts.errorHandlerMw());
 
 // Global error handler (centralized)
 app.use(errorHandler);
@@ -156,6 +181,17 @@ async function start() {
     };
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGINT', () => shutdown('SIGINT'));
+
+    // Catch crashes that escape Express so alerts see them
+    process.on('uncaughtException', (err) => {
+      logger.error('uncaughtException', { message: err.message, stack: err.stack });
+      alerts.captureException(err, { extra: { kind: 'uncaughtException' } });
+    });
+    process.on('unhandledRejection', (reason) => {
+      const err = reason instanceof Error ? reason : new Error(String(reason));
+      logger.error('unhandledRejection', { message: err.message, stack: err.stack });
+      alerts.captureException(err, { extra: { kind: 'unhandledRejection' } });
+    });
   } catch (err) {
     logger.error('Failed to start server:', err);
     process.exit(1);

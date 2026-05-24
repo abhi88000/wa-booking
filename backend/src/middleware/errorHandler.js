@@ -6,6 +6,7 @@
 // Other errors = programmer bugs → 500 + logged
 
 const logger = require('../utils/logger');
+const alerts = require('../utils/alerts');
 const { AppError } = require('../utils/errors');
 
 function errorHandler(err, req, res, _next) {
@@ -48,6 +49,11 @@ function errorHandler(err, req, res, _next) {
     path: req.path,
     method: req.method,
     tenantId: req.tenantId || null
+  });
+  alerts.captureException(err, {
+    tenantId: req.tenantId,
+    path: req.path,
+    method: req.method
   });
 
   res.status(500).json({

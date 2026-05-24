@@ -11,7 +11,9 @@
 // 4. Cleanup old data    — Every 24h   — Clean up old audit logs, mark stale data
 
 require('dotenv').config();
+const axios = require('axios');
 const logger = require('./utils/logger');
+const alerts = require('./utils/alerts');
 const reminderService = require('./services/reminders');
 const ScheduledMessageService = require('./services/scheduledMessages');
 const tenantHealth = require('./services/tenantHealth');
@@ -150,8 +152,53 @@ function startDailySummaryJob() {
   }), 60 * 1000);
 }
 
-// ════════════════════════════════════════════════════════════
-// START ALL JOBS
+// ════════════════════════════════════════════════════════════// JOB 6: Self-monitor (every 60s) — ping backend /healthz, alert if dead
+// ═══════════════════════════════════════════════════════════
+let healthState = 'unknown';    // 'up' | 'down' | 'unknown'
+let downSince = null;
+let consecutiveFailures = 0;
+const HEALTHCHECK_URL = process.env.HEALTHCHECK_URL || 'http://backend:4000/healthz';
+const FAIL_THRESHOLD = 2;       // only alert after N consecutive failures (avoid flap)
+
+function startSelfMonitorJob() {
+  setInterval(() => runJob('self-monitor', async () => {
+    let ok = false;
+    let detail = '';
+    try {
+      const r = await axios.get(HEALTHCHECK_URL, { timeout: 4000, validateStatus: () => true });
+      ok = r.status === 200 && r.data && r.data.status === 'ok';
+      detail = `HTTP ${r.status} db=${r.data?.db || '?'}`;
+    } catch (e) {
+      detail = e.code || e.message;
+    }
+
+    if (!ok) {
+      consecutiveFailures++;
+      if (consecutiveFailures >= FAIL_THRESHOLD && healthState !== 'down') {
+        healthState = 'down';
+        downSince = new Date();
+        alerts.notify(
+          `🔴 *Backend DOWN*\nURL: \`${HEALTHCHECK_URL}\`\nDetail: \`${detail}\`\nSince: ${downSince.toISOString()}`,
+          { dedupKey: 'self-monitor-down' }
+        );
+        logger.error(`Self-monitor: backend DOWN — ${detail}`, CRON);
+      }
+      return `DOWN (${consecutiveFailures}x) ${detail}`;
+    }
+
+    if (healthState === 'down') {
+      const downForMin = Math.round((Date.now() - downSince.getTime()) / 60000);
+      alerts.notify(`✅ *Backend RECOVERED* after ${downForMin} min down`);
+      logger.info(`Self-monitor: backend RECOVERED after ${downForMin} min`, CRON);
+    }
+    healthState = 'up';
+    downSince = null;
+    consecutiveFailures = 0;
+    return undefined; // quiet when healthy
+  }), 60 * 1000);
+}
+
+// ═══════════════════════════════════════════════════════════// START ALL JOBS
 // ════════════════════════════════════════════════════════════
 
 async function startCron() {
@@ -193,6 +240,7 @@ async function startCron() {
   startWATokenCheckJob();
   startCleanupJob();
   startDailySummaryJob();
+  startSelfMonitorJob();
 
   logger.info('All cron jobs scheduled:');
   logger.info('  • Reminders:          every 60s');
@@ -201,6 +249,7 @@ async function startCron() {
   logger.info('  • WA token validation: every 1h');
   logger.info('  • Data cleanup:        every 24h');
   logger.info('  • Daily summary:       once at 8 AM');
+  logger.info('  • Self-monitor:        every 60s');
 }
 
 startCron();

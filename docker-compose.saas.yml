@@ -45,6 +45,10 @@ services:
       DB_POOL_MAX: 20
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       WA_VERIFY_TOKEN: ${WA_VERIFY_TOKEN:-}
+      WA_APP_SECRET: ${WA_APP_SECRET:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      GIT_SHA: ${GIT_SHA:-}
       APP_URL: ${APP_URL:-http://localhost:4000}
       FB_APP_ID: ${FB_APP_ID:-}
       FB_APP_SECRET: ${FB_APP_SECRET:-}
@@ -67,6 +71,10 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       APP_URL: ${APP_URL:-http://localhost:4000}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      HEALTHCHECK_URL: ${HEALTHCHECK_URL:-http://backend:4000/healthz}
+      GIT_SHA: ${GIT_SHA:-}
 
   # ── Tenant Dashboard (Clinic Admin Panel) ───────────────
   tenant-dashboard:
